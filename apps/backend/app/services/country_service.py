@@ -5,6 +5,7 @@ from typing import List, Optional
 from bson import ObjectId
 from app.models.country import Country, State, City
 from app.schemas.country import CountryCreate, StateCreate, CityCreate
+from app.core.text_search import safe_regex
 
 
 class CountryService:
@@ -40,9 +41,9 @@ class CountryService:
             "deleted_at": None,
             "is_active": True,
             "$or": [
-                {"name": {"$regex": query, "$options": "i"}},
-                {"code": {"$regex": query, "$options": "i"}},
-                {"capital": {"$regex": query, "$options": "i"}}
+                {"name": safe_regex(query)},
+                {"code": safe_regex(query)},
+                {"capital": safe_regex(query)}
             ]
         }).sort("+name").to_list()
     
@@ -64,7 +65,7 @@ class CountryService:
         search = {
             "deleted_at": None,
             "is_active": True,
-            "name": {"$regex": query, "$options": "i"}
+            "name": safe_regex(query)
         }
         if country_id:
             search["country_id"] = ObjectId(country_id)
@@ -94,7 +95,7 @@ class CountryService:
     
     async def search_cities(self, query: str, country_id: Optional[str] = None, state_id: Optional[str] = None) -> List[City]:
         """Search cities"""
-        search = {"deleted_at": None, "is_active": True, "name": {"$regex": query, "$options": "i"}}
+        search = {"deleted_at": None, "is_active": True, "name": safe_regex(query)}
         if country_id:
             search["country_id"] = ObjectId(country_id)
         if state_id:
