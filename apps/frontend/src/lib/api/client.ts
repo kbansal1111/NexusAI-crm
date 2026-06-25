@@ -8,6 +8,13 @@ export const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    // On the server (Next.js SSR / Cloudflare Workers) axios' default Node
+    // http/https adapter is unavailable in the Workers runtime, which makes
+    // every server-side request throw. Force axios to use the native `fetch`
+    // adapter when there is no `window` so SSR data fetching works on the edge
+    // (and on local Node SSR, which also has global fetch). The browser keeps
+    // its default adapter so features like upload progress are unaffected.
+    ...(typeof window === 'undefined' ? { adapter: 'fetch' as const } : {}),
 });
 
 // In-memory access token, kept in sync with the NextAuth session by the
