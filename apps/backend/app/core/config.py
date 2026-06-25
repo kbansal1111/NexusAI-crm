@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     }
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:8000,http://localhost:3000,http://15.206.79.199:3000,https://tutterfly-frontend.vercel.app"
+    CORS_ORIGINS: str = "http://localhost:8000,http://localhost:3000,http://15.206.79.199:3000,https://tutterfly-frontend.vercel.app,https://tutterfly.teambigfat.workers.dev"
 
     # Frontend URL — used by password-reset / verification emails. MUST be set
     # to the production URL in prod, otherwise reset links go to localhost.
