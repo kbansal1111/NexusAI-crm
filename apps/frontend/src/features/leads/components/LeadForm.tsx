@@ -6,13 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { usePicklist } from "@/hooks/use-picklist";
 import { ErrorType } from "@/lib/error-handler";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, User, Building2, Globe, MapPin, Activity, Info, Tag, Layers, Share2 } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, User, Building2, Globe, MapPin, Activity, Info, Tag, Layers, Share2, Paperclip } from "lucide-react";
 import { Calendar as DayPicker } from "@/components/ui/calendar";
 
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ import { ErrorHandler, showSuccessToast, cleanErrorMessage } from "@/lib/error-h
 import { logger } from "@/lib/logger";
 import { LoadingButton } from "@/components/ui/loading";
 import { IndustryLeadFields } from "@/components/industry/IndustryLeadFields";
+import { useUploadFile } from "@/features/files/api/use-files";
 import { useIndustry } from "@/lib/industry-labels";
 import { SEGMENT_OPTIONS, SEGMENTS } from "@/lib/segments";
 import {
@@ -361,7 +362,6 @@ const leadFormSchema = z.object({
     title: z.string().optional(),
     lead_status_id: z.string().optional(),
     source_id: z.string().optional(),
-    source_medium: z.string().optional(),
     combined_source: z.string().min(1, { message: "Source is required." }),
     industry_id: z.string().optional(),
     street: z.string().optional(),
@@ -409,7 +409,6 @@ const genericBaseFields = {
     title: z.string().optional(),
     lead_status_id: z.string().optional(),
     source_id: z.string().optional(),
-    source_medium: z.string().optional(),
     combined_source: z.string().min(1, { message: "Source is required." }),
     industry_id: z.string().optional(),
     street: z.string().optional(),
@@ -489,7 +488,6 @@ interface LeadFormProps {
     leadId?: string;
     statuses?: LeadStatus[];
     sources?: Source[];
-    source_mediums?: any[];
     industries?: Industry[];
     experiences?: { id: string; name: string }[];
     /** Called after successful create/update instead of router.push.
@@ -512,7 +510,6 @@ export function LeadForm({
     leadId,
     statuses = [],
     sources = [],
-    source_mediums = [],
     industries = [],
     experiences = [],
     onSuccess,
@@ -524,6 +521,12 @@ export function LeadForm({
     const [isLoading, setIsLoading] = useState(false);
     const [availableDestinations, setAvailableDestinations] = useState<Destination[]>([]);
     const { items: salutations } = usePicklist("salutation");
+
+    // Attachment (Attachment Information section) — staged in create mode and
+    // uploaded after the lead is saved, then linked via fileable_type="Lead".
+    const uploadFile = useUploadFile();
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [loadingDestinations, setLoadingDestinations] = useState(false);
 
@@ -586,7 +589,6 @@ export function LeadForm({
             title: initialData?.title || "",
             lead_status_id: initialData?.lead_status_id || "",
             source_id: initialData?.source_id || "",
-            source_medium: initialData?.source_medium || "",
             combined_source: isTravel
                 ? (initialData?.source_id || "")
                 : (initialData?.source_id || normalizedCreationType),
@@ -733,7 +735,6 @@ export function LeadForm({
                 source_id: isTravel
                     ? (data.combined_source || undefined)
                     : (["manual", "auto"].includes(data.combined_source) ? undefined : data.combined_source),
-                source_medium: data.source_medium,
                 industry_id: data.industry_id || undefined,
                 street: data.street || undefined,
                 city: data.city,
@@ -776,6 +777,21 @@ export function LeadForm({
                         savedLead = await leadsService.createLead(payload);
                         showSuccessToast("Lead created successfully");
                     }
+
+                    // Upload the attached file (if any) and link it to the lead.
+                    const savedLeadId = savedLead?.id || leadId;
+                    if (selectedFile && savedLeadId) {
+                        try {
+                            await uploadFile.mutateAsync({
+                                file: selectedFile,
+                                fileable_type: "Lead",
+                                fileable_id: savedLeadId,
+                            });
+                        } catch (uploadErr) {
+                            console.error("Attachment upload failed", uploadErr);
+                            toast.error("Lead saved, but the attachment failed to upload.");
+                        }
+                    }
                     isSuccess = true;
 
                     const elapsedTime = Date.now() - startTime;
@@ -807,7 +823,6 @@ export function LeadForm({
         }
     }
 
-    if (isDrawer) {
         return (
             <Form {...(form as any)} className="w-full">
                 <form
@@ -967,27 +982,107 @@ export function LeadForm({
                                     </FormItem>
                                 )} />
 
-                                {/* Travel-only: Experience type (rest of the travel fields render
-                                    in the shared Travel Requirements section below) */}
-                                {isTravel && (
-                                    <FormField control={form.control as any} name="experience_id" render={({ field }) => (
-                                        <FormItem className="col-span-2">
-                                            <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Experience</FormLabel>
-                                            <FormControl><SearchableSelect options={experiences.map(e => ({ label: e.name, value: e.id }))} value={field.value} onValueChange={field.onChange} placeholder="Select Experience" /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                )}
+                            </div>
 
-                                {/* Campaign Name */}
-                                <FormField control={form.control as any} name="campaign_name" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Campaign</FormLabel>
-                                        <FormControl><Input placeholder="Summer Sale" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                            {/* Travel requirements appended under Leads Information
+                                (embedded grid, no separate heading) — matches the
+                                client layout that folds Date of Travel / Destinations /
+                                Nights / Pax into Leads Information. The kept-but-omitted
+                                travel fields (adults / children / infants / fixed) ride
+                                along here so no field is lost. */}
+                            {isTravel && (
+                                <div className="mt-3">
+                                    <IndustryLeadFields
+                                        embedded
+                                        industry={industry}
+                                        form={form}
+                                        availableDestinations={availableDestinations}
+                                        handleDestinationSearch={handleDestinationSearch}
+                                        loadingDestinations={loadingDestinations}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Section: Address Information ────────────────── */}
+                        <div>
+                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                                <MapPin className="h-4 w-4 text-primary" />
+                                <h3 className="text-sm font-semibold text-foreground">Address Information</h3>
+                            </div>
+                            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                                <FormField control={form.control as any} name="street" render={({ field }) => (
+                                    <FormItem className="sm:col-span-2">
+                                        <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Mailing Street</FormLabel>
+                                        <FormControl><Input placeholder="123 Main St" className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
+                                {/* Mailing Country | Mailing State | Mailing City (from LocationFields) */}
+                                <LocationFields form={form} />
+                                {/* Mailing Zip */}
+                                <FormField control={form.control as any} name="zip" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Mailing Zip</FormLabel>
+                                        <FormControl><Input placeholder="110001" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                        </div>
 
+                        {/* ── Section: Attachment Information ─────────────── */}
+                        <div>
+                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                                <Paperclip className="h-4 w-4 text-primary" />
+                                <h3 className="text-sm font-semibold text-foreground">Attachment Information</h3>
+                            </div>
+                            {selectedFile ? (
+                                <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs">
+                                    <span className="flex min-w-0 items-center gap-2">
+                                        <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                        <span className="truncate text-foreground">{selectedFile.name}</span>
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-1"
+                                        onClick={() => {
+                                            setSelectedFile(null);
+                                            if (fileInputRef.current) fileInputRef.current.value = "";
+                                        }}
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-fit text-xs"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <Paperclip className="mr-2 h-3.5 w-3.5" />
+                                    Add Attachment
+                                </Button>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                            />
+                        </div>
+
+                        {/* ── Section: Additional Information ─────────────── */}
+                        <div>
+                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                                <Info className="h-4 w-4 text-primary" />
+                                <h3 className="text-sm font-semibold text-foreground">Additional Information</h3>
+                            </div>
+                            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                                 {/* Segment — auto-detected from the email domain, editable */}
                                 <FormField control={form.control as any} name="segment" render={({ field }) => (
                                     <FormItem>
@@ -1003,43 +1098,28 @@ export function LeadForm({
                                         <FormMessage />
                                     </FormItem>
                                 )} />
-                            </div>
-                        </div>
-
-                        {/* ── Travel Requirements (travel tenants) ─────────
-                            Before Address Information, matching the original
-                            drawer layout: date, destinations, nights,
-                            adults / children / infants, total pax, fixed departure. */}
-                        {isTravel && (
-                            <IndustryLeadFields
-                                industry={industry}
-                                form={form}
-                                availableDestinations={availableDestinations}
-                                handleDestinationSearch={handleDestinationSearch}
-                                loadingDestinations={loadingDestinations}
-                            />
-                        )}
-
-                        {/* ── Section: Address Information ────────────────── */}
-                        <div>
-                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-                                <MapPin className="h-4 w-4 text-primary" />
-                                <h3 className="text-sm font-semibold text-foreground">Address Information</h3>
-                            </div>
-                            <div className="grid gap-3 grid-cols-1">
-                                <FormField control={form.control as any} name="street" render={({ field }) => (
+                                {/* Campaign */}
+                                <FormField control={form.control as any} name="campaign_name" render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Mailing Street</FormLabel>
-                                        <FormControl><Input placeholder="123 Main St" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Campaign</FormLabel>
+                                        <FormControl><Input placeholder="Summer Sale" className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
-                                <LocationFields form={form} />
+                                {/* Experience — travel only */}
+                                {isTravel && (
+                                    <FormField control={form.control as any} name="experience_id" render={({ field }) => (
+                                        <FormItem className="sm:col-span-2">
+                                            <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Experience</FormLabel>
+                                            <FormControl><SearchableSelect options={experiences.map(e => ({ label: e.name, value: e.id }))} value={field.value} onValueChange={field.onChange} placeholder="Select Experience" /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                )}
                             </div>
                         </div>
 
-                        {/* ── Non-travel industry fields — after Address, their
-                            original position in the drawer ─────────────────── */}
+                        {/* ── Non-travel industry-specific fields ───────────── */}
                         {!isTravel && (
                             <IndustryLeadFields
                                 industry={industry}
@@ -1063,470 +1143,5 @@ export function LeadForm({
                 </form>
             </Form>
         );
-    }
 
-    return (
-        <Form {...(form as any)} className="w-full">
-            <form
-                onSubmit={form.handleSubmit(onSubmit as any)}
-                className="w-full space-y-6 [&_[data-slot=form-label]]:!text-foreground/85 [&_input]:text-foreground [&_textarea]:text-foreground [&_[data-slot=select-trigger]]:text-foreground"
-            >
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                    <div className="space-y-6 xl:col-span-8">
-                        {/* Client Information Section */}
-                        <Card className="border-border shadow-sm">
-                            <CardHeader className="bg-muted/50 border-b py-4">
-                                <div className="flex items-center gap-2">
-                                    <User className="h-5 w-5 text-blue-600" />
-                                    <div>
-                                        <CardTitle className="text-lg font-semibold" title="Primary contact details for this lead">Client Information</CardTitle>
-                                        <CardDescription>Primary contact details for this lead</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-4">
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    <FormField
-                                        control={form.control as any}
-                                        name="salutation"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Salutation</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger className="h-9">
-                                                            <SelectValue placeholder="Select" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {salutations.map((s) => (
-                                                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="first_name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">First Name</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="John" className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="last_name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                    Last Name <span className="text-red-500">*</span>
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Doe" className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="email"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                    Email <span className="text-red-500">*</span>
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input type="email" placeholder="john@example.com" className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="phone"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                    Phone <span className="text-red-500">*</span>
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <PhoneInput {...field} placeholder="Phone number" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="mobile"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                    Mobile <span className="text-red-500">*</span>
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <PhoneInput {...field} placeholder="Mobile number" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="segment"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Segment</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value || ""}>
-                                                    <FormControl>
-                                                        <SelectTrigger className="h-9">
-                                                            <SelectValue placeholder="Select" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {SEGMENT_OPTIONS.map((opt) => (
-                                                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Company & Source Section */}
-                        <Card className="border-border shadow-sm h-full">
-                            <CardHeader className="bg-muted/50 border-b py-4">
-                                <div className="flex items-center gap-2">
-                                    <Building2 className="h-5 w-5 text-blue-600" />
-                                    <div>
-                                        <CardTitle className="text-lg font-semibold">Company & Source</CardTitle>
-                                        <CardDescription>Where this lead came from</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-4">
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    <FormField
-                                        control={form.control as any}
-                                        name="lead_status_id"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Lead Status</FormLabel>
-                                                <FormControl>
-                                                    <SearchableSelect
-                                                        options={statuses.map(s => ({ label: s.name, value: s.id }))}
-                                                        value={field.value}
-                                                        onValueChange={field.onChange}
-                                                        placeholder="Select Status"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="industry_id"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Industry</FormLabel>
-                                                <FormControl>
-                                                    <SearchableSelect
-                                                        options={industries.map(i => ({ label: i.name, value: i.id }))}
-                                                        value={field.value}
-                                                        onValueChange={field.onChange}
-                                                        placeholder="Select Industry"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    {isTravel && (
-                                    <FormField
-                                        control={form.control as any}
-                                        name="experience_id"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Experience</FormLabel>
-                                                <FormControl>
-                                                    <SearchableSelect
-                                                        options={experiences.map(e => ({ label: e.name, value: e.id }))}
-                                                        value={field.value}
-                                                        onValueChange={field.onChange}
-                                                        placeholder="Select Experience"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    )}
-                                    <FormField
-                                        control={form.control as any}
-                                        name="company"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                    Company Name
-                                                </FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Acme Inc." className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="title"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Job Title</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Manager" className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    {isTravel ? (
-                                        <>
-                                            <FormField
-                                                control={form.control as any}
-                                                name="creation_type"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                            Creation <span className="text-red-500">*</span>
-                                                        </FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value || ""}>
-                                                            <FormControl>
-                                                                <SelectTrigger className="h-9">
-                                                                    <SelectValue placeholder="Select source" />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="manual">Manual</SelectItem>
-                                                                <SelectItem value="auto">Auto</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control as any}
-                                                name="combined_source"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                            Source <span className="text-red-500">*</span>
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <SearchableSelect
-                                                                options={sources.map(s => ({ label: s.name, value: s.id }))}
-                                                                value={field.value}
-                                                                onValueChange={field.onChange}
-                                                                placeholder="Select Source"
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control as any}
-                                                name="source_medium"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                            Source Medium
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <SearchableSelect
-                                                                options={source_mediums.map(s => ({ label: s.name, value: s.name }))}
-                                                                value={field.value}
-                                                                onValueChange={field.onChange}
-                                                                placeholder="Select Source Medium"
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </>
-                                    ) : (
-                                        <>
-                                        <FormField
-                                            control={form.control as any}
-                                            name="combined_source"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                        Source <span className="text-red-500">*</span>
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <SearchableSelect
-                                                            options={[
-                                                                { label: "Manual", value: "manual" },
-                                                                { label: "Auto", value: "auto" },
-                                                                ...sources.map(s => ({ label: s.name, value: s.id }))
-                                                            ]}
-                                                            value={field.value}
-                                                            onValueChange={field.onChange}
-                                                            placeholder="Select Source"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control as any}
-                                            name="source_medium"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
-                                                        Source Medium
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <SearchableSelect
-                                                            options={source_mediums.map(s => ({ label: s.name, value: s.name }))}
-                                                            value={field.value}
-                                                            onValueChange={field.onChange}
-                                                            placeholder="Select Source Medium"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        </>
-                                    )}
-                                    <FormField
-                                        control={form.control as any}
-                                        name="campaign_name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Campaign</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Summer Sale" className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="website"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Website</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="https://..." className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control as any}
-                                        name="no_employees"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">No. Employees</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="0" placeholder="10" className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    <div className="space-y-6 xl:col-span-4">
-                        {/* Location Section */}
-                        <Card className="border-border shadow-sm h-full">
-                            <CardHeader className="bg-muted/50 border-b py-4">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-5 w-5 text-blue-600" />
-                                    <div>
-                                        <CardTitle className="text-lg font-semibold">Location</CardTitle>
-                                        <CardDescription>Target area and address</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-4">
-                                <div className="grid gap-4 grid-cols-1">
-                                    <LocationFields form={form} />
-                                    <FormField
-                                        control={form.control as any}
-                                        name="street"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Street Address</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="123 Main St" className="h-9" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Industry-Specific Fields */}
-                        <Card className="border-border shadow-sm">
-                            <CardContent className="p-4">
-                                <IndustryLeadFields
-                                    industry={industry}
-                                    form={form}
-                                    availableDestinations={availableDestinations}
-                                    handleDestinationSearch={handleDestinationSearch}
-                                    loadingDestinations={loadingDestinations}
-                                />
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-6 border-t border-border">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onCancel ? onCancel() : router.back()}
-                        disabled={isLoading}
-                    >
-                        Cancel
-                    </Button>
-                    <LoadingButton 
-                        type="submit" 
-                        isLoading={isLoading}
-                        loadingText={leadId ? "Updating..." : "Creating..."}
-                    >
-                        {leadId ? "Update Lead" : "Create Lead"}
-                    </LoadingButton>
-                </div>
-            </form>
-        </Form>
-    );
 }

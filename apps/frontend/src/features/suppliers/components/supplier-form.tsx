@@ -457,7 +457,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                         />
                         
                         {/* Supplier Owner — read-only; reassignment uses Change Owner action */}
-                        <div className="flex flex-col space-y-2 mt-2">
+                        <div className="flex flex-col space-y-2">
                             <FormLabel>Supplier Owner</FormLabel>
                             <p className="min-h-[40px] rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground flex items-center">
                                 {(initialData as { owner_name?: string })?.owner_name

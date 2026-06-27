@@ -114,7 +114,16 @@ async def list_additional_fields(
     active_only: bool = False,
 ) -> List[Document]:
     Doc = _resolve_additional_doc(entity_type)
-    filter_dict: dict = {"tenant_id": tenant_id, "entity_type": entity_type}
+    # `field_registry` is a SHARED collection with no Beanie _class discriminator,
+    # so AdditionalField*.find() also matches StandardField rows (is_custom=False)
+    # for the same entity_type. That leaked seeded standard fields (e.g.
+    # "Combined Source") into the "Additional Fields" picker. Restrict to genuine
+    # custom fields: is_custom True, or missing on legacy docs — never False.
+    filter_dict: dict = {
+        "tenant_id": tenant_id,
+        "entity_type": entity_type,
+        "is_custom": {"$ne": False},
+    }
     if active_only:
         filter_dict["is_active"] = True
     query = Doc.find(filter_dict)
@@ -298,7 +307,6 @@ DEFAULT_STANDARD_FIELDS: Dict[str, list] = {
         ("title",             "Title / Designation", "text",     False, False),
         ("lead_status_id",    "Lead Status",         "lookup",   False, False),
         ("source_id",         "Source",              "lookup",   False, False),
-        ("source_medium",     "Source Medium",       "text",     False, False),
         ("combined_source",   "Combined Source",     "select",   True,  False),
         ("industry_id",       "Industry",            "lookup",   False, False),
         ("street",            "Street",              "text",     False, False),

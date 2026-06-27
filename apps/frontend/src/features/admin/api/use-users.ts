@@ -43,7 +43,7 @@ export const useCreateUser = () => {
 export const useUpdateUser = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: UserInput }) => {
+        mutationFn: async ({ id, data }: { id: string; data: Partial<UserInput> }) => {
             const response = await apiClient.put<User>(`/users/${id}`, data);
             return response.data;
         },

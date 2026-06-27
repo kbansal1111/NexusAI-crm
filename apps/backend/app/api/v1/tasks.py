@@ -151,6 +151,7 @@ async def get_tasks(
     assigned_user_id: Optional[str] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
+    view_id: Optional[str] = Query(None, description="Saved EntityView id (task) whose filters to apply"),
     current_user: User = Depends(check_permission("view_task"))
 ):
     """Get all tasks with pagination and enriched data."""
@@ -162,6 +163,25 @@ async def get_tasks(
     from app.services.visibility_scope import get_visible_owner_ids
     visible_owner_ids = await get_visible_owner_ids(current_user)
 
+    # Saved list view (EntityView): tenant-scoped, owner-or-public. Translate its
+    # "Edit List Filters" into Mongo clauses and AND them into the base query.
+    extra_and = None
+    if view_id and ObjectId.is_valid(view_id):
+        from app.models.entity_views import EntityView
+        from app.services.field_registry_service import apply_entity_view_filters
+        active_view = await EntityView.find_one({
+            "_id": ObjectId(view_id),
+            "entity_type": "task",
+            "tenant_id": current_user.tenant_id,
+            "$or": [{"created_by": current_user.id}, {"is_public": True}],
+        })
+        if active_view:
+            tmp: dict = {}
+            await apply_entity_view_filters(
+                tmp, "task", active_view, current_user.id, current_user.tenant_id
+            )
+            extra_and = tmp.get("$and")
+
     tasks, total = await service.get_tasks_by_tenant(
         current_user.tenant_id,
         skip=skip,
@@ -169,7 +189,8 @@ async def get_tasks(
         assigned_user_id=assigned_id,
         status=status,
         priority=priority,
-        visible_owner_ids=visible_owner_ids
+        visible_owner_ids=visible_owner_ids,
+        extra_and=extra_and,
     )
 
     pages = (total + per_page - 1) // per_page

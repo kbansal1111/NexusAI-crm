@@ -100,10 +100,9 @@ function OppRow({
             <TableCell className="py-2.5">
                 <div className="flex items-center gap-1.5">
                     {opp.is_locked && (
-                        <Lock
-                            className="h-3 w-3 shrink-0 text-amber-500"
-                            title={opp.locked_by ? `Locked by ${opp.locked_by}` : "Locked"}
-                        />
+                        <span title={opp.locked_by ? `Locked by ${opp.locked_by}` : "Locked"} className="inline-flex">
+                            <Lock className="h-3 w-3 shrink-0 text-amber-500" />
+                        </span>
                     )}
                     <span className="text-xs font-semibold text-foreground group-hover:underline">
                         {opp.name}

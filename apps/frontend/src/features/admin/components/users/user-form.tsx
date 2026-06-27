@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -116,7 +116,7 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
     const { first, last } = parseName(initialData?.name);
 
     const form = useForm<UserFormValues>({
-        resolver: zodResolver(userFormSchema),
+        resolver: zodResolver(userFormSchema) as Resolver<UserFormValues>,
         defaultValues: {
             first_name: first,
             last_name: last,

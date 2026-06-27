@@ -91,13 +91,16 @@ def test_account_id_maps_to_mongo_id():
 
 
 def test_date_between_produces_range():
+    # Half-open range whose upper bound is the day AFTER the end date, so the
+    # whole end calendar day is included (a record at 2025-07-05T14:00 matches).
+    from datetime import datetime
     clauses = build_filter_clauses(
         "account",
         [{"field": "created_at", "operator": "between", "value": ["2021-10-01", "2025-07-05"]}],
     )
     assert len(clauses) == 1 and "created_at" in clauses[0]
     rng = clauses[0]["created_at"]
-    assert "$gte" in rng and "$lte" in rng
+    assert rng == {"$gte": datetime(2021, 10, 1), "$lt": datetime(2025, 7, 6)}
 
 
 def test_new_lookup_fields_are_filterable():
@@ -150,11 +153,13 @@ def test_opportunity_new_top_level_fields():
 
 def test_travel_date_string_range():
     # Lead industry_data.travel_date is stored as an ISO string → string comparison.
+    # Half-open upper bound (day after the end date) so a value persisted with a
+    # time component ("2026-12-31T00:00:00") is still included in the end day.
     clauses = build_filter_clauses(
         "lead",
         [{"field": "industry_data.travel_date", "operator": "between", "value": ["2026-01-01", "2026-12-31"]}],
     )
-    assert clauses == [{"industry_data.travel_date": {"$gte": "2026-01-01", "$lte": "2026-12-31"}}]
+    assert clauses == [{"industry_data.travel_date": {"$gte": "2026-01-01", "$lt": "2027-01-01"}}]
 
 
 def test_opportunity_travel_date_matches_date_and_string_storage():
@@ -197,6 +202,53 @@ def test_description_is_no_longer_filterable():
     # "description" was dropped from the catalogs as a useless filter field.
     for entity in ("account", "personal_account", "opportunity"):
         assert build_filter_clauses(entity, [{"field": "description", "operator": "contains", "value": "x"}]) == []
+
+
+def test_relative_token_resolves_to_day_range():
+    # "equals YESTERDAY" on a BSON-Date field → a single-day half-open range.
+    from datetime import datetime, timedelta
+    clauses = build_filter_clauses(
+        "account",
+        [{"field": "created_at", "operator": "equals", "value": "YESTERDAY"}],
+    )
+    assert len(clauses) == 1
+    rng = clauses[0]["created_at"]
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    assert rng == {"$gte": today - timedelta(days=1), "$lt": today}
+
+
+def test_relative_token_on_travel_date_string_and_mixed():
+    # Lead travel_date (string) and Opportunity travel_date (Date-or-string) both
+    # accept relative tokens. The opportunity branch ORs Date + string forms.
+    lead = build_filter_clauses(
+        "lead",
+        [{"field": "industry_data.travel_date", "operator": "equals", "value": "CURRENT_MONTH"}],
+    )
+    assert len(lead) == 1 and "industry_data.travel_date" in lead[0]
+    assert set(lead[0]["industry_data.travel_date"].keys()) == {"$gte", "$lt"}
+
+    opp = build_filter_clauses(
+        "opportunity",
+        [{"field": "industry_data.travel_date", "operator": "equals", "value": "CURRENT_MONTH"}],
+    )
+    assert len(opp) == 1 and "$or" in opp[0]
+
+
+def test_date_not_equals_excludes_whole_day():
+    clauses = build_filter_clauses(
+        "account",
+        [{"field": "created_at", "operator": "not_equals", "value": "2026-06-16"}],
+    )
+    assert len(clauses) == 1 and "$or" in clauses[0]
+
+
+def test_bad_relative_token_is_dropped():
+    # A value that isn't a real token falls through to date parsing and, being
+    # unparseable, produces no clause (never injected).
+    assert build_filter_clauses(
+        "account",
+        [{"field": "created_at", "operator": "equals", "value": "SOME_DAY"}],
+    ) == []
 
 
 def _run():

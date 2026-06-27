@@ -239,7 +239,7 @@ export default function ExpenseDetailPage() {
         open={rejectOpen}
         onOpenChange={setRejectOpen}
         pending={reject.isPending}
-        onReject={async (reason) => {
+        onReject={async (reason: string) => {
           await reject.mutateAsync({ id, reason });
           setRejectOpen(false);
         }}
@@ -249,7 +249,7 @@ export default function ExpenseDetailPage() {
         open={reimbOpen}
         onOpenChange={setReimbOpen}
         pending={reimb.isPending}
-        onReimburse={async (ref) => {
+        onReimburse={async (ref: string) => {
           await reimb.mutateAsync({ id, reference: ref });
           setReimbOpen(false);
         }}

@@ -46,7 +46,7 @@ def validate_lead_record(record: Any, *, industry: Optional[str] = None) -> None
     _require(_field(record, "city"), "City")
     _require(_field(record, "state"), "State")
     _require(_field(record, "country"), "Country")
-    if _is_empty(_field(record, "source_id")) and _is_empty(_field(record, "source_medium_id")):
+    if _is_empty(_field(record, "source_id")):
         raise ValueError("Source is required.")
 
     if industry == "travel":

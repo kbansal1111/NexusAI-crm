@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePicklist } from "@/hooks/use-picklist";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ export function TaskForm({ initialData, onSuccess, embedded, onLoadingChange }: 
     };
 
     const form = useForm<TaskFormValues>({
-        resolver: zodResolver(taskFormSchema),
+        resolver: zodResolver(taskFormSchema) as Resolver<TaskFormValues>,
         defaultValues: {
             name: initialData?.name || "",
             due_date: initialData?.due_date || "",

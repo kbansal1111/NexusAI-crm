@@ -31,6 +31,15 @@ import { Task } from "@/features/tasks/types";
 import { TaskModal } from "./task-modal";
 import { toast } from "sonner";
 import { PermissionGate } from "@/components/permissions/PermissionGate";
+import { useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { customFieldsService, type EntityType } from "@/lib/api/services/field-registry.service";
+import { useEntityViews } from "@/features/views/useEntityViews";
+import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
+import { DynamicListTable } from "@/features/views/DynamicListTable";
+import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
+import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
 
 function statusBadge(status: string) {
     const lower = status?.toLowerCase();
@@ -182,12 +191,17 @@ export function TaskList() {
     const { items: taskStatuses } = usePicklist("task_status");
     const { items: taskPriorities } = usePicklist("task_priority");
 
+    const searchParams = useSearchParams();
+    const entity: EntityType = "task";
+    const view_id = searchParams.get("view_id") || undefined;
+
     const { data, isLoading, isError } = useGetTasks({
         page,
         per_page: 20,
         status: statusFilter === "__all__" ? undefined : statusFilter,
         priority: priorityFilter === "__all__" ? undefined : priorityFilter,
         assigned_user_id: assigneeFilter === "__my_tasks__" ? (session?.user as any)?.id : (assigneeFilter === "__all__" ? undefined : assigneeFilter),
+        view_id,
     });
 
     const deleteTask = useDeleteTask();
@@ -196,6 +210,43 @@ export function TaskList() {
     const tasks: Task[] = data?.tasks || [];
     const pagination = data?.pagination;
     const totalPages = pagination?.pages || 1;
+
+    // ── Saved-view manager (saved views + Edit List Filters + Select Fields) ──
+    const { activeView } = useEntityViews(entity);
+    const taskUsers: { id: string; name: string }[] = (data as any)?.users || [];
+    const { data: taskCustomFields = [] } = useQuery({
+        queryKey: ["custom-fields", entity],
+        queryFn: () => customFieldsService.list(entity, true),
+        staleTime: 5 * 60 * 1000,
+    });
+    const fieldLabels = React.useMemo(() => {
+        const m = new Map<string, string>();
+        standardFieldByKey(entity).forEach((f, k) => m.set(k, f.label));
+        taskCustomFields.forEach((f) => m.set("additional:" + f.id, f.label || f.name));
+        return m;
+    }, [taskCustomFields]);
+    const usersMap = React.useMemo(() => new Map(taskUsers.map((u) => [u.id, u.name])), [taskUsers]);
+    const viewLookups = React.useMemo<ViewLookups>(() => ({ users: usersMap }), [usersMap]);
+    const lookupOptions = React.useMemo(
+        () => buildLookupOptions(entity, {
+            users: taskUsers,
+            // status/priority are stored as the picklist name string → id === name.
+            task_statuses: taskStatuses.map((s) => ({ id: s.name, name: s.name })),
+            task_priorities: taskPriorities.map((p) => ({ id: p.name, name: p.name })),
+        }),
+        [taskUsers, taskStatuses, taskPriorities],
+    );
+    const dynamicColumns = React.useMemo(
+        () =>
+            activeView?.display_columns?.length
+                ? buildEntityColumns(activeView.display_columns, fieldLabels, {
+                      entity,
+                      openDetail: undefined,
+                      lookups: viewLookups,
+                  })
+                : null,
+        [activeView, fieldLabels, viewLookups],
+    );
 
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this task?")) return;
@@ -220,7 +271,8 @@ export function TaskList() {
         <div>
             {/* Toolbar */}
             <div className="crm-toolbar mb-4 justify-between gap-3 flex-wrap">
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <ListViewSelector entity={entity} presetLabel="All records" />
                     <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
                         <SelectTrigger className="h-8 text-xs w-36">
                             <SelectValue placeholder="Assignee" />
@@ -253,20 +305,31 @@ export function TaskList() {
                         </SelectContent>
                     </Select>
                 </div>
-                <PermissionGate permission="create_task">
-                    <Button
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setAddOpen(true)}
-                    >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        New
-                    </Button>
-                </PermissionGate>
+                <div className="flex items-center gap-2">
+                    <ListViewFilterButton entity={entity} lookupOptions={lookupOptions} />
+                    <ListViewSettings entity={entity} lookupOptions={lookupOptions} />
+                    <PermissionGate permission="create_task">
+                        <Button
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => setAddOpen(true)}
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            New
+                        </Button>
+                    </PermissionGate>
+                </div>
             </div>
 
             {/* Table */}
             <div className="crm-surface overflow-hidden">
+                {dynamicColumns ? (
+                    <DynamicListTable
+                        data={tasks}
+                        columns={dynamicColumns as any}
+                        onRowClick={(row: Task) => { window.location.href = `/tasks/${row.id}`; }}
+                    />
+                ) : (
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -408,6 +471,7 @@ export function TaskList() {
                         ))}
                     </TableBody>
                 </Table>
+                )}
             </div>
 
             {/* Pagination */}

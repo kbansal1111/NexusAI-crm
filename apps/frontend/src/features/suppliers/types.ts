@@ -5,6 +5,7 @@ export interface Supplier {
     name: string;
     company_name?: string;
     supplier_type: string;
+    owner_name?: string;
 
     email?: string;
     phone?: string;
@@ -65,6 +66,8 @@ export interface SupplierFilters {
     is_preferred?: boolean;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
+    /** Saved EntityView id whose "Edit List Filters" the server should apply. */
+    view_id?: string;
 }
 export type SupplierResponse = {
     suppliers: Supplier[];

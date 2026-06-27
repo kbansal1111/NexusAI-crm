@@ -28,8 +28,6 @@ export interface Lead {
     lead_status_id?: string;
     industry_id?: string;
     source_id?: string;
-    source_medium?: string;
-    source_medium_id?: string;
 
     segment?: string;
     creation_type?: string;
@@ -107,12 +105,10 @@ export interface LeadCreateData {
     lead_status_id?: string;
     industry_id?: string;
     source_id?: string;
-    source_medium?: string;
     campaign_name?: string;
     segment?: string;
     creation_type?: string;
 
-    source_medium_id?: string;
     custom_fields?: Record<string, unknown>;
 
     // All industry-specific fields go here
@@ -234,7 +230,6 @@ export interface LeadResponse {
     };
     lead_statuses: LeadStatus[];
     sources: Source[];
-    source_mediums?: { id: string; name: string }[];
     users: User[];
     industries: Industry[];
     experiences: { id: string; name: string }[];

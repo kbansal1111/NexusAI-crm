@@ -165,15 +165,24 @@ class TaskService(ActivityMixin):
         assigned_user_id: Optional[ObjectId] = None,
         status: Optional[str] = None,
         priority: Optional[str] = None,
-        visible_owner_ids: Optional[list] = None
+        visible_owner_ids: Optional[list] = None,
+        extra_and: Optional[List[dict]] = None,
     ) -> Tuple[List[Task], int]:
-        """Get tasks for a tenant with pagination"""
-        
+        """Get tasks for a tenant with pagination.
+
+        `extra_and` carries the translated clauses of a saved EntityView's
+        "Edit List Filters" (built by apply_entity_view_filters) and is ANDed
+        into the base query, preserving tenant + visibility scoping.
+        """
+
         query = {
             "tenant_id": tenant_id,
             "deleted_at": None
         }
-        
+
+        if extra_and:
+            query["$and"] = extra_and
+
         # Handle explicit assignment filter + visibility scoping securely
         if assigned_user_id:
             if visible_owner_ids is not None and assigned_user_id not in visible_owner_ids:

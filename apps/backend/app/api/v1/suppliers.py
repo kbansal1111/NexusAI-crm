@@ -138,18 +138,39 @@ async def get_suppliers(
     per_page: int = Query(10, ge=1, le=100),
     supplier_type: Optional[str] = None,
     is_preferred: Optional[bool] = None,
+    view_id: Optional[str] = Query(None, description="Saved EntityView id (supplier) whose filters to apply"),
     current_user: User = Depends(check_permission("view_supplier"))
 ):
     """Get all suppliers with pagination"""
     service = SupplierService()
-    
+
+    # Saved list view (EntityView): tenant-scoped, owner-or-public. Translate its
+    # "Edit List Filters" into Mongo clauses and AND them into the base query.
+    extra_and = None
+    if view_id and ObjectId.is_valid(view_id):
+        from app.models.entity_views import EntityView
+        from app.services.field_registry_service import apply_entity_view_filters
+        active_view = await EntityView.find_one({
+            "_id": ObjectId(view_id),
+            "entity_type": "supplier",
+            "tenant_id": current_user.tenant_id,
+            "$or": [{"created_by": current_user.id}, {"is_public": True}],
+        })
+        if active_view:
+            tmp: dict = {}
+            await apply_entity_view_filters(
+                tmp, "supplier", active_view, current_user.id, current_user.tenant_id
+            )
+            extra_and = tmp.get("$and")
+
     skip = (page - 1) * per_page
     suppliers, total = await service.get_suppliers_by_tenant(
         current_user.tenant_id,
         skip=skip,
         limit=per_page,
         supplier_type=supplier_type,
-        is_preferred=is_preferred
+        is_preferred=is_preferred,
+        extra_and=extra_and,
     )
     
     pages = (total + per_page - 1) // per_page

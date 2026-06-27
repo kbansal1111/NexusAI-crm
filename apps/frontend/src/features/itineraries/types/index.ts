@@ -48,7 +48,7 @@ export interface CreateItineraryPayload {
     total_nights: number;
     start_date?: string;
     end_date?: string;
-    
+
     tour_starts_from?: string;
     tour_ends_same: boolean;
     inclusions: string[];
@@ -59,4 +59,31 @@ export interface CreateItineraryPayload {
     is_template: boolean;
     notes?: string;
     days: Partial<ItineraryDay>[];
+}
+
+// A single itinerary with its full day-by-day breakdown (detail endpoint).
+export type ItineraryDetail = Itinerary;
+
+// Create/update payload (alias kept for the service layer).
+export type ItineraryCreateData = CreateItineraryPayload;
+
+// Query params for the list endpoint (sent as axios params).
+export interface ItineraryFilters {
+    search?: string;
+    is_template?: boolean;
+    is_active?: boolean;
+    page?: number;
+    per_page?: number;
+    [key: string]: unknown;
+}
+
+// Paginated list response.
+export interface ItineraryResponse {
+    itineraries: Itinerary[];
+    pagination?: {
+        current_page: number;
+        total: number;
+        per_page: number;
+        pages: number;
+    };
 }

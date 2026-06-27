@@ -65,6 +65,7 @@ const getAccountFormSchema = (isPersonAccount: boolean) => z.object({
     // Classification
     industry_id: isPersonAccount ? z.string().optional() : z.string().min(1, "Industry is required"),
     acc_type_id: isPersonAccount ? z.string().optional() : z.string().min(1, "Account Type is required"),
+    acc_parent_id: z.string().optional(),
     category_id: z.string().optional(),
 
     // Addresses
@@ -107,6 +108,56 @@ const locationCache = {
     states: new Map<string, any>(),
     cities: new Map<string, any>(),
 };
+
+/**
+ * Parent Account picker — server-searched account lookup (id+name). The backend
+ * Account schema supports `acc_parent_id`; this exposes it in the form (B2B
+ * accounts) as the legacy CRM did. Seeds with the current parent's name so edit
+ * mode shows a label, and never lets an account be its own parent.
+ */
+function ParentAccountSelect({ form, currentId, initialName }: { form: any; currentId?: string; initialName?: string }) {
+    const initialId = form.getValues("acc_parent_id");
+    const [options, setOptions] = useState<{ label: string; value: string }[]>(
+        initialId ? [{ label: initialName || initialId, value: initialId }] : []
+    );
+    const [loading, setLoading] = useState(false);
+
+    const handleSearch = useCallback(async (query: string) => {
+        if (!query) { setOptions([]); return; }
+        setLoading(true);
+        try {
+            const res = await accountService.autocompleteAccounts(query, false);
+            setOptions(res.filter(a => a.id !== currentId).map(a => ({ label: a.name, value: a.id })));
+        } catch (err) {
+            console.error("Parent account search error", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [currentId]);
+
+    return (
+        <FormField
+            control={form.control}
+            name="acc_parent_id"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Parent Account</FormLabel>
+                    <FormControl>
+                        <SearchableSelect
+                            options={options}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            onSearch={handleSearch}
+                            isLoading={loading}
+                            placeholder="Search Account"
+                        />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+    );
+}
 
 function BillingLocationFields({ form, children }: { form: any, children?: React.ReactNode }) {
     const [countries, setCountries] = useState<Country[]>([]);
@@ -438,6 +489,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
             description: initialData?.description || "",
             industry_id: initialData?.industry_id || initialData?.industry || "",
             acc_type_id: initialData?.acc_type_id || "",
+            acc_parent_id: initialData?.acc_parent_id || "",
             category_id: initialData?.category_id || "",
             billing_street: initialData?.billing_street || "",
             billing_city: initialData?.billing_city || "",
@@ -568,9 +620,9 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-8"
             >
-                {/* Additional Information */}
+                {/* Account Information */}
                 <div>
-                    <h3 className="text-lg font-medium mb-4">Additional Information</h3>
+                    <h3 className="text-lg font-medium mb-4">{isPersonAccount ? "Person Account Information" : "Account Information"}</h3>
                     <div className="grid gap-6 md:grid-cols-2">
                         {!isPersonAccount ? (
                             <FormField
@@ -672,6 +724,11 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                             <FormMessage />
                                         </FormItem>
                                     )}
+                                />
+                                <ParentAccountSelect
+                                    form={form}
+                                    currentId={id}
+                                    initialName={initialData?.parent_account_name}
                                 />
                                 <FormField
                                     control={form.control}

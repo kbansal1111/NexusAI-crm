@@ -161,22 +161,31 @@ class SupplierService(ActivityMixin):
         skip: int = 0,
         limit: int = 10,
         supplier_type: Optional[str] = None,
-        is_preferred: Optional[bool] = None
+        is_preferred: Optional[bool] = None,
+        extra_and: Optional[List[dict]] = None,
     ) -> Tuple[List[Supplier], int]:
-        """Get suppliers for a tenant with pagination"""
-        
+        """Get suppliers for a tenant with pagination.
+
+        `extra_and` carries the translated clauses of a saved EntityView's
+        "Edit List Filters" (built by apply_entity_view_filters) and is ANDed
+        into the base query, preserving tenant scoping.
+        """
+
         query = {
             "tenant_id": tenant_id,
             "deleted_at": None,
             "is_active": True
         }
-        
+
         if supplier_type:
             query["supplier_type"] = supplier_type
-        
+
         if is_preferred is not None:
             query["is_preferred"] = is_preferred
-        
+
+        if extra_and:
+            query["$and"] = extra_and
+
         # Get total count
         total = await Supplier.find(query).count()
         

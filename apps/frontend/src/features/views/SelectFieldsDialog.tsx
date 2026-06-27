@@ -20,7 +20,7 @@ import {
   type EntityType,
 } from "@/lib/api/services/field-registry.service";
 import { DualListbox, type DualItem } from "./DualListbox";
-import { standardFieldsFor, standardFieldByKey, realCustomFields, defaultColumnsFor } from "./accountFields";
+import { standardFieldsFor, standardFieldByKey, realCustomFields, defaultColumnsFor, additionalFieldKeysFor } from "./accountFields";
 
 const ADD = "additional:";
 
@@ -50,6 +50,17 @@ export function SelectFieldsDialog({
 
   const standard = React.useMemo(() => standardFieldsFor(entity), [entity]);
   const stdLabel = React.useMemo(() => standardFieldByKey(entity), [entity]);
+  // Catalog fields the form groups under "Additional Information" — shown in the
+  // "Additional Fields" listbox (not "Standard Fields"), mirroring the form.
+  const additionalKeys = React.useMemo(() => additionalFieldKeysFor(entity), [entity]);
+  const coreStandard = React.useMemo(
+    () => standard.filter((f) => !additionalKeys.has(f.key)),
+    [standard, additionalKeys],
+  );
+  const additionalStandard = React.useMemo(
+    () => standard.filter((f) => additionalKeys.has(f.key)),
+    [standard, additionalKeys],
+  );
 
   const customQ = useQuery({
     queryKey: ["custom-fields", entity],
@@ -88,6 +99,9 @@ export function SelectFieldsDialog({
       if (key.startsWith(ADD)) {
         const id = key.slice(ADD.length);
         add.push({ key, label: addLabel.get(id) || id });
+      } else if (additionalKeys.has(key)) {
+        // Form "Additional Information" field — belongs in the Additional list.
+        add.push({ key, label: stdLabel.get(key)?.label || key });
       } else {
         std.push({ key, label: stdLabel.get(key)?.label || key });
       }
@@ -95,22 +109,28 @@ export function SelectFieldsDialog({
     setVisStd(std);
     setVisAdd(add);
     seededRef.current = true;
-  }, [open, customQ.isSuccess, view, entity, addLabel, stdLabel]);
+  }, [open, customQ.isSuccess, view, entity, addLabel, stdLabel, additionalKeys]);
 
   // Available = catalog/custom MINUS whatever is already Visible.
   const availStd: DualItem[] = React.useMemo(() => {
     const chosen = new Set(visStd.map((i) => i.key));
-    return standard
+    return coreStandard
       .filter((f) => !chosen.has(f.key))
       .map((f) => ({ key: f.key, label: f.label }));
-  }, [standard, visStd]);
+  }, [coreStandard, visStd]);
 
+  // "Available Additional Fields" = the form's "Additional Information" catalog
+  // fields + genuine tenant custom fields.
   const availAdd: DualItem[] = React.useMemo(() => {
     const chosen = new Set(visAdd.map((i) => i.key));
-    return addFields
+    const stdAdditional = additionalStandard
+      .filter((f) => !chosen.has(f.key))
+      .map((f) => ({ key: f.key, label: f.label }));
+    const custom = addFields
       .filter((f) => !chosen.has(ADD + f.id))
       .map((f) => ({ key: ADD + f.id, label: f.label || f.name }));
-  }, [addFields, visAdd]);
+    return [...stdAdditional, ...custom];
+  }, [additionalStandard, addFields, visAdd]);
 
   const save = async () => {
     const display_columns = [...visStd.map((i) => i.key), ...visAdd.map((i) => i.key)];

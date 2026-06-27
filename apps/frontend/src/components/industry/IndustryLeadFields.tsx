@@ -55,6 +55,9 @@ interface IndustryFieldsProps {
     availableDestinations?: Destination[];
     handleDestinationSearch?: (q: string, signal?: AbortSignal) => void;
     loadingDestinations?: boolean;
+    // When true, render the field grid WITHOUT the section heading so the fields
+    // flow under a parent heading (e.g. travel fields under "Leads Information").
+    embedded?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -265,13 +268,15 @@ function DestinationMultiSelect({
 // Uses TOP-LEVEL form field names that match the LeadForm's leadFormSchema.
 // The submit handler wraps these into `industry_data` before sending to the API.
 // ---------------------------------------------------------------------------
-function TravelLeadFields({ form, availableDestinations = [], handleDestinationSearch, loadingDestinations }: IndustryFieldsProps) {
+function TravelLeadFields({ form, availableDestinations = [], handleDestinationSearch, loadingDestinations, embedded }: IndustryFieldsProps) {
     return (
         <div>
-            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-                <Globe className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Travel Requirements</h3>
-            </div>
+            {!embedded && (
+                <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
+                    <Globe className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Travel Requirements</h3>
+                </div>
+            )}
             <div className="grid gap-3 grid-cols-2">
                 <FormField control={form.control as any} name="travel_date" render={({ field }) => (
                     <FormItem className="col-span-2">

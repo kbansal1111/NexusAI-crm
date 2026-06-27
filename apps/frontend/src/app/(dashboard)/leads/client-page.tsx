@@ -194,7 +194,6 @@ export default function LeadsClientPage() {
                     users={response.users}
                     experiences={response.experiences}
                     sales_stages={response.sales_stages}
-                    source_mediums={(response as any).source_mediums || []}
                     industries={(response as any).industries || []}
                     isLoading={isLoading}
                     hasMore={!!hasNextPage}
@@ -212,7 +211,6 @@ export default function LeadsClientPage() {
                 metadata={response ? {
                     statuses: response.lead_statuses || [],
                     sources: response.sources || [],
-                    source_mediums: response.source_mediums || [],
                     industries: response.industries || [],
                     experiences: response.experiences || [],
                 } : undefined}

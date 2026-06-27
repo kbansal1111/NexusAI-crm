@@ -961,7 +961,6 @@ class LeadService(ActivityMixin):
                 lead_id=lead.id,
                 segment=lead.segment,
                 source_id=lead.source_id,
-                source_medium_id=lead.source_medium_id,
                 industry_data=opp_industry_data,
                 tenant_id=tenant_id,
                 owner_id=resolved_owner_id,
@@ -1335,14 +1334,12 @@ class LeadService(ActivityMixin):
     async def _apply_whatsapp_filter(self, base_filter: dict, tenant_id) -> None:
         """Scope ``base_filter`` to WhatsApp-sourced leads (the 'whatsapp' view).
 
-        'WhatsApp' is seeded both as a Source ("Whatsapp", "Double Click
-        Whatsapp") and as a SourceMedium ("WhatsApp"). A lead may carry the tag
-        on either id, or only on the denormalized ``source_medium`` string, so we
-        match any of them. The condition is appended under ``$and`` so it
+        'WhatsApp' is seeded as a Source ("Whatsapp", "Double Click Whatsapp").
+        Match any such source id. The condition is appended under ``$and`` so it
         co-exists with the free-text ``$or`` search instead of overwriting it.
         """
         import re as _re
-        from app.models.lead_picklists import Source, SourceMedium
+        from app.models.lead_picklists import Source
         from app.core.picklist_query import build_picklist_query
         from app.services.industry_service import get_tenant_industry, TenantNotFoundError
 
@@ -1352,25 +1349,16 @@ class LeadService(ActivityMixin):
             industry = None
 
         wa_re = _re.compile("whatsapp", _re.IGNORECASE)
-        import asyncio
-        sources, mediums = await asyncio.gather(
-            Source.find(
-                build_picklist_query(tenant_id, industry=industry, picklist_type="source")
-            ).to_list(),
-            SourceMedium.find(
-                build_picklist_query(tenant_id, industry=industry, picklist_type="source_medium")
-            ).to_list(),
-        )
+        sources = await Source.find(
+            build_picklist_query(tenant_id, industry=industry, picklist_type="source")
+        ).to_list()
         source_ids = [s.id for s in sources if wa_re.search(s.name or "")]
-        medium_ids = [m.id for m in mediums if wa_re.search(m.name or "")]
 
-        wa_or: list = [{"source_medium": {"$regex": wa_re}}]
-        if source_ids:
-            wa_or.append({"source_id": {"$in": source_ids}})
-        if medium_ids:
-            wa_or.append({"source_medium_id": {"$in": medium_ids}})
-
-        base_filter.setdefault("$and", []).append({"$or": wa_or})
+        # No WhatsApp source configured → the view should be empty rather than
+        # unfiltered, so constrain to a never-match.
+        base_filter.setdefault("$and", []).append(
+            {"source_id": {"$in": source_ids}} if source_ids else {"_id": None}
+        )
 
     async def get_leads_with_metadata(
         self,
@@ -1559,7 +1547,6 @@ class LeadService(ActivityMixin):
         # 2. Fetch Metadata in parallel (except sales stages which need special handling)
         import asyncio
         from app.models.opportunity_picklists import Experience, SalesStage
-        from app.models.lead_picklists import SourceMedium
         from app.core.picklist_query import build_picklist_query
 
         # Resolve tenant industry for picklist scoping (cross-request cached).
@@ -1577,19 +1564,17 @@ class LeadService(ActivityMixin):
             User.find({"tenant_id": tenant_id, "is_active": True}).sort("+name").to_list(),
             Industry.find(build_picklist_query(tenant_id, industry=tenant_industry, picklist_type="industry")).sort("+sorting").to_list(),
             Experience.find(build_picklist_query(tenant_id, industry=tenant_industry, picklist_type="experience")).sort("+sorting").to_list(),
-            SourceMedium.find(build_picklist_query(tenant_id, industry=tenant_industry, picklist_type="source_medium")).sort("+sorting").to_list(),
         ]
-        
+
         metadata_results = await asyncio.gather(*metadata_tasks)
-        lead_statuses, sources, users, industries, experiences, source_mediums = metadata_results
-        
+        lead_statuses, sources, users, industries, experiences = metadata_results
+
         # Tenant items shadow platform defaults with the same name
         from app.core.picklist_query import dedup_picklist_items
         lead_statuses = dedup_picklist_items(lead_statuses)
         sources = dedup_picklist_items(sources)
         industries = dedup_picklist_items(industries)
         experiences = dedup_picklist_items(experiences)
-        source_mediums = dedup_picklist_items(source_mediums)
         
         # All stages are now tenant-specific — simple direct query
         sales_stages = await SalesStage.find(
@@ -1613,10 +1598,6 @@ class LeadService(ActivityMixin):
             "sources": [
                 {"id": str(s.id), "name": s.name}
                 for s in sources
-            ],
-            "source_mediums": [
-                {"id": str(sm.id), "name": sm.name}
-                for sm in source_mediums
             ],
             "users": [
                 {"id": str(u.id), "name": u.name, "email": u.email}

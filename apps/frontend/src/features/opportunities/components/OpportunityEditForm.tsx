@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { CalendarIcon, ChevronLeft, Check, ChevronsUpDown, X } from "lucide-react";
+import { CalendarIcon, ChevronLeft, Check, ChevronsUpDown, X, Paperclip } from "lucide-react";
+import { useUploadFile } from "@/features/files/api/use-files";
 import { format } from "date-fns";
 import Link from "next/link";
 
@@ -92,6 +93,7 @@ const opportunityFormSchema = z.object({
     contact_id: z.string().optional(),
     inclusions: z.array(z.string()).default([]),
     close_lost_reason: z.string().optional(),
+    starting_city: z.string().optional(),
     key_deal: z.boolean().optional(),
     industry_data: z.record(z.string(), z.any()).optional(),
 });
@@ -131,6 +133,11 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
     const [loadingContacts, setLoadingContacts] = useState(false);
     const [selectedAccountId, setSelectedAccountId] = useState(opportunity.account_id || "");
     const [isPersonAccount, setIsPersonAccount] = useState(opportunity.is_person_account || false);
+
+    // Attachment upload (linked to this opportunity)
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const uploadFile = useUploadFile();
 
     const industry = useIndustry();
     const isTravel = industry === "travel";
@@ -237,6 +244,7 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
             contact_id: opportunity.contact_id || "",
             inclusions: (opportunity.industry_data?.inclusions as string[]) || [],
             close_lost_reason: opportunity.close_lost_reason || "",
+            starting_city: opportunity.industry_data?.starting_city || "",
             key_deal: opportunity.key_deal ?? false,
         } as OpportunityFormValues,
     });
@@ -343,6 +351,7 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                         } else {
                             travelIndustryData.destination_ids = [];
                         }
+                        travelIndustryData.starting_city = data.starting_city?.trim() || "";
 
                         payload.industry_data = travelIndustryData;
                     } else if (data.industry_data) {
@@ -363,6 +372,22 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                         id: opportunity.id,
                         data: payload
                     });
+
+                    // Upload the attached file (if any) and link it to the opportunity.
+                    if (selectedFile && opportunity.id) {
+                        try {
+                            await uploadFile.mutateAsync({
+                                file: selectedFile,
+                                fileable_type: "Opportunity",
+                                fileable_id: opportunity.id,
+                            });
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                        } catch (uploadErr) {
+                            console.error("Attachment upload failed", uploadErr);
+                            toast.error("Opportunity saved, but the attachment failed to upload.");
+                        }
+                    }
 
                     toast.success("Opportunity updated successfully");
                     if (onSuccess) {
@@ -884,39 +909,97 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                         </div>
                     </div>
 
+                    {/* ── Section: Attachment Information ─────────────────── */}
+                    <div className="border border-border rounded-lg overflow-hidden bg-card">
+                        <div className="bg-muted/40 border-b border-border px-5 py-2.5">
+                            <p className="text-xs font-bold uppercase tracking-wider text-foreground/80">
+                                Attachment Information
+                            </p>
+                        </div>
+                        <div className="p-5">
+                            {selectedFile ? (
+                                <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                                    <span className="flex min-w-0 items-center gap-2">
+                                        <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                        <span className="truncate">{selectedFile.name}</span>
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setSelectedFile(null);
+                                            if (fileInputRef.current) fileInputRef.current.value = "";
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                    <Paperclip className="mr-2 h-4 w-4" />
+                                    Add Attachment
+                                </Button>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                            />
+                        </div>
+                    </div>
+
                     {/* ── Section: Additional Information ─────────────────── */}
-                    {isCloseLostStage && (
+                    {(isTravel || isCloseLostStage) && (
                         <div className="border border-border rounded-lg overflow-hidden bg-card">
-                            <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-2.5">
-                                <p className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
+                            <div className="bg-muted/40 border-b border-border px-5 py-2.5">
+                                <p className="text-xs font-bold uppercase tracking-wider text-foreground/80">
                                     Additional Information
                                 </p>
                             </div>
-                            <div className="p-5">
-                                <FormField
-                                    control={form.control}
-                                    name="close_lost_reason"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-red-600 font-semibold">Close Lost Reason *</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <div className="grid gap-4 p-5 md:grid-cols-2">
+                                {isTravel && (
+                                    <FormField
+                                        control={form.control}
+                                        name="starting_city"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Starting City</FormLabel>
                                                 <FormControl>
-                                                    <SelectTrigger className="border-red-500/40 focus:ring-red-500">
-                                                        <SelectValue placeholder="Select reason" />
-                                                    </SelectTrigger>
+                                                    <Input placeholder="e.g. New Delhi" {...field} />
                                                 </FormControl>
-                                                <SelectContent>
-                                                    {getCloseLostReasons(industry).map((reason) => (
-                                                        <SelectItem key={reason} value={reason}>
-                                                            {reason}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+                                {isCloseLostStage && (
+                                    <FormField
+                                        control={form.control}
+                                        name="close_lost_reason"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-red-600 font-semibold">Close Lost Reason *</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="border-red-500/40 focus:ring-red-500">
+                                                            <SelectValue placeholder="Select reason" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {getCloseLostReasons(industry).map((reason) => (
+                                                            <SelectItem key={reason} value={reason}>
+                                                                {reason}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
                             </div>
                         </div>
                     )}

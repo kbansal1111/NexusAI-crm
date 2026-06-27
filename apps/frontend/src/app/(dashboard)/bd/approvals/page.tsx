@@ -84,7 +84,7 @@ function VisitApprovalsTab() {
       <RejectDialog
         item={rejecting}
         onClose={() => setRejecting(null)}
-        onReject={async (reason) => {
+        onReject={async (reason: string) => {
           if (rejecting) {
             await reject.mutateAsync({ id: rejecting.id, reason });
             setRejecting(null);
@@ -145,7 +145,7 @@ function ExpenseApprovalsTab() {
       <RejectDialog
         item={rejecting}
         onClose={() => setRejecting(null)}
-        onReject={async (reason) => {
+        onReject={async (reason: string) => {
           if (rejecting) {
             await reject.mutateAsync({ id: rejecting.id, reason });
             setRejecting(null);

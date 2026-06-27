@@ -21,7 +21,6 @@ interface LeadFormDrawerProps {
     metadata?: {
         statuses: any[];
         sources: any[];
-        source_mediums: any[];
         industries: any[];
         experiences: any[];
     };
@@ -78,7 +77,6 @@ export function LeadFormDrawer({
                     setMetadataState({
                         statuses: metaResponse.lead_statuses || [],
                         sources: metaResponse.sources || [],
-                        source_mediums: metaResponse.source_mediums || [],
                         industries: metaResponse.industries || [],
                         experiences: metaResponse.experiences || [],
                     });
@@ -138,7 +136,6 @@ export function LeadFormDrawer({
                     leadId={leadId}
                     statuses={metadataState.statuses}
                     sources={metadataState.sources}
-                    source_mediums={metadataState.source_mediums}
                     industries={metadataState.industries}
                     experiences={metadataState.experiences}
                     onSuccess={handleSuccess}

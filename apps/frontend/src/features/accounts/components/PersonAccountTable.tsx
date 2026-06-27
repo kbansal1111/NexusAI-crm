@@ -63,6 +63,7 @@ import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMen
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
 import { buildLookupOptions } from "@/features/views/accountFields";
+import { usePicklist } from "@/hooks/use-picklist";
 import { Account } from "../types";
 import { AccountDetailDrawer } from "./AccountDetailDrawer";
 import { OwnerPopover } from "@/components/shared/OwnerPopover";
@@ -307,13 +308,16 @@ export function PersonAccountTable({
         };
     }, [filterFormData]);
 
+    const { items: salutations } = usePicklist("salutation");
     const lookupOptions = React.useMemo(
         () =>
             buildLookupOptions(entity, {
                 users: filterFormData?.users,
                 categories: filterFormData?.categories,
+                // salutation is stored as the picklist name string → id === name.
+                salutations: salutations.map((s) => ({ id: s.name, name: s.name })),
             }),
-        [entity, filterFormData],
+        [entity, filterFormData, salutations],
     );
 
     const applyFilter = React.useCallback((key: string, value: string) => {

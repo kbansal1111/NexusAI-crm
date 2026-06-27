@@ -47,15 +47,13 @@ class LeadBase(BaseModel):
     lead_status_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     industry_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     source_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    source_medium_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    
+
     # Universal CRM fields
-    source_medium: Optional[str] = None
     campaign_name: Optional[str] = None
     ip_address: Optional[str] = None
     segment: Optional[str] = "B2C"
     creation_type: Optional[str] = "manual"
-    
+
     # Industry-specific data (validated per-industry via validate_industry_data)
     industry_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
@@ -93,10 +91,8 @@ class LeadUpdate(BaseModel):
     lead_status_id: Optional[str] = None
     industry_id: Optional[str] = None
     source_id: Optional[str] = None
-    source_medium_id: Optional[str] = None
-    
+
     # Universal CRM fields
-    source_medium: Optional[str] = None
     campaign_name: Optional[str] = None
     ip_address: Optional[str] = None
     segment: Optional[str] = None  # B2C / B2B / CORPORATE — persisted on update
@@ -164,10 +160,8 @@ class LeadResponse(BaseModel):
     lead_status_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     industry_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     source_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    source_medium_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
 
     # Universal CRM fields
-    source_medium: Optional[str] = None
     campaign_name: Optional[str] = None
     ip_address: Optional[str] = None
     segment: Optional[str] = "B2C"
@@ -257,7 +251,6 @@ class LeadListResponse(BaseModel):
     pagination: Dict[str, Any]
     lead_statuses: List[Dict[str, Any]] = Field(default_factory=list)
     sources: List[Dict[str, Any]] = Field(default_factory=list)
-    source_mediums: List[Dict[str, Any]] = Field(default_factory=list)
     users: List[Dict[str, Any]] = Field(default_factory=list)
     industries: List[Dict[str, Any]] = Field(default_factory=list)
     experiences: List[Dict[str, Any]] = Field(default_factory=list)

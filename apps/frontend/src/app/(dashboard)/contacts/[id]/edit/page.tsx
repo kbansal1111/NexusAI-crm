@@ -39,7 +39,7 @@ export default async function EditContactPage(props: EditContactPageProps) {
             <div className="bg-card rounded-lg border p-6">
                 <ContactForm
                     id={params.id}
-                    initialData={contact}
+                    initialData={contact as any}
                     initialAccountName={(contact as any).account_name}
                 />
             </div>

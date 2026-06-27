@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -13,7 +13,10 @@ import {
   Filter,
   Columns3,
   Trash2,
+  Pin,
+  X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,6 +35,7 @@ import { useEntityViews } from "./useEntityViews";
 import { SaveViewDialog, type SaveViewMode } from "./SaveViewDialog";
 import { EditListFiltersDialog } from "./EditListFiltersDialog";
 import { SelectFieldsDialog } from "./SelectFieldsDialog";
+import { LIST_QUERY_KEY } from "./ListViewFilterButton";
 import type { OptionList } from "./accountFields";
 
 export interface ViewPreset {
@@ -57,7 +61,13 @@ function useSelectView() {
   );
 }
 
-/** Left-side view selector: system presets (the `view` param) + saved views. */
+/**
+ * Left-side view selector bar — uniform across every module:
+ *   [ View name ▾ ]  (×)  (📌)
+ * a dropdown of system presets + saved views, a clear (×) back to the default,
+ * and a pin toggle that marks the active saved view as the user's default
+ * (auto-loaded on the next fresh visit). The pin uses the per-user pinned API.
+ */
 export function ListViewSelector({
   entity,
   presetLabel = "Recently Viewed",
@@ -72,10 +82,12 @@ export function ListViewSelector({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { views, activeView, activeViewId } = useEntityViews(entity);
   const selectView = useSelectView();
 
   const currentPreset = searchParams.get("view");
+  const hasExplicit = !!(activeViewId || currentPreset);
   const selectPreset = (value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set("view", value);
@@ -85,62 +97,142 @@ export function ListViewSelector({
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  // Per-user pinned (default) view.
+  const { data: pinned = [] } = useQuery({
+    queryKey: ["entity-views-pinned", entity],
+    queryFn: () => entityViewsService.listPinned(entity),
+    staleTime: 60_000,
+  });
+  const pinnedView = React.useMemo(
+    () => views.find((v) => pinned.some((p) => p.view_id === v.id)) || null,
+    [views, pinned],
+  );
+  const activeIsPinned = !!(activeView && pinnedView && activeView.id === pinnedView.id);
+
+  // One-time on fresh load: with nothing explicitly chosen, open the pinned
+  // default. A ref guards re-applying after the user manually clears (×).
+  const applied = React.useRef(false);
+  React.useEffect(() => {
+    if (applied.current) return;
+    if (hasExplicit) {
+      applied.current = true;
+      return;
+    }
+    if (pinnedView) {
+      applied.current = true;
+      selectView(pinnedView.id);
+    }
+  }, [hasExplicit, pinnedView, selectView]);
+
+  const togglePin = async () => {
+    if (!activeView) {
+      toast("Open a saved view to pin it as your default");
+      return;
+    }
+    try {
+      if (activeIsPinned) {
+        await entityViewsService.unpin(entity, activeView.id);
+      } else {
+        // Single default — drop any existing pins, then pin this one.
+        await Promise.all(pinned.map((p) => entityViewsService.unpin(entity, p.view_id).catch(() => {})));
+        await entityViewsService.pin(entity, activeView.id);
+      }
+      queryClient.invalidateQueries({ queryKey: ["entity-views-pinned", entity] });
+    } catch {
+      toast.error("Failed to update pinned view");
+    }
+  };
+
   const activePresetLabel = presets?.find((p) => p.value === currentPreset)?.label;
   const buttonLabel = activeView ? activeView.name : activePresetLabel || presetLabel;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <div className="flex items-center gap-1">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent",
+              className,
+            )}
+            title="Switch list view"
+          >
+            <span className="max-w-[12rem] truncate">{buttonLabel}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-70" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-80 w-60 overflow-y-auto">
+          <DropdownMenuLabel className="text-xs text-muted-foreground">Presets</DropdownMenuLabel>
+          {presets && presets.length > 0 ? (
+            presets.map((p) => (
+              <DropdownMenuItem
+                key={p.value}
+                onClick={() => selectPreset(p.value)}
+                className={!activeView && currentPreset === p.value ? "font-semibold text-primary" : ""}
+              >
+                {p.label}
+              </DropdownMenuItem>
+            ))
+          ) : (
+            <DropdownMenuItem
+              onClick={() => selectView(null)}
+              className={!activeView ? "font-semibold text-primary" : ""}
+            >
+              {presetLabel}
+            </DropdownMenuItem>
+          )}
+          {views.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Saved views</DropdownMenuLabel>
+              {views.map((v) => (
+                <DropdownMenuItem
+                  key={v.id}
+                  onClick={() => selectView(v.id)}
+                  className={v.id === activeViewId ? "font-semibold text-primary" : ""}
+                >
+                  {pinnedView?.id === v.id && <Pin className="mr-1.5 h-3 w-3 shrink-0 fill-current text-red-600" />}
+                  <span className="truncate">{v.name}</span>
+                  {v.is_public && <span className="ml-1 text-[10px] text-muted-foreground">(team)</span>}
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {hasExplicit && (
         <button
           type="button"
-          className={
-            className ??
-            "flex items-center gap-1 text-sm font-semibold text-foreground hover:text-primary sm:text-lg"
-          }
-          title="Switch list view"
+          onClick={() => selectView(null)}
+          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          title="Clear view"
+          aria-label="Clear view"
         >
-          {buttonLabel}
-          <ChevronDown className="h-4 w-4" />
+          <X className="h-4 w-4" />
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="max-h-80 w-60 overflow-y-auto">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Presets</DropdownMenuLabel>
-        {presets && presets.length > 0 ? (
-          presets.map((p) => (
-            <DropdownMenuItem
-              key={p.value}
-              onClick={() => selectPreset(p.value)}
-              className={!activeView && currentPreset === p.value ? "font-semibold text-primary" : ""}
-            >
-              {p.label}
-            </DropdownMenuItem>
-          ))
-        ) : (
-          <DropdownMenuItem
-            onClick={() => selectView(null)}
-            className={!activeView ? "font-semibold text-primary" : ""}
-          >
-            {presetLabel}
-          </DropdownMenuItem>
+      )}
+
+      <button
+        type="button"
+        onClick={togglePin}
+        className={cn(
+          "rounded p-1 hover:bg-accent",
+          activeIsPinned ? "text-red-600" : "text-muted-foreground hover:text-foreground",
         )}
-        {views.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs text-muted-foreground">Saved views</DropdownMenuLabel>
-            {views.map((v) => (
-              <DropdownMenuItem
-                key={v.id}
-                onClick={() => selectView(v.id)}
-                className={v.id === activeViewId ? "font-semibold text-primary" : ""}
-              >
-                {v.name}
-                {v.is_public && <span className="ml-1 text-[10px] text-muted-foreground">(team)</span>}
-              </DropdownMenuItem>
-            ))}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        title={
+          activeIsPinned
+            ? "Unpin default view"
+            : activeView
+              ? "Pin as default view"
+              : "Open a saved view to pin it"
+        }
+        aria-label="Pin view"
+      >
+        <Pin className={cn("h-4 w-4", activeIsPinned && "fill-current")} />
+      </button>
+    </div>
   );
 }
 
@@ -171,8 +263,14 @@ export function ListViewSettings({
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [fieldsOpen, setFieldsOpen] = React.useState(false);
 
-  const invalidate = () =>
+  const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["entity-views", entity] });
+    // Filter/column edits keep the same view_id, so the list query key is
+    // unchanged — invalidate it explicitly so results refresh without a manual
+    // reload.
+    const listKey = LIST_QUERY_KEY[entity];
+    if (listKey) queryClient.invalidateQueries({ queryKey: [listKey] });
+  };
 
   const onDelete = async () => {
     if (!activeView) return;

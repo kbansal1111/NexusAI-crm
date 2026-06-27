@@ -39,6 +39,7 @@ class TravelOpportunityData(BaseModel):
     origin_ids: List[str] = Field(default_factory=list, description="Origin ObjectId refs")
     inclusions: List[str] = Field(default_factory=list, description='e.g. ["Air Ticket", "Visa"]')
     country_of_origin: Optional[str] = Field(None, max_length=100)
+    starting_city: Optional[str] = Field(None, max_length=120, description="Trip starting city")
     experience_id: Optional[str] = Field(None, description="Experience type ObjectId")
     departure_id: Optional[str] = Field(None, description="Departure ObjectId")
     custom_departure: Optional[str] = Field(None, max_length=200)

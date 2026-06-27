@@ -34,38 +34,39 @@ export interface OperatorDef {
   arity: "one" | "two" | "none";
 }
 
+// Operator sets are intentionally lean (per product spec):
+//   • text     → equals / not equal to
+//   • number   → equals / not equal to / less than / greater than / between
+//   • date     → equals / not equal to / less than / greater than / between
+//   • lookup   → is / is not (+ empty checks)
+// Legacy saved views may still carry older operators (contains, is_empty, …);
+// the backend continues to honor those, they're just no longer offered here.
 export const OPERATORS_BY_TYPE: Record<LogicalType, OperatorDef[]> = {
   string: [
     { value: "equals", label: "equals", arity: "one" },
     { value: "not_equals", label: "not equal to", arity: "one" },
-    { value: "contains", label: "contains", arity: "one" },
-    { value: "starts_with", label: "starts with", arity: "one" },
-    { value: "is_empty", label: "is empty", arity: "none" },
-    { value: "is_not_empty", label: "is not empty", arity: "none" },
   ],
   lookup: [
-    { value: "equals", label: "is", arity: "one" },
-    { value: "not_equals", label: "is not", arity: "one" },
-    { value: "is_empty", label: "is empty", arity: "none" },
-    { value: "is_not_empty", label: "is not empty", arity: "none" },
+    { value: "equals", label: "equals", arity: "one" },
+    { value: "not_equals", label: "not equal to", arity: "one" },
   ],
-  bool: [{ value: "equals", label: "equals", arity: "one" }],
+  bool: [
+    { value: "equals", label: "equals", arity: "one" },
+    { value: "not_equals", label: "not equal to", arity: "one" },
+  ],
   number: [
     { value: "equals", label: "equals", arity: "one" },
     { value: "not_equals", label: "not equal to", arity: "one" },
-    { value: "greater_than", label: "greater than", arity: "one" },
     { value: "less_than", label: "less than", arity: "one" },
+    { value: "greater_than", label: "greater than", arity: "one" },
     { value: "between", label: "between", arity: "two" },
-    { value: "is_empty", label: "is empty", arity: "none" },
-    { value: "is_not_empty", label: "is not empty", arity: "none" },
   ],
   date: [
-    { value: "equals", label: "on", arity: "one" },
-    { value: "greater_than", label: "after", arity: "one" },
-    { value: "less_than", label: "before", arity: "one" },
+    { value: "equals", label: "equals", arity: "one" },
+    { value: "not_equals", label: "not equal to", arity: "one" },
+    { value: "less_than", label: "less than", arity: "one" },
+    { value: "greater_than", label: "greater than", arity: "one" },
     { value: "between", label: "between", arity: "two" },
-    { value: "is_empty", label: "is empty", arity: "none" },
-    { value: "is_not_empty", label: "is not empty", arity: "none" },
   ],
 };
 
@@ -91,3 +92,56 @@ export function operatorArity(
 ): "one" | "two" | "none" {
   return operatorsFor(fieldType).find((o) => o.value === operator)?.arity ?? "one";
 }
+
+// ── Relative date literals ───────────────────────────────────────────────────
+// A date filter's value may be a *relative* token instead of a concrete date, so
+// a saved view ("Leads created yesterday") stays correct over time. The backend
+// resolves these to day ranges at query time (app/core/entity_filter.py —
+// keep the token set in sync).
+export const RELATIVE_DATE_TOKENS = [
+  "TODAY",
+  "YESTERDAY",
+  "TOMORROW",
+  "CURRENT_WEEK",
+  "LAST_WEEK",
+  "CURRENT_MONTH",
+  "PREVIOUS_MONTH",
+] as const;
+
+export type RelativeDateToken = (typeof RELATIVE_DATE_TOKENS)[number];
+
+const RELATIVE_TOKEN_SET = new Set<string>(RELATIVE_DATE_TOKENS);
+
+export function isRelativeToken(v: unknown): v is RelativeDateToken {
+  return typeof v === "string" && RELATIVE_TOKEN_SET.has(v);
+}
+
+export const RELATIVE_TOKEN_LABEL: Record<RelativeDateToken, string> = {
+  TODAY: "Today",
+  YESTERDAY: "Yesterday",
+  TOMORROW: "Tomorrow",
+  CURRENT_WEEK: "Current Week",
+  LAST_WEEK: "Last Week",
+  CURRENT_MONTH: "Current Month",
+  PREVIOUS_MONTH: "Previous Month",
+};
+
+// Quick-pick chip sets. Standard date fields (Created/Modified/Close/Due) offer
+// day + month shortcuts; Travel Date additionally offers week shortcuts.
+export const STANDARD_DATE_CHIPS: RelativeDateToken[] = [
+  "YESTERDAY",
+  "TODAY",
+  "TOMORROW",
+  "CURRENT_MONTH",
+  "PREVIOUS_MONTH",
+];
+
+export const TRAVEL_DATE_CHIPS: RelativeDateToken[] = [
+  "YESTERDAY",
+  "TODAY",
+  "TOMORROW",
+  "CURRENT_WEEK",
+  "LAST_WEEK",
+  "CURRENT_MONTH",
+  "PREVIOUS_MONTH",
+];

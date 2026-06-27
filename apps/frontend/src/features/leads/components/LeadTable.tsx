@@ -73,6 +73,7 @@ import { ListViewSelector, ListViewSettings, type ViewPreset } from "@/features/
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
 import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
+import { usePicklist } from "@/hooks/use-picklist";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
 import { validateInlineField, normalizePhoneValue, isPhoneField } from "@/lib/validation/inline-field-validation";
@@ -434,18 +435,18 @@ export const getColumns = (
             },
         },
         {
-            id: "source_medium",
-            header: "Source Medium",
+            id: "source",
+            header: "Source",
             cell: ({ row }) => {
                 const sourceId = row.original.source_id;
-                let sourceMedium = "-";
+                let sourceLabel = "-";
                 if (sourceId) {
                     const matchedSource = sources.find(s => s.id === sourceId);
-                    sourceMedium = matchedSource ? matchedSource.name : sourceId;
+                    sourceLabel = matchedSource ? matchedSource.name : sourceId;
                 } else if (row.original.creation_type) {
-                    sourceMedium = row.original.creation_type;
+                    sourceLabel = row.original.creation_type;
                 }
-                return <div className="capitalize text-sm text-muted-foreground">{sourceMedium}</div>;
+                return <div className="capitalize text-sm text-muted-foreground">{sourceLabel}</div>;
             },
         },
         {
@@ -497,7 +498,6 @@ interface LeadTableProps {
     users: User[];
     experiences: { id: string; name: string }[];
     sales_stages: { id: string; name: string }[];
-    source_mediums?: { id: string; name: string }[];
     industries?: { id: string; name: string }[];
     isLoading?: boolean;
     onSelectOne?: (id: string, checked: boolean) => void;
@@ -517,7 +517,6 @@ export function LeadTable({
     users,
     experiences,
     sales_stages,
-    source_mediums = [],
     industries = [],
     isLoading = false,
     onSelectOne,
@@ -589,15 +588,18 @@ export function LeadTable({
         users: toMapLV(users.map((u) => ({ id: u.id, name: u.name }))),
         lead_statuses: toMapLV(lead_statuses),
         sources: toMapLV(sources),
-        source_mediums: toMapLV(source_mediums),
         industries: toMapLV(industries),
+        experiences: toMapLV(experiences),
         destinations: destinationMap,
-    }), [users, lead_statuses, sources, source_mediums, industries, destinationMap]);
+    }), [users, lead_statuses, sources, industries, experiences, destinationMap]);
+    const { items: salutations } = usePicklist("salutation");
     const lookupOptions = React.useMemo(() => buildLookupOptions(entity, {
         users: users.map((u) => ({ id: u.id, name: u.name })),
-        lead_statuses, sources, source_mediums, industries,
+        lead_statuses, sources, industries, experiences,
         destinations: Array.from(destinationMap, ([id, name]) => ({ id, name })),
-    }), [users, lead_statuses, sources, source_mediums, industries, destinationMap]);
+        // salutation is stored as the picklist name string → id === name.
+        salutations: salutations.map((s) => ({ id: s.name, name: s.name })),
+    }), [users, lead_statuses, sources, industries, experiences, destinationMap, salutations]);
 
     const columns = React.useMemo<ColumnDef<Lead>[]>(() => {
         const selectCol: ColumnDef<Lead> = {
@@ -790,7 +792,7 @@ export function LeadTable({
                                 Leads ({total})
                             </div>
                             <div className="flex items-center gap-2">
-                                <ListViewSelector entity={entity} presets={leadViews} presetLabel="Today Leads" className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent" />
+                                <ListViewSelector entity={entity} presets={leadViews} presetLabel="Today Leads" />
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">

@@ -15,6 +15,7 @@ import { UserActivities } from "@/features/dashboard/components/UserActivities";
 import type { PipelineStage } from "@/features/dashboard/components/PipelineChart";
 import { QuickLinksWidget } from "@/features/dashboard/QuickLinksWidget";
 import { useIndustry } from "@/lib/industry-labels";
+import { formatDate } from "@/lib/format";
 
 // Recharts is client-only and heavy; load it dynamically so it stays out of
 // the server bundle (keeps the Cloudflare Worker under the size limit).
@@ -259,7 +260,7 @@ export default function DashboardClientPage() {
                                             </td>
                                             {industry === "travel" && (
                                                 <>
-                                                    <td className="py-3.5 pr-3 text-muted-foreground">{idata.travel_date || "-"}</td>
+                                                    <td className="py-3.5 pr-3 text-muted-foreground">{idata.travel_date ? formatDate(idata.travel_date) : "-"}</td>
                                                     <td className="py-3.5 pr-3 text-muted-foreground">
                                                         {idata.no_of_pax || 0} / {idata.no_of_nights || 0}
                                                     </td>

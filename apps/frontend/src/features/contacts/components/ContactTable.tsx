@@ -63,6 +63,7 @@ import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMen
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
 import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
+import { usePicklist } from "@/hooks/use-picklist";
 import { useDebounce } from "@/hooks/use-debounce";
 import { validateInlineField, normalizePhoneValue, isPhoneField } from "@/lib/validation/inline-field-validation";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -274,7 +275,12 @@ export function ContactTable({
         return m;
     }, [customFields]);
     const viewLookups = React.useMemo<ViewLookups>(() => ({ users: ownerNameById }), [ownerNameById]);
-    const lookupOptions = React.useMemo(() => buildLookupOptions(entity, { users }), [users]);
+    const { items: salutations } = usePicklist("salutation");
+    const lookupOptions = React.useMemo(() => buildLookupOptions(entity, {
+        users,
+        // salutation is stored as the picklist name string → id === name.
+        salutations: salutations.map((s) => ({ id: s.name, name: s.name })),
+    }), [users, salutations]);
 
     // ── Saved views (contact-scoped EntityViews) ─────────────────────────────
     const queryClient = useQueryClient();

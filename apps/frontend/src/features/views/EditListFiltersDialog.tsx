@@ -3,11 +3,22 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, X } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -29,8 +40,17 @@ import {
 import { accountService } from "@/features/accounts/services/accountService";
 import { contactsService } from "@/lib/api/services/contacts.service";
 import { destinationsService } from "@/lib/api/services/destinations.service";
+import { locationService } from "@/lib/api/services/locations.service";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { operatorsForType, operatorArityForType } from "./fieldMeta";
+import { formatDate } from "@/lib/format";
+import {
+  operatorsForType,
+  operatorArityForType,
+  isRelativeToken,
+  RELATIVE_TOKEN_LABEL,
+  STANDARD_DATE_CHIPS,
+  TRAVEL_DATE_CHIPS,
+} from "./fieldMeta";
 import type { LogicalType } from "./fieldMeta";
 import {
   standardFieldsFor,
@@ -40,11 +60,123 @@ import {
   type OptionList,
 } from "./accountFields";
 import { AsyncEntitySelect } from "./AsyncEntitySelect";
+import { DateFilterValue } from "./DateFilterValue";
+
+// Geographic string fields rendered as a type-to-search location picker (the
+// stored value is the location NAME, matching how these columns persist and how
+// the backend string clause matches them).
+type GeoKind = "country" | "state" | "city";
+const GEO_KIND: Record<string, GeoKind> = {
+  billing_country: "country",
+  country: "country",
+  billing_state: "state",
+  state: "state",
+  billing_city: "city",
+  city: "city",
+  "industry_data.starting_city": "city",
+};
+const GEO_PLACEHOLDER: Record<GeoKind, string> = {
+  country: "Search countries…",
+  state: "Search states…",
+  city: "Search cities…",
+};
+
+// City/state names repeat across regions; collapse to distinct names (the value
+// is just the name string) so the option list has no duplicate keys.
+function uniqueNamed(items: { name: string }[]): { id: string; name: string }[] {
+  const seen = new Set<string>();
+  const out: { id: string; name: string }[] = [];
+  for (const it of items) {
+    const name = (it.name || "").trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push({ id: name, name });
+  }
+  return out;
+}
 
 type Row = { field: string; operator: string; value: any };
 type FieldMeta = { key: string; label: string; type: LogicalType };
 
 const ADD = "additional:";
+
+/**
+ * Destination filter value editor — multi-select chip picker mirroring the
+ * Lead/Opportunity forms. Stores an array of destination ids; an "is" filter
+ * matches any selected destination. Options are the preloaded full set, so
+ * search/filter is local (never a giant unscrolled list).
+ */
+function DestinationMultiSelect({
+  value,
+  options,
+  labelFor,
+  onChange,
+}: {
+  value: string[];
+  options: { id: string; name: string }[];
+  labelFor: (id: string) => string;
+  onChange: (ids: string[]) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const base = q ? options.filter((o) => o.name.toLowerCase().includes(q)) : options;
+    return base.slice(0, 50);
+  }, [search, options]);
+  const toggle = (id: string) =>
+    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+  const remove = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange(value.filter((v) => v !== id));
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" type="button" className="h-auto min-h-9 w-full justify-between font-normal">
+          <div className="flex flex-1 flex-wrap gap-1 text-left">
+            {value.length > 0 ? (
+              value.map((id) => (
+                <Badge key={id} variant="secondary" className="rounded-sm px-1.5 text-xs font-normal">
+                  {labelFor(id)}
+                  <span className="ml-1 cursor-pointer" onClick={(e) => remove(id, e)} aria-label="Remove">
+                    <X className="h-3 w-3" />
+                  </span>
+                </Badge>
+              ))
+            ) : (
+              <span className="text-sm text-muted-foreground">Search destinations…</span>
+            )}
+          </div>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0"
+        align="start"
+        onPointerDownOutside={(e) => e.stopPropagation()}
+      >
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Search destinations…" value={search} onValueChange={setSearch} className="h-9" />
+          <CommandList>
+            <CommandEmpty>No destinations found.</CommandEmpty>
+            <CommandGroup>
+              {filtered.map((o) => {
+                const selected = value.includes(o.id);
+                return (
+                  <CommandItem key={o.id} value={o.id} onSelect={() => toggle(o.id)} className="cursor-pointer">
+                    <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
+                    {o.name}
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function EditListFiltersDialog({
   open,
@@ -102,6 +234,18 @@ export function EditListFiltersDialog({
       contactsService.searchContactAutocomplete(q, signal).then((rs) => rs.map((r) => ({ id: r.id, name: r.name }))),
     [],
   );
+  // Country / State / City search → option ids ARE the names (we store the name).
+  const geoSearch = React.useMemo(
+    () => ({
+      country: (q: string, signal?: AbortSignal) =>
+        locationService.searchCountries(q, signal).then((r) => uniqueNamed(r.countries)),
+      state: (q: string, signal?: AbortSignal) =>
+        locationService.searchStates(q, undefined, signal).then((r) => uniqueNamed(r.states)),
+      city: (q: string, signal?: AbortSignal) =>
+        locationService.searchCities(q, undefined, undefined, signal).then((r) => uniqueNamed(r.cities)),
+    }),
+    [],
+  );
 
   // Destination is an unbounded picklist (cities). Rather than dump thousands of
   // options into a plain <Select>, load the full set once (for label resolution)
@@ -109,7 +253,7 @@ export function EditListFiltersDialog({
   // Account/Contact references already work in this dialog.
   const DEST_FIELD = "industry_data.destination_ids";
   const hasDestination = React.useMemo(() => standard.some((f) => f.key === DEST_FIELD), [standard]);
-  const { data: allDestinations = [] } = useQuery({
+  const { data: allDestinations = [], isLoading: destinationsLoading } = useQuery({
     queryKey: ["destinations", "filter-all"],
     queryFn: () => destinationsService.getDestinations({ limit: 100000 }).then((r) => r.destinations),
     staleTime: 5 * 60 * 1000,
@@ -120,15 +264,6 @@ export function EditListFiltersDialog({
     allDestinations.forEach((d) => m.set(d.id, d.name));
     return m;
   }, [allDestinations]);
-  const destinationSearch = React.useCallback(
-    async (q: string) => {
-      const query = q.trim().toLowerCase();
-      const base = query ? allDestinations.filter((d) => d.name.toLowerCase().includes(query)) : allDestinations;
-      return base.slice(0, 50).map((d) => ({ id: d.id, name: d.name }));
-    },
-    [allDestinations],
-  );
-
   const fieldByKey = React.useMemo(() => {
     const m = new Map<string, FieldMeta>();
     [...standard, ...custom].forEach((f) => m.set(f.key, f));
@@ -165,10 +300,18 @@ export function EditListFiltersDialog({
 
   // ── helpers ───────────────────────────────────────────────────────────────
   const optionsFor = (field: string): OptionList => lookupOptions[field] || [];
-  const lookupName = (field: string, id: string) => {
-    if (isRef(field)) return labelCache[id] || id;
-    if (field === DEST_FIELD) return destMap.get(id) || labelCache[id] || id;
-    return optionsFor(field).find((o) => o.id === id)?.name || id;
+  const lookupName = (field: string, value: any): string => {
+    // While async labels are still resolving (destinations / account-contact
+    // refs load after open), show a neutral placeholder rather than flashing the
+    // raw id for a frame.
+    if (field === DEST_FIELD) {
+      const ids = Array.isArray(value) ? value : value ? [value] : [];
+      return ids
+        .map((id) => destMap.get(id) || labelCache[id] || (destinationsLoading ? "…" : id))
+        .join(", ");
+    }
+    if (isRef(field)) return labelCache[value] || (value ? "…" : value);
+    return optionsFor(field).find((o) => o.id === value)?.name || value;
   };
 
   const opLabel = (type: LogicalType, op: string) =>
@@ -182,8 +325,15 @@ export function EditListFiltersDialog({
     if (arity === "none") return label;
     if (arity === "two") {
       const v = Array.isArray(row.value) ? row.value : ["", ""];
+      if (type === "date") return `${label} ${formatDate(v[0])} to ${formatDate(v[1])}`;
       return `${label} ${v[0]} to ${v[1]}`;
     }
+    if (type === "date") {
+      // Relative tokens read as their literal (YESTERDAY); concrete dates format.
+      const v = isRelativeToken(row.value) ? row.value : row.value ? formatDate(row.value) : "";
+      return `${label} ${v}`.trim();
+    }
+    if (type === "bool") return `${label} ${row.value === true || row.value === "true" ? "Yes" : "No"}`;
     const v = type === "lookup" ? lookupName(row.field, row.value) : row.value;
     return `${label} ${v ?? ""}`.trim();
   };
@@ -248,18 +398,62 @@ export function EditListFiltersDialog({
       );
     }
 
-    // Destination → unbounded picklist; type-to-search (never a giant list).
+    // Destination → unbounded picklist; multi-select (matches ANY selected),
+    // mirroring the Lead/Opportunity forms' destination chip picker.
     if (draft.field === DEST_FIELD) {
+      const selected: string[] = Array.isArray(draft.value)
+        ? draft.value
+        : draft.value
+          ? [String(draft.value)]
+          : [];
+      return (
+        <DestinationMultiSelect
+          value={selected}
+          options={allDestinations}
+          labelFor={(id) => destMap.get(id) || labelCache[id] || id}
+          onChange={(ids) => patchDraft({ value: ids })}
+        />
+      );
+    }
+
+    // Boolean → Yes / No (backend coerces "true"/"false"), never a text box.
+    if (type === "bool") {
+      return (
+        <Select value={draft.value ? String(draft.value) : undefined} onValueChange={(v) => patchDraft({ value: v })}>
+          <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="true">Yes</SelectItem>
+            <SelectItem value="false">No</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    // Country / State / City → type-to-search location picker (stores the name),
+    // rather than free text.
+    const geoKind = GEO_KIND[draft.field];
+    if (geoKind) {
       return (
         <AsyncEntitySelect
           value={draft.value || ""}
-          label={draft.value ? destMap.get(draft.value) || labelCache[draft.value] : undefined}
-          search={destinationSearch}
-          placeholder="Search destinations…"
-          onSelect={(id, name) => {
-            patchDraft({ value: id });
-            setLabelCache((c) => ({ ...c, [id]: name }));
-          }}
+          label={draft.value || undefined}
+          search={geoSearch[geoKind]}
+          placeholder={GEO_PLACEHOLDER[geoKind]}
+          onSelect={(name) => patchDraft({ value: name })}
+        />
+      );
+    }
+
+    // Date fields → calendar picker + relative-date chips. Travel Date also
+    // offers week shortcuts (Current/Last Week).
+    if (type === "date") {
+      const chips = draft.field.endsWith("travel_date") ? TRAVEL_DATE_CHIPS : STANDARD_DATE_CHIPS;
+      return (
+        <DateFilterValue
+          value={draft.value}
+          onChange={(v) => patchDraft({ value: v })}
+          chips={chips}
+          arity={arity}
         />
       );
     }
@@ -279,7 +473,7 @@ export function EditListFiltersDialog({
         />
       );
     }
-    const inputType = type === "date" ? "date" : type === "number" ? "number" : "text";
+    const inputType = type === "number" ? "number" : "text";
     if (arity === "two") {
       const arr = Array.isArray(draft.value) ? draft.value : ["", ""];
       return (

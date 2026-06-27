@@ -51,7 +51,7 @@ export const ACCOUNT_STANDARD_FIELDS: ViewFieldDef[] = [
 ];
 
 export const PERSONAL_ACCOUNT_STANDARD_FIELDS: ViewFieldDef[] = [
-  { key: "salutation", label: "Salutation", type: "string" },
+  { key: "salutation", label: "Salutation", type: "lookup" },
   { key: "first_name", label: "First Name", type: "string" },
   { key: "last_name", label: "Last Name", type: "string" },
   { key: "email", label: "Email", type: "string" },
@@ -72,7 +72,7 @@ export const PERSONAL_ACCOUNT_STANDARD_FIELDS: ViewFieldDef[] = [
 ];
 
 export const CONTACT_STANDARD_FIELDS: ViewFieldDef[] = [
-  { key: "salutation", label: "Salutation", type: "string" },
+  { key: "salutation", label: "Salutation", type: "lookup" },
   { key: "first_name", label: "First Name", type: "string" },
   { key: "last_name", label: "Last Name", type: "string" },
   { key: "email", label: "Email", type: "string" },
@@ -85,7 +85,7 @@ export const CONTACT_STANDARD_FIELDS: ViewFieldDef[] = [
 ];
 
 export const LEAD_STANDARD_FIELDS: ViewFieldDef[] = [
-  { key: "salutation", label: "Salutation", type: "string" },
+  { key: "salutation", label: "Salutation", type: "lookup" },
   { key: "first_name", label: "First Name", type: "string" },
   { key: "last_name", label: "Last Name", type: "string" },
   { key: "company", label: "Company", type: "string" },
@@ -97,7 +97,6 @@ export const LEAD_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "title", label: "Title / Designation", type: "string" },
   { key: "lead_status_id", label: "Lead Status", type: "lookup" },
   { key: "source_id", label: "Source", type: "lookup" },
-  { key: "source_medium_id", label: "Source Medium", type: "lookup" },
   { key: "industry_id", label: "Industry", type: "lookup" },
   { key: "street", label: "Street", type: "string" },
   { key: "city", label: "City", type: "string" },
@@ -109,7 +108,12 @@ export const LEAD_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "creation_type", label: "Creation Type", type: "lookup" },
   { key: "industry_data.travel_date", label: "Travel Date", type: "date" },
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
+  { key: "industry_data.experience_id", label: "Experience", type: "lookup" },
   { key: "industry_data.no_of_pax", label: "No. of Pax", type: "number" },
+  { key: "industry_data.no_of_nights", label: "No. of Nights", type: "number" },
+  { key: "industry_data.no_of_adults", label: "No. of Adults", type: "number" },
+  { key: "industry_data.no_of_childs", label: "No. of Children", type: "number" },
+  { key: "industry_data.no_of_infants", label: "No. of Infants", type: "number" },
   ...AUDIT_FIELDS,
   { key: "id", label: "Lead ID", type: "string" },
 ];
@@ -130,8 +134,47 @@ export const OPPORTUNITY_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "industry_data.travel_date", label: "Travel Date", type: "date" },
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
   { key: "industry_data.no_of_pax", label: "No. of Pax", type: "number" },
+  { key: "industry_data.starting_city", label: "Starting City", type: "string" },
   ...AUDIT_FIELDS,
   { key: "id", label: "Opportunity ID", type: "string" },
+];
+
+export const SUPPLIER_STANDARD_FIELDS: ViewFieldDef[] = [
+  { key: "name", label: "Supplier Name", type: "string" },
+  { key: "company_name", label: "Company Name", type: "string" },
+  { key: "supplier_type", label: "Supplier Type", type: "lookup" },
+  { key: "email", label: "Email", type: "string" },
+  { key: "phone", label: "Phone", type: "string" },
+  { key: "mobile", label: "Mobile", type: "string" },
+  { key: "website", label: "Website", type: "string" },
+  { key: "payment_terms", label: "Payment Terms", type: "string" },
+  { key: "rating", label: "Rating", type: "number" },
+  { key: "is_preferred", label: "Preferred", type: "bool" },
+  { key: "street", label: "Street", type: "string" },
+  { key: "city", label: "City", type: "string" },
+  { key: "state", label: "State", type: "string" },
+  { key: "zip", label: "Zip", type: "string" },
+  { key: "country", label: "Country", type: "string" },
+  { key: "created_at", label: "Created Date", type: "date" },
+  { key: "updated_at", label: "Last Modified Date", type: "date" },
+  { key: "created_by", label: "Created By", type: "lookup" },
+  { key: "owner_id", label: "Owner", type: "lookup" },
+  { key: "id", label: "Supplier ID", type: "string" },
+];
+
+export const TASK_STANDARD_FIELDS: ViewFieldDef[] = [
+  { key: "name", label: "Subject", type: "string" },
+  { key: "status", label: "Status", type: "lookup" },
+  { key: "priority", label: "Priority", type: "lookup" },
+  { key: "due_date", label: "Due Date", type: "date" },
+  { key: "assigned_user_id", label: "Assigned To", type: "lookup" },
+  { key: "account_id", label: "Account", type: "lookup" },
+  { key: "contact_id", label: "Contact", type: "lookup" },
+  { key: "created_at", label: "Created Date", type: "date" },
+  { key: "updated_at", label: "Last Modified Date", type: "date" },
+  { key: "created_by", label: "Created By", type: "lookup" },
+  { key: "owner_id", label: "Owner", type: "lookup" },
+  { key: "id", label: "Task ID", type: "string" },
 ];
 
 const CATALOGS: Partial<Record<EntityType, ViewFieldDef[]>> = {
@@ -140,6 +183,8 @@ const CATALOGS: Partial<Record<EntityType, ViewFieldDef[]>> = {
   contact: CONTACT_STANDARD_FIELDS,
   lead: LEAD_STANDARD_FIELDS,
   opportunity: OPPORTUNITY_STANDARD_FIELDS,
+  supplier: SUPPLIER_STANDARD_FIELDS,
+  task: TASK_STANDARD_FIELDS,
 };
 
 export function standardFieldsFor(entity: EntityType): ViewFieldDef[] {
@@ -152,6 +197,22 @@ export function standardFieldByKey(entity: EntityType): Map<string, ViewFieldDef
   return m;
 }
 
+// ── "Additional Information" fields ──────────────────────────────────────────
+// Catalog fields a module's form groups under its "Additional Information"
+// heading. They stay real, filterable catalog fields, but the column picker
+// lists them under "Available Additional Fields" (and hides them from "Available
+// Standard Fields") so the picker mirrors the form. Extend per module as a
+// form's "Additional Information" section gains fields.
+export const ADDITIONAL_FIELD_KEYS_BY_ENTITY: Record<string, string[]> = {
+  // Mirrors the Lead form's "Additional Information" section (Segment / Campaign / Experience).
+  lead: ["segment", "campaign_name", "industry_data.experience_id"],
+  opportunity: ["industry_data.starting_city", "close_lost_reason"],
+};
+
+export function additionalFieldKeysFor(entity: EntityType): Set<string> {
+  return new Set(ADDITIONAL_FIELD_KEYS_BY_ENTITY[entity] || []);
+}
+
 // ── Default visible columns (used when a view has no explicit display_columns,
 // and to seed the "Select Fields to display" picker) ────────────────────────
 export const DEFAULT_COLUMNS_BY_ENTITY: Record<string, string[]> = {
@@ -160,6 +221,8 @@ export const DEFAULT_COLUMNS_BY_ENTITY: Record<string, string[]> = {
   contact: ["first_name", "last_name", "email", "phone", "mobile", "account_id", "owner_id"],
   lead: ["first_name", "last_name", "email", "phone", "city", "lead_status_id", "segment", "source_id"],
   opportunity: ["name", "amount", "account_id", "sales_stage_id", "close_date", "owner_id"],
+  supplier: ["name", "supplier_type", "phone", "email", "owner_id"],
+  task: ["name", "status", "priority", "due_date", "assigned_user_id"],
 };
 
 export function defaultColumnsFor(entity: EntityType): string[] {
@@ -171,9 +234,11 @@ const ACCOUNT_REF_BY_ENTITY: Record<string, string[]> = {
   account: ["acc_parent_id"],
   contact: ["account_id"],
   opportunity: ["account_id"],
+  task: ["account_id"],
 };
 const CONTACT_REF_BY_ENTITY: Record<string, string[]> = {
   opportunity: ["contact_id"],
+  task: ["contact_id"],
 };
 export function accountRefFieldsFor(entity: EntityType): Set<string> {
   return new Set(ACCOUNT_REF_BY_ENTITY[entity] || []);
@@ -191,18 +256,30 @@ const LOOKUP_OPTIONS_KEY_BY_ENTITY: Record<string, Record<string, string>> = {
   },
   personal_account: {
     owner_id: "users", created_by: "users", last_modified_by_id: "users", category_id: "categories",
+    salutation: "salutations",
   },
-  contact: { owner_id: "users", created_by: "users", last_modified_by_id: "users" },
+  contact: {
+    owner_id: "users", created_by: "users", last_modified_by_id: "users",
+    salutation: "salutations",
+  },
   lead: {
     owner_id: "users", created_by: "users", last_modified_by_id: "users",
     lead_status_id: "lead_statuses", source_id: "sources",
-    source_medium_id: "source_mediums", industry_id: "industries",
+    industry_id: "industries",
     "industry_data.destination_ids": "destinations",
+    "industry_data.experience_id": "experiences", salutation: "salutations",
   },
   opportunity: {
     owner_id: "users", created_by: "users", last_modified_by_id: "users",
     sales_stage_id: "sales_stages", opportunity_type_id: "opportunity_types",
     source_id: "sources", "industry_data.destination_ids": "destinations",
+  },
+  supplier: {
+    owner_id: "users", created_by: "users", supplier_type: "supplier_types",
+  },
+  task: {
+    owner_id: "users", created_by: "users", assigned_user_id: "users",
+    status: "task_statuses", priority: "task_priorities",
   },
 };
 

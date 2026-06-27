@@ -8,6 +8,8 @@ export const useGetTasks = (params?: {
     status?: string;
     priority?: string;
     assigned_user_id?: string;
+    /** Saved EntityView id whose "Edit List Filters" the server should apply. */
+    view_id?: string;
 }) => {
     return useQuery({
         queryKey: ['tasks', params],

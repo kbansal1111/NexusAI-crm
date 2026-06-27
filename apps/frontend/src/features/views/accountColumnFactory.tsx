@@ -24,6 +24,8 @@ const IDENTIFIER: Record<string, { field: string; basePath: string }> = {
   contact: { field: "first_name", basePath: "contacts" },
   lead: { field: "first_name", basePath: "leads" },
   opportunity: { field: "name", basePath: "opportunities" },
+  supplier: { field: "name", basePath: "suppliers" },
+  task: { field: "name", basePath: "tasks" },
 };
 
 // lookup field_key → how to resolve its display name: a *_name already on the
@@ -53,7 +55,6 @@ const LOOKUP_CONFIG: Record<string, Record<string, { nameField?: string; source?
   lead: {
     lead_status_id: { source: "lead_statuses" },
     source_id: { source: "sources" },
-    source_medium_id: { source: "source_mediums" },
     industry_id: { source: "industries" },
     owner_id: { nameField: "owner_name", source: "users" },
     created_by: { source: "users" },
@@ -68,9 +69,20 @@ const LOOKUP_CONFIG: Record<string, Record<string, { nameField?: string; source?
     created_by: { source: "users" },
     last_modified_by_id: { source: "users" },
   },
+  supplier: {
+    owner_id: { nameField: "owner_name", source: "users" },
+    created_by: { source: "users" },
+  },
+  task: {
+    assigned_user_id: { nameField: "assigned_user_name", source: "users" },
+    account_id: { nameField: "account_name" },
+    contact_id: { nameField: "contact_name" },
+    owner_id: { nameField: "owner_name", source: "users" },
+    created_by: { source: "users" },
+  },
 };
 
-const DATE_FIELDS = new Set(["created_at", "updated_at", "close_date"]);
+const DATE_FIELDS = new Set(["created_at", "updated_at", "close_date", "due_date"]);
 
 function prettify(key: string): string {
   return key.replace(/_id$/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -112,6 +124,11 @@ function makeColumn(key: string, labels: Map<string, string>, ctx: ColumnFactory
           const ids: string[] = Array.isArray(idata.destination_ids) ? idata.destination_ids : [];
           const resolved = ids.map((i) => ctx.lookups?.destinations?.get(i)).filter(Boolean);
           return <div className="text-muted-foreground">{resolved.length ? resolved.join(", ") : "-"}</div>;
+        }
+        if (sub === "experience_id") {
+          const id = idata.experience_id;
+          const name = (id && ctx.lookups?.experiences?.get(id)) || idata.experience_name || "-";
+          return <div className="text-muted-foreground">{name}</div>;
         }
         const v = idata[sub];
         return <div className="text-muted-foreground">{v ?? "-"}</div>;

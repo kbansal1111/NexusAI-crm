@@ -44,10 +44,8 @@ class Lead(BaseDocument):
     lead_status_id: Optional[Indexed(PydanticObjectId)] = None
     industry_id: Annotated[Optional[PydanticObjectId], Indexed()] = None
     source_id: Annotated[Optional[PydanticObjectId], Indexed()] = None
-    source_medium_id: Annotated[Optional[PydanticObjectId], Indexed()] = None
-    
+
     # Universal CRM fields
-    source_medium: Optional[str] = None
     campaign_name: Optional[str] = None
     ip_address: Optional[str] = None
     segment: Optional[str] = "B2C"  # Default to B2C

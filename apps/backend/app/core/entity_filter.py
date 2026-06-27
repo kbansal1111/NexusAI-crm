@@ -105,7 +105,6 @@ _LEAD_FIELDS: Dict[str, str] = {
     "title": "string",
     "lead_status_id": "lookup",
     "source_id": "lookup",
-    "source_medium_id": "lookup",
     "industry_id": "lookup",
     "street": "string",
     "city": "string",
@@ -119,7 +118,12 @@ _LEAD_FIELDS: Dict[str, str] = {
     # Leads persist travel_date as an ISO string (TravelLeadData.travel_date: str).
     "industry_data.travel_date": "datestr",
     "industry_data.destination_ids": "strlookup",
+    "industry_data.experience_id": "strlookup",  # single id stored as a string
     "industry_data.no_of_pax": "number",
+    "industry_data.no_of_nights": "number",
+    "industry_data.no_of_adults": "number",
+    "industry_data.no_of_childs": "number",
+    "industry_data.no_of_infants": "number",
     "owner_id": "lookup",
     "created_by": "lookup",
     "last_modified_by_id": "lookup",
@@ -150,6 +154,45 @@ _OPPORTUNITY_FIELDS: Dict[str, str] = {
     "industry_data.travel_date": "datemixed",
     "industry_data.destination_ids": "strlookup",
     "industry_data.no_of_pax": "number",
+    "industry_data.starting_city": "string",
+    "created_at": "date",
+    "updated_at": "date",
+    "id": "lookup",
+}
+
+_TASK_FIELDS: Dict[str, str] = {
+    "name": "string",
+    "status": "string",        # stored as "Not Started"/"In Progress"/… — string match
+    "priority": "string",      # stored as "Normal"/"High"/… — string match
+    "due_date": "date",
+    "assigned_user_id": "lookup",
+    "account_id": "lookup",
+    "contact_id": "lookup",
+    "owner_id": "lookup",
+    "created_by": "lookup",
+    "created_at": "date",
+    "updated_at": "date",
+    "id": "lookup",
+}
+
+_SUPPLIER_FIELDS: Dict[str, str] = {
+    "name": "string",
+    "company_name": "string",
+    "supplier_type": "string",
+    "email": "string",
+    "phone": "string",
+    "mobile": "string",
+    "website": "string",
+    "is_preferred": "bool",
+    "rating": "number",
+    "payment_terms": "string",
+    "street": "string",
+    "city": "string",
+    "state": "string",
+    "zip": "string",
+    "country": "string",
+    "owner_id": "lookup",
+    "created_by": "lookup",
     "created_at": "date",
     "updated_at": "date",
     "id": "lookup",
@@ -161,6 +204,8 @@ FIELD_WHITELISTS: Dict[str, Dict[str, str]] = {
     "contact": _CONTACT_FIELDS,
     "lead": _LEAD_FIELDS,
     "opportunity": _OPPORTUNITY_FIELDS,
+    "task": _TASK_FIELDS,
+    "supplier": _SUPPLIER_FIELDS,
 }
 
 # field_key -> Mongo document field, when they differ (e.g. the "Account ID"
@@ -171,21 +216,75 @@ _MONGO_FIELD_OVERRIDES: Dict[str, str] = {"id": "_id"}
 OPERATORS_BY_TYPE: Dict[str, set] = {
     "string": {"equals", "not_equals", "contains", "starts_with", "is_empty", "is_not_empty"},
     "lookup": {"equals", "not_equals", "is_empty", "is_not_empty"},
-    "bool": {"equals"},
+    "bool": {"equals", "not_equals"},
     "number": {"equals", "not_equals", "greater_than", "less_than", "between", "is_empty", "is_not_empty"},
-    "date": {"equals", "greater_than", "less_than", "between", "is_empty", "is_not_empty"},
+    "date": {"equals", "not_equals", "greater_than", "less_than", "between", "is_empty", "is_not_empty"},
     # ISO date stored as a STRING (e.g. lead industry_data.travel_date) —
     # lexicographic comparison works because "YYYY-MM-DD" sorts chronologically.
-    "datestr": {"equals", "greater_than", "less_than", "between", "is_empty", "is_not_empty"},
+    "datestr": {"equals", "not_equals", "greater_than", "less_than", "between", "is_empty", "is_not_empty"},
     # A date that may be stored as a BSON Date (opportunity travel_date) OR an ISO
     # string (lead / converted / migrated). Matches both representations.
-    "datemixed": {"equals", "greater_than", "less_than", "between", "is_empty", "is_not_empty"},
+    "datemixed": {"equals", "not_equals", "greater_than", "less_than", "between", "is_empty", "is_not_empty"},
     # String/ObjectId id that may live in a scalar OR an array field
     # (e.g. industry_data.destination_ids). {field: value} is array-contains in Mongo.
     "strlookup": {"equals", "not_equals", "is_empty", "is_not_empty"},
 }
 
 _EMPTY_VALUES = (None, "", [], {})
+
+
+# ── Relative date literals ───────────────────────────────────────────────────
+# A saved view may store a *relative* date token (e.g. "YESTERDAY",
+# "CURRENT_MONTH") instead of a concrete date, so a view like "Leads created
+# yesterday" stays correct as time passes. Each token resolves to a half-open
+# [start, end) day range at query time. Weeks are Monday-based (ISO 8601); "now"
+# is server UTC, matching how the rest of this engine builds naive-UTC bounds.
+_RELATIVE_TOKENS = {
+    "TODAY", "YESTERDAY", "TOMORROW",
+    "CURRENT_WEEK", "LAST_WEEK",
+    "CURRENT_MONTH", "PREVIOUS_MONTH",
+}
+
+
+def _month_start(d: datetime, delta_months: int = 0) -> datetime:
+    """First day of the month `delta_months` away from `d` (at midnight)."""
+    m = d.month - 1 + delta_months
+    year = d.year + m // 12
+    month = m % 12 + 1
+    return datetime(year, month, 1)
+
+
+def _relative_range(value: Any) -> Optional[tuple]:
+    """Resolve a relative date token to a half-open [start, end) datetime range.
+
+    Returns None for anything that isn't a recognized token, so concrete dates
+    fall through to normal parsing.
+    """
+    if not isinstance(value, str):
+        return None
+    token = value.strip().upper()
+    if token not in _RELATIVE_TOKENS:
+        return None
+    now = datetime.utcnow()
+    today = datetime(now.year, now.month, now.day)
+    day = timedelta(days=1)
+    if token == "TODAY":
+        return (today, today + day)
+    if token == "YESTERDAY":
+        return (today - day, today)
+    if token == "TOMORROW":
+        return (today + day, today + 2 * day)
+    if token == "CURRENT_WEEK":
+        start = today - timedelta(days=today.weekday())
+        return (start, start + timedelta(days=7))
+    if token == "LAST_WEEK":
+        start = today - timedelta(days=today.weekday() + 7)
+        return (start, start + timedelta(days=7))
+    if token == "CURRENT_MONTH":
+        return (_month_start(today), _month_start(today, 1))
+    if token == "PREVIOUS_MONTH":
+        return (_month_start(today, -1), _month_start(today))
+    return None
 
 
 def _coerce_bool(value: Any) -> Optional[bool]:
@@ -266,10 +365,14 @@ def _lookup_clause(field: str, op: str, value: Any) -> Optional[dict]:
 
 
 def _bool_clause(field: str, op: str, value: Any) -> Optional[dict]:
-    if op != "equals":
-        return None
     b = _coerce_bool(value)
-    return {field: b} if b is not None else None
+    if b is None:
+        return None
+    if op == "equals":
+        return {field: b}
+    if op == "not_equals":
+        return {field: {"$ne": b}}
+    return None
 
 
 def _number_clause(field: str, op: str, value: Any) -> Optional[dict]:
@@ -303,46 +406,101 @@ def _date_clause(field: str, op: str, value: Any) -> Optional[dict]:
         return {field: None}
     if op == "is_not_empty":
         return {field: {"$ne": None}}
+
+    # Relative token (YESTERDAY / CURRENT_MONTH / …) → resolve to a day range.
+    rng = _relative_range(value)
+    if rng is not None:
+        start, end = rng
+        if op == "equals":
+            return {field: {"$gte": start, "$lt": end}}
+        if op == "not_equals":
+            return {"$or": [{field: {"$lt": start}}, {field: {"$gte": end}}]}
+        if op == "less_than":       # before the range
+            return {field: {"$lt": start}}
+        if op == "greater_than":    # after the range
+            return {field: {"$gte": end}}
+        return None  # "between" isn't meaningful for a single token
+
     if op == "between":
         if not isinstance(value, (list, tuple)) or len(value) != 2:
             return None
         lo, hi = _coerce_date(value[0]), _coerce_date(value[1])
         if lo is None or hi is None:
             return None
-        return {field: {"$gte": lo, "$lte": hi}}
+        lo_day = datetime(lo.year, lo.month, lo.day)
+        hi_next = datetime(hi.year, hi.month, hi.day) + timedelta(days=1)  # inclusive end day
+        return {field: {"$gte": lo_day, "$lt": hi_next}}
+
     d = _coerce_date(value)
     if d is None:
         return None
-    if op == "equals":
-        # Whole-day match for a date value.
-        day = datetime(d.year, d.month, d.day)
-        return {field: {"$gte": day, "$lt": day + timedelta(days=1)}}
-    if op == "greater_than":
-        return {field: {"$gt": d}}
-    if op == "less_than":
-        return {field: {"$lt": d}}
+    day = datetime(d.year, d.month, d.day)
+    next_day = day + timedelta(days=1)
+    if op == "equals":              # the whole selected day
+        return {field: {"$gte": day, "$lt": next_day}}
+    if op == "not_equals":          # any day but the selected one
+        return {"$or": [{field: {"$lt": day}}, {field: {"$gte": next_day}}]}
+    if op == "greater_than":        # strictly after the selected day
+        return {field: {"$gte": next_day}}
+    if op == "less_than":           # strictly before the selected day
+        return {field: {"$lt": day}}
     return None
 
 
 def _datestr_clause(field: str, op: str, value: Any) -> Optional[dict]:
-    """ISO date stored as a string (industry_data.travel_date). Compare as strings."""
+    """ISO date stored as a string (lead industry_data.travel_date).
+
+    Compared as strings — "YYYY-MM-DD" sorts chronologically. Some rows persist a
+    time component ("YYYY-MM-DDTHH:MM:SS"); whole-day half-open ranges
+    ([day, next_day) as date strings) match both that and the bare date form, so
+    "equals" no longer silently misses time-stamped rows.
+    """
     if op == "is_empty":
         return {field: {"$in": [None, ""]}}
     if op == "is_not_empty":
         return {field: {"$nin": [None, ""]}}
+
+    # Relative token → resolve to a day range, compared as date strings.
+    rng = _relative_range(value)
+    if rng is not None:
+        start, end = rng
+        s_start, s_end = start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
+        if op == "equals":
+            return {field: {"$gte": s_start, "$lt": s_end}}
+        if op == "not_equals":
+            return {"$or": [{field: {"$lt": s_start}}, {field: {"$gte": s_end}}]}
+        if op == "less_than":
+            return {field: {"$lt": s_start}}
+        if op == "greater_than":
+            return {field: {"$gte": s_end}}
+        return None
+
     if op == "between":
         if not isinstance(value, (list, tuple)) or len(value) != 2 or not value[0] or not value[1]:
             return None
-        return {field: {"$gte": str(value[0]), "$lte": str(value[1])}}
+        lo, hi = _coerce_date(value[0]), _coerce_date(value[1])
+        if lo is None or hi is None:
+            return None
+        s_lo = datetime(lo.year, lo.month, lo.day).strftime("%Y-%m-%d")
+        s_hi_next = (datetime(hi.year, hi.month, hi.day) + timedelta(days=1)).strftime("%Y-%m-%d")
+        return {field: {"$gte": s_lo, "$lt": s_hi_next}}
+
     if value in _EMPTY_VALUES:
         return None
-    s = str(value)
+    d = _coerce_date(value)
+    if d is None:
+        return None
+    day = datetime(d.year, d.month, d.day)
+    s_day = day.strftime("%Y-%m-%d")
+    s_next = (day + timedelta(days=1)).strftime("%Y-%m-%d")
     if op == "equals":
-        return {field: s}
+        return {field: {"$gte": s_day, "$lt": s_next}}
+    if op == "not_equals":
+        return {"$or": [{field: {"$lt": s_day}}, {field: {"$gte": s_next}}]}
     if op == "greater_than":
-        return {field: {"$gt": s}}
+        return {field: {"$gte": s_next}}
     if op == "less_than":
-        return {field: {"$lt": s}}
+        return {field: {"$lt": s_day}}
     return None
 
 
@@ -366,6 +524,30 @@ def _datemixed_clause(field: str, op: str, value: Any) -> Optional[dict]:
     def _both(date_cond: dict, str_cond: Any) -> dict:
         return {"$or": [{field: date_cond}, {field: str_cond}]}
 
+    def _outside(start: datetime, end: datetime, s_start: str, s_end: str) -> dict:
+        # "not within [start, end)" across BOTH representations. Type bracketing
+        # keeps each bound to its own type, so the four branches together cover a
+        # value stored as either a Date or a string without double counting.
+        return {"$or": [
+            {field: {"$lt": start}}, {field: {"$gte": end}},
+            {field: {"$lt": s_start}}, {field: {"$gte": s_end}},
+        ]}
+
+    # Relative token → resolve to a day range (covering Date + string storage).
+    rng = _relative_range(value)
+    if rng is not None:
+        start, end = rng
+        s_start, s_end = start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
+        if op == "equals":
+            return _both({"$gte": start, "$lt": end}, {"$gte": s_start, "$lt": s_end})
+        if op == "not_equals":
+            return _outside(start, end, s_start, s_end)
+        if op == "less_than":
+            return _both({"$lt": start}, {"$lt": s_start})
+        if op == "greater_than":
+            return _both({"$gte": end}, {"$gte": s_end})
+        return None
+
     if op == "between":
         if not isinstance(value, (list, tuple)) or len(value) != 2 or not value[0] or not value[1]:
             return None
@@ -384,15 +566,15 @@ def _datemixed_clause(field: str, op: str, value: Any) -> Optional[dict]:
         return None
     day = datetime(d.year, d.month, d.day)
     next_day = day + timedelta(days=1)
+    s_day, s_next = day.strftime("%Y-%m-%d"), next_day.strftime("%Y-%m-%d")
     if op == "equals":
-        return _both(
-            {"$gte": day, "$lt": next_day},
-            {"$gte": day.strftime("%Y-%m-%d"), "$lt": next_day.strftime("%Y-%m-%d")},
-        )
+        return _both({"$gte": day, "$lt": next_day}, {"$gte": s_day, "$lt": s_next})
+    if op == "not_equals":
+        return _outside(day, next_day, s_day, s_next)
     if op == "greater_than":  # strictly after the selected calendar day
-        return _both({"$gte": next_day}, {"$gte": next_day.strftime("%Y-%m-%d")})
+        return _both({"$gte": next_day}, {"$gte": s_next})
     if op == "less_than":     # strictly before the selected calendar day
-        return _both({"$lt": day}, {"$lt": day.strftime("%Y-%m-%d")})
+        return _both({"$lt": day}, {"$lt": s_day})
     return None
 
 
@@ -401,6 +583,10 @@ def _strlookup_clause(field: str, op: str, value: Any) -> Optional[dict]:
 
     {field: v} is an array-contains match in Mongo. We match both the string and
     the ObjectId form so it works regardless of how the id was persisted.
+
+    `value` may be a single id (legacy single-select) OR a list of ids
+    (multi-select destination filter). For a list, "equals" matches a record that
+    holds ANY of the selected ids, and "not_equals" one holding NONE of them.
     """
     if op == "is_empty":
         return {field: {"$in": [None, [], ""]}}
@@ -408,10 +594,17 @@ def _strlookup_clause(field: str, op: str, value: Any) -> Optional[dict]:
         return {field: {"$nin": [None, [], ""]}}
     if value in _EMPTY_VALUES:
         return None
-    s = str(value)
-    candidates: list = [s]
-    if ObjectId.is_valid(s):
-        candidates.append(ObjectId(s))
+    raw = value if isinstance(value, (list, tuple)) else [value]
+    candidates: list = []
+    for v in raw:
+        s = str(v).strip()
+        if not s:
+            continue
+        candidates.append(s)
+        if ObjectId.is_valid(s):
+            candidates.append(ObjectId(s))
+    if not candidates:
+        return None
     if op == "equals":
         return {field: {"$in": candidates}}
     if op == "not_equals":

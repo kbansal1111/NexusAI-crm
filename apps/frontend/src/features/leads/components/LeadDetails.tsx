@@ -375,10 +375,6 @@ export function LeadDetails({
                                             <p className="text-sm font-medium text-foreground">{source?.name || "Direct"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Source Medium</p>
-                                            <p className="text-sm font-medium text-foreground">{lead.source_medium || "-"}</p>
-                                        </div>
-                                        <div className="space-y-1">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaign Name</p>
                                             <p className="text-sm font-medium text-foreground">{lead.campaign_name || "-"}</p>
                                         </div>
@@ -510,7 +506,6 @@ export function LeadDetails({
                 metadata={{
                     statuses: statuses,
                     sources: sources,
-                    source_mediums: [],
                     industries: industries,
                     experiences: experiences,
                 }}

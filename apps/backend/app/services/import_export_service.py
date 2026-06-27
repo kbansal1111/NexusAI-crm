@@ -58,7 +58,6 @@ ENTITY_COLUMNS: Dict[str, List[Dict[str, Any]]] = {
         {"header": "Country", "example": "India"},
         {"header": "Lead Status", "example": "New", "alt": ["lead_status", "Status"]},
         {"header": "Source", "example": "Web", "alt": ["source"]},
-        {"header": "Source Medium", "example": "Organic", "alt": ["source_medium"]},
         {"header": "Industry", "example": "Technology", "alt": ["industry"]},
         {"header": "Segment", "example": "B2C"},
         {"header": "Campaign Name", "example": "Summer 2026"},
@@ -754,14 +753,13 @@ class ImportExportService:
         tenant_industry: Optional[str] = None,
     ) -> bytes:
         """Export leads to Excel/CSV with picklist names resolved."""
-        from app.models.consolidated_picklists import LeadStatus, Source, SourceMedium
+        from app.models.consolidated_picklists import LeadStatus, Source
 
         if tenant_id is None and leads:
             tenant_id = leads[0].tenant_id
 
         status_names = await _picklist_id_map(LeadStatus, [l.lead_status_id for l in leads if l.lead_status_id], tenant_id)
         source_names = await _picklist_id_map(Source, [l.source_id for l in leads if l.source_id], tenant_id)
-        medium_names = await _picklist_id_map(SourceMedium, [l.source_medium_id for l in leads if l.source_medium_id], tenant_id)
         industry_names = await _picklist_id_map(Industry, [l.industry_id for l in leads if l.industry_id], tenant_id)
         owner_names = await _owner_name_map([l.owner_id for l in leads if l.owner_id], tenant_id)
 
@@ -788,7 +786,6 @@ class ImportExportService:
                 "Country": lead.country or "",
                 "Lead Status": status_names.get(lead.lead_status_id, ""),
                 "Source": source_names.get(lead.source_id, ""),
-                "Source Medium": medium_names.get(lead.source_medium_id, ""),
                 "Industry": industry_names.get(lead.industry_id, ""),
                 "Segment": lead.segment or "",
                 "Campaign Name": lead.campaign_name or "",
@@ -817,7 +814,7 @@ class ImportExportService:
         user_id: ObjectId,
     ) -> Dict:
         """Import leads from Excel or CSV"""
-        from app.models.consolidated_picklists import LeadStatus, Source, SourceMedium, DestinationPicklist
+        from app.models.consolidated_picklists import LeadStatus, Source, DestinationPicklist
         from app.schemas.lead import LeadCreate
         from app.services.lead_service import LeadService
 
@@ -827,7 +824,6 @@ class ImportExportService:
         # Fetch picklist mappings
         lead_statuses = await _picklist_name_map(LeadStatus, tenant_id, tenant_industry, "lead_status")
         sources = await _picklist_name_map(Source, tenant_id, tenant_industry, "source")
-        source_mediums = await _picklist_name_map(SourceMedium, tenant_id, tenant_industry, "source_medium")
         industries = await _picklist_name_map(Industry, tenant_id, tenant_industry, "industry")
 
         imported = 0
@@ -861,14 +857,6 @@ class ImportExportService:
                     source_id = sources.get(str(source_val).lower())
                     if not source_id:
                         errors.append(f"Row {row_num}: Invalid Source '{source_val}'")
-                        continue
-
-                sm_val = _get_val(row, "Source Medium", "source_medium")
-                sm_id = None
-                if sm_val:
-                    sm_id = source_mediums.get(str(sm_val).lower())
-                    if not sm_id:
-                        errors.append(f"Row {row_num}: Invalid Source Medium '{sm_val}'")
                         continue
 
                 ind_val = _get_val(row, "Industry", "industry")
@@ -914,11 +902,9 @@ class ImportExportService:
                     "country": _get_val(row, "Country"),
                     "lead_status_id": str(status_id) if status_id else None,
                     "source_id": str(source_id) if source_id else None,
-                    "source_medium_id": str(sm_id) if sm_id else None,
                     "industry_id": str(ind_id) if ind_id else None,
                     "segment": _normalize_segment(_get_val(row, "Segment"), "B2C"),
                     "campaign_name": _get_val(row, "Campaign Name"),
-                    "source_medium": _get_val(row, "Source Medium Text", "source_medium_text"),
                     "creation_type": "import",
                 }
 

@@ -65,7 +65,11 @@ export function FormDrawer({
             {/* Drawer panel */}
             <div
                 className={cn(
-                    "fixed inset-y-0 right-0 z-50 flex flex-col",
+                    // text-left: the drawer is portaled where it's declared in the
+                    // DOM (e.g. inside a `text-right` table actions cell), and
+                    // text-align inherits even through `position: fixed` — without
+                    // this reset, section headings/labels inherit right-alignment.
+                    "fixed inset-y-0 right-0 z-50 flex flex-col text-left",
                     "bg-card shadow-2xl border-l border-border",
                     "animate-in slide-in-from-right duration-300 ease-out",
                     widthClass,
