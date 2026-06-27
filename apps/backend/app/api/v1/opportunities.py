@@ -334,15 +334,9 @@ async def get_opportunities(
                  "$gte": now,
                  "$lte": now + timedelta(days=7)
              }
-        elif view == "closed":
-             # Scoped to THIS tenant — critical for multi-industry isolation
-             closed_stages = await SalesStage.find(
-                 {"tenant_id": current_user.tenant_id},
-                 {"$or": [{"is_won": True}, {"is_lost": True}]}
-             ).to_list()
-             if closed_stages:
-                 closed_stage_ids = [s.id for s in closed_stages]
-                 stage_filter = {"$in": closed_stage_ids}
+        # "Closed Won" / "Closed Lost" are now seeded saved views (one per stage,
+        # sales_stage_id equals) applied via `active_view` below — see
+        # app/core/system_views.py. They replaced the old set-based ?view=closed.
 
         # Free-text search on the opportunity name
         if search and str(search).strip():

@@ -706,7 +706,10 @@ class OpportunityService(ActivityMixin):
             {"name": "Proposal",    "probability": 30,  "sorting": 30, "is_default": False, "is_won": False, "is_lost": False, "color": "#F59E0B"},
             {"name": "Closed Won",  "probability": 100, "sorting": 40, "is_default": False, "is_won": True,  "is_lost": False, "color": "#10B981"},
             {"name": "Closed Lost", "probability": 0,   "sorting": 50, "is_default": False, "is_won": False, "is_lost": True,  "color": "#EF4444"},
-            {"name": "Refunded",    "probability": 0,   "sorting": 60, "is_default": False, "is_won": False, "is_lost": True,  "color": "#6B7280"},
+            # Refunded is a DISTINCT terminal state, NOT a lost deal — is_lost=False
+            # so it doesn't count as lost in dashboards/pipeline nor trigger the
+            # Close-Lost reason dialog. (Mirrors app/db/init_sales_stages.py.)
+            {"name": "Refunded",    "probability": 0,   "sorting": 60, "is_default": False, "is_won": False, "is_lost": False, "color": "#6B7280"},
         ],
         "healthcare": [
             {"name": "Inquiry",      "probability": 10,  "sorting": 10, "is_default": True,  "is_won": False, "is_lost": False, "color": "#3B82F6"},

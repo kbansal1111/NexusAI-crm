@@ -52,18 +52,17 @@ const PRESET_ORDER: Record<string, number> = {
   this_month: 3,
 };
 
-// Special presets that stay as `?view=<key>` flags — they're an ordering
-// ("Recently Viewed") or a set match ("Closed") that a single seeded filter rule
-// can't express yet, so they aren't seeded views. ("WhatsApp Enquiry" used to be
-// here but is now a real seeded view — Campaign Name equals "WhatsApp Enquiry" —
-// see backend app/core/system_views.py:_EXTRA_PRESETS.)
+// Special presets that stay as `?view=<key>` flags — currently just the
+// ordering-based "Recently Viewed". ("WhatsApp Enquiry" for leads and "Closed
+// Won"/"Closed Lost" for opportunities used to live here but are now real seeded
+// views — see backend app/core/system_views.py:_EXTRA_PRESETS and
+// _OPPORTUNITY_STAGE_PRESETS.)
 const SPECIAL_PRESETS_BY_ENTITY: Record<string, ViewPreset[]> = {
   lead: [
     { label: "Recently Viewed", value: "recent" },
   ],
   opportunity: [
     { label: "Recently Viewed", value: "recent" },
-    { label: "Closed", value: "closed" },
   ],
 };
 

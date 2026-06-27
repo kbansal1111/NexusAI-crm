@@ -16,11 +16,14 @@ concrete ``filter_rules`` (see ``_EXTRA_PRESETS``). Lead "WhatsApp Enquiry Leads
 is one such preset — it mirrors the client's legacy CRM saved view (Campaign Name
 equals "WhatsApp Enquiry") and rides the same saved-view stack as the date presets.
 
+Opportunity "Closed Won" / "Closed Lost" are also seeded views, but their
+``sales_stage_id`` equals rule references a *per-tenant* stage id, so it is
+resolved at seed time from the tenant's own SalesStage rows (see
+``_opportunity_stage_defs``) rather than declared statically.
+
 Note: "Recently Viewed" is intentionally NOT here — it is an *ordering* (by view
 recency), not a filter, and stays a special ``?view=recent`` preset on the modules
-that track views (lead / opportunity). The opportunity "Closed" special likewise
-remains a ``?view=`` preset for now, since it matches a *set* of stage ids that a
-single ``equals`` rule can't express.
+that track views (lead / opportunity).
 """
 from __future__ import annotations
 
@@ -68,8 +71,49 @@ _EXTRA_PRESETS: Dict[str, List[Dict[str, Any]]] = {
 }
 
 
+# Opportunity presets keyed on a per-tenant sales stage. The stage's ObjectId
+# differs per tenant, so — unlike the date / lead presets — these are resolved at
+# seed time (by stage NAME) into a concrete ``sales_stage_id`` equals rule. They
+# replace the old set-based ``?view=closed`` special preset with one saved view
+# per stage. No PRESET_ORDER entry, so the selector sorts them after the date set.
+_OPPORTUNITY_STAGE_PRESETS: List[Dict[str, str]] = [
+    {"preset_key": "closed_won",  "name": "Closed Won",  "stage_name": "Closed Won"},
+    {"preset_key": "closed_lost", "name": "Closed Lost", "stage_name": "Closed Lost"},
+]
+
+
 def _created_at_rule(token: str) -> List[Dict[str, Any]]:
     return [{"field": "created_at", "operator": "equals", "value": token}]
+
+
+async def _opportunity_stage_defs(
+    tenant_id: PydanticObjectId,
+    presets: List[Dict[str, str]],
+) -> List[Dict[str, Any]]:
+    """Resolve per-tenant sales-stage preset views (Closed Won / Closed Lost).
+
+    Each stage's id is tenant-specific, so the ``equals`` rule is built from the
+    tenant's own SalesStage row (matched by name). Stages not yet seeded for the
+    tenant are skipped — they seed on a later load once the picklist exists.
+    """
+    from app.models.consolidated_picklists import SalesStage
+
+    defs: List[Dict[str, Any]] = []
+    for p in presets:
+        stage = await SalesStage.find_one(
+            {"tenant_id": tenant_id, "name": p["stage_name"], "is_active": True}
+        )
+        if not stage:
+            continue
+        defs.append({
+            "preset_key": p["preset_key"],
+            "name": p["name"],
+            "filter_rules": [
+                {"field": "sales_stage_id", "operator": "equals", "value": str(stage.id)},
+            ],
+            "is_default": False,
+        })
+    return defs
 
 
 def preset_defs(entity_type: str) -> List[Dict[str, Any]]:
@@ -108,6 +152,13 @@ async def seed_preset_views(
         {"tenant_id": tenant_id, "entity_type": entity_type, "is_system": True}
     ).to_list()
     have = {v.preset_key for v in existing if v.preset_key}
+
+    # Opportunity stage presets carry a per-tenant sales_stage_id, resolved at seed
+    # time — only resolve the ones still missing (skips the DB lookup once seeded).
+    if entity_type == "opportunity":
+        missing = [p for p in _OPPORTUNITY_STAGE_PRESETS if p["preset_key"] not in have]
+        if missing:
+            defs = defs + await _opportunity_stage_defs(tenant_id, missing)
 
     created = 0
     for d in defs:
