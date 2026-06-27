@@ -43,6 +43,33 @@ export interface ViewPreset {
   value: string;
 }
 
+// Ordering for the seeded system presets (matches backend PRESET_ORDER in
+// app/core/system_views.py).
+const PRESET_ORDER: Record<string, number> = {
+  today: 0,
+  yesterday: 1,
+  this_week: 2,
+  this_month: 3,
+};
+
+// Special presets that stay as `?view=<key>` flags — they're an ordering
+// ("Recently Viewed") or a set match ("WhatsApp" / "Closed") that a single
+// seeded filter rule can't express yet, so they aren't seeded views.
+const SPECIAL_PRESETS_BY_ENTITY: Record<string, ViewPreset[]> = {
+  lead: [
+    { label: "Recently Viewed", value: "recent" },
+    { label: "WhatsApp Enquiry", value: "whatsapp" },
+  ],
+  opportunity: [
+    { label: "Recently Viewed", value: "recent" },
+    { label: "Closed", value: "closed" },
+  ],
+};
+
+// Modules that land on the "Today" preset by default (parity with prior
+// behavior). Other modules default to the cleared "all records" state.
+const DEFAULT_TODAY_ENTITIES = new Set<string>(["lead", "opportunity"]);
+
 // Select a saved view (view_id) and clear any active preset (view).
 function useSelectView() {
   const router = useRouter();
@@ -70,13 +97,11 @@ function useSelectView() {
  */
 export function ListViewSelector({
   entity,
-  presetLabel = "Recently Viewed",
-  presets,
+  presetLabel = "All records",
   className,
 }: {
   entity: EntityType;
   presetLabel?: string;
-  presets?: ViewPreset[];
   className?: string;
 }) {
   const router = useRouter();
@@ -85,6 +110,24 @@ export function ListViewSelector({
   const queryClient = useQueryClient();
   const { views, activeView, activeViewId } = useEntityViews(entity);
   const selectView = useSelectView();
+
+  // Seeded system presets (Today / Yesterday / …) vs the user's saved views.
+  const systemViews = React.useMemo(
+    () =>
+      views
+        .filter((v) => v.is_system)
+        .sort(
+          (a, b) =>
+            (PRESET_ORDER[a.preset_key ?? ""] ?? 99) - (PRESET_ORDER[b.preset_key ?? ""] ?? 99),
+        ),
+    [views],
+  );
+  const savedViews = React.useMemo(() => views.filter((v) => !v.is_system), [views]);
+  const specialPresets = SPECIAL_PRESETS_BY_ENTITY[entity] || [];
+  const defaultSystemView = React.useMemo(
+    () => systemViews.find((v) => v.is_default) || null,
+    [systemViews],
+  );
 
   const currentPreset = searchParams.get("view");
   const hasExplicit = !!(activeViewId || currentPreset);
@@ -110,7 +153,8 @@ export function ListViewSelector({
   const activeIsPinned = !!(activeView && pinnedView && activeView.id === pinnedView.id);
 
   // One-time on fresh load: with nothing explicitly chosen, open the pinned
-  // default. A ref guards re-applying after the user manually clears (×).
+  // default; failing that, modules that historically land on "Today" open their
+  // default system preset. A ref guards re-applying after the user clears (×).
   const applied = React.useRef(false);
   React.useEffect(() => {
     if (applied.current) return;
@@ -121,8 +165,13 @@ export function ListViewSelector({
     if (pinnedView) {
       applied.current = true;
       selectView(pinnedView.id);
+      return;
     }
-  }, [hasExplicit, pinnedView, selectView]);
+    if (DEFAULT_TODAY_ENTITIES.has(entity) && defaultSystemView) {
+      applied.current = true;
+      selectView(defaultSystemView.id);
+    }
+  }, [hasExplicit, pinnedView, defaultSystemView, entity, selectView]);
 
   const togglePin = async () => {
     if (!activeView) {
@@ -143,7 +192,7 @@ export function ListViewSelector({
     }
   };
 
-  const activePresetLabel = presets?.find((p) => p.value === currentPreset)?.label;
+  const activePresetLabel = specialPresets.find((p) => p.value === currentPreset)?.label;
   const buttonLabel = activeView ? activeView.name : activePresetLabel || presetLabel;
 
   return (
@@ -164,29 +213,35 @@ export function ListViewSelector({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-80 w-60 overflow-y-auto">
           <DropdownMenuLabel className="text-xs text-muted-foreground">Presets</DropdownMenuLabel>
-          {presets && presets.length > 0 ? (
-            presets.map((p) => (
-              <DropdownMenuItem
-                key={p.value}
-                onClick={() => selectPreset(p.value)}
-                className={!activeView && currentPreset === p.value ? "font-semibold text-primary" : ""}
-              >
-                {p.label}
-              </DropdownMenuItem>
-            ))
-          ) : (
+          <DropdownMenuItem
+            onClick={() => selectView(null)}
+            className={!hasExplicit ? "font-semibold text-primary" : ""}
+          >
+            {presetLabel}
+          </DropdownMenuItem>
+          {systemViews.map((v) => (
             <DropdownMenuItem
-              onClick={() => selectView(null)}
-              className={!activeView ? "font-semibold text-primary" : ""}
+              key={v.id}
+              onClick={() => selectView(v.id)}
+              className={v.id === activeViewId ? "font-semibold text-primary" : ""}
             >
-              {presetLabel}
+              {v.name}
             </DropdownMenuItem>
-          )}
-          {views.length > 0 && (
+          ))}
+          {specialPresets.map((p) => (
+            <DropdownMenuItem
+              key={p.value}
+              onClick={() => selectPreset(p.value)}
+              className={!activeView && currentPreset === p.value ? "font-semibold text-primary" : ""}
+            >
+              {p.label}
+            </DropdownMenuItem>
+          ))}
+          {savedViews.length > 0 && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Saved views</DropdownMenuLabel>
-              {views.map((v) => (
+              {savedViews.map((v) => (
                 <DropdownMenuItem
                   key={v.id}
                   onClick={() => selectView(v.id)}

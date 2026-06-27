@@ -25,6 +25,7 @@ import { useIndustryLabels } from "@/lib/industry-labels";
 import { customFieldsService, type EntityType } from "@/lib/api/services/field-registry.service";
 import { useEntityViews } from "@/features/views/useEntityViews";
 import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { DynamicListTable } from "@/features/views/DynamicListTable";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
@@ -182,7 +183,9 @@ export function SupplierList() {
 
     const toolbar = (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <ListViewSelector entity={entity} presetLabel="All records" />
+            <ListCountHeader label="Suppliers" count={response?.total ?? suppliers.length}>
+                <ListViewSelector entity={entity} presetLabel="All records" />
+            </ListCountHeader>
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={refresh} title="Refresh">
                     <RefreshCw className="h-4 w-4" />

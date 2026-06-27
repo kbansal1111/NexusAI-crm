@@ -63,7 +63,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { entityViewsService } from "@/lib/api/services/entity-views.service";
 import { accountService } from "@/features/accounts/services/accountService";
 import { destinationsService } from "@/lib/api/services/destinations.service";
-import { ListViewSelector, ListViewSettings, type ViewPreset } from "@/features/views/ListViewMenu";
+import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
@@ -92,14 +93,9 @@ export default function OpportunitiesPageClient() {
     const searchParams = useSearchParams();
     const labels = useIndustryLabels();
 
-    const opportunityViews: ViewPreset[] = [
-        { label: `Today ${labels.opportunities}`, value: "today" },
-        { label: "Recently Viewed", value: "recent" },
-        { label: `All ${labels.opportunities}`, value: "all" },
-        { label: `Closed ${labels.opportunities}`, value: "closed" },
-    ];
-    const currentView = searchParams.get("view") || searchParams.get("filter") || "today";
-    const currentViewLabel = opportunityViews.find(v => v.value === currentView)?.label || `Today ${labels.opportunities}`;
+    // Date views (Today / Yesterday / …) are now seeded system views applied via
+    // `view_id`; `currentView` only carries the special presets (recent / closed).
+    const currentView = searchParams.get("view") || searchParams.get("filter") || undefined;
 
     const pathname = usePathname();
     const queryClient = useQueryClient();
@@ -288,12 +284,9 @@ export default function OpportunitiesPageClient() {
                         <div className="rounded-full bg-primary p-2 text-primary-foreground">
                             <Lightbulb className="h-5 w-5" />
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase text-primary">
-                                {labels.opportunity} ({opportunities.length})
-                            </div>
-                            <ListViewSelector entity="opportunity" presets={opportunityViews} presetLabel={currentViewLabel} />
-                        </div>
+                        <ListCountHeader label={labels.opportunity} count={totalCount ?? opportunities.length}>
+                            <ListViewSelector entity="opportunity" presetLabel={`All ${labels.opportunities}`} />
+                        </ListCountHeader>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">

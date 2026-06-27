@@ -36,6 +36,7 @@ import { useQuery } from "@tanstack/react-query";
 import { customFieldsService, type EntityType } from "@/lib/api/services/field-registry.service";
 import { useEntityViews } from "@/features/views/useEntityViews";
 import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { DynamicListTable } from "@/features/views/DynamicListTable";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
@@ -272,7 +273,9 @@ export function TaskList() {
             {/* Toolbar */}
             <div className="crm-toolbar mb-4 justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <ListViewSelector entity={entity} presetLabel="All records" />
+                    <ListCountHeader label="Tasks" count={tasks.length}>
+                        <ListViewSelector entity={entity} presetLabel="All records" />
+                    </ListCountHeader>
                     <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
                         <SelectTrigger className="h-8 text-xs w-36">
                             <SelectValue placeholder="Assignee" />

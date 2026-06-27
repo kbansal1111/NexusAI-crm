@@ -39,6 +39,13 @@ class EntityView(Document):
     is_public: bool = False
     is_default: bool = False
 
+    # System preset views (Today / Yesterday / This Week / …) are lazily seeded
+    # per tenant+entity and behave like any saved view, but are grouped under
+    # "Presets" in the selector. `preset_key` is the stable registry id used to
+    # keep seeding idempotent (unique per tenant_id + entity_type + preset_key).
+    is_system: bool = False
+    preset_key: Optional[str] = None
+
     created_by: Indexed(PydanticObjectId)
     tenant_id: Indexed(PydanticObjectId)
 

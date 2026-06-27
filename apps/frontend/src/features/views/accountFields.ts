@@ -13,6 +13,13 @@
  */
 import type { LogicalType } from "./fieldMeta";
 import type { EntityType } from "@/lib/api/services/field-registry.service";
+import { SEGMENT_OPTIONS } from "@/lib/segments";
+
+// Segment filter options, derived from the canonical segment list so B2C / B2B /
+// Corporate stay in sync with src/lib/segments.ts (never hardcode the subset).
+const SEGMENT_FILTER_OPTIONS: { id: string; name: string }[] = SEGMENT_OPTIONS.map(
+  ({ value, label }) => ({ id: value, name: label }),
+);
 
 export interface ViewFieldDef {
   key: string;
@@ -286,11 +293,11 @@ const LOOKUP_OPTIONS_KEY_BY_ENTITY: Record<string, Record<string, string>> = {
 // Fixed-option selects (no metadata source).
 const STATIC_OPTIONS_BY_ENTITY: Record<string, Record<string, { id: string; name: string }[]>> = {
   lead: {
-    segment: [{ id: "B2C", name: "B2C" }, { id: "B2B", name: "B2B" }],
+    segment: SEGMENT_FILTER_OPTIONS,
     creation_type: [{ id: "manual", name: "Manual" }, { id: "auto", name: "Auto" }],
   },
   opportunity: {
-    segment: [{ id: "B2C", name: "B2C" }, { id: "B2B", name: "B2B" }],
+    segment: SEGMENT_FILTER_OPTIONS,
     creation_type: [{ id: "Manual", name: "Manual" }, { id: "Auto", name: "Auto" }],
   },
 };

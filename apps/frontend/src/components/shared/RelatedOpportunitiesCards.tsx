@@ -38,30 +38,20 @@ interface RelatedOpportunitiesCardsProps {
     onNewClick?: () => void;
 }
 
-export function RelatedOpportunitiesCards({ opportunities, accountId, contactId, onNewClick }: RelatedOpportunitiesCardsProps) {
+export function RelatedOpportunitiesCards({ opportunities, onNewClick }: RelatedOpportunitiesCardsProps) {
     const industry = useIndustry();
-    const createUrl = accountId
-        ? `/opportunities/create?accountId=${accountId}`
-        : contactId
-            ? `/opportunities/create?contactId=${contactId}`
-            : "/opportunities/create";
 
     if (!opportunities || opportunities.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center space-y-4 crm-empty-state">
                 <p className="font-medium text-foreground">No opportunities associated yet.</p>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    asChild={!onNewClick} 
+                <Button
+                    variant="outline"
+                    size="sm"
                     onClick={onNewClick}
                     className="border-border font-bold"
                 >
-                    {onNewClick ? (
-                        <span>Create Opportunity</span>
-                    ) : (
-                        <Link href={createUrl}>Create Opportunity</Link>
-                    )}
+                    Create Opportunity
                 </Button>
             </div>
         );

@@ -31,10 +31,10 @@ export default function LeadsClientPage() {
     const per_page = parseInt(searchParams.get("per_page") || "100");
     const search = searchParams.get("search") || undefined;
     const view_id = searchParams.get("view_id") || undefined;
-    // Default landing = "Today Leads" (matches the dropdown's default label).
-    // Only default when no saved view is active, so a saved view isn't silently
-    // constrained to today's leads.
-    const view = searchParams.get("view") || (view_id ? undefined : "today");
+    // Date views (Today / Yesterday / …) are now seeded system views applied via
+    // `view_id`; the selector auto-selects "Today" on fresh load. `view` only
+    // carries the special presets (recent / whatsapp).
+    const view = searchParams.get("view") || undefined;
     const owner_id = searchParams.get("owner_id") || undefined;
     const lead_status_id = searchParams.get("lead_status_id") || undefined;
 

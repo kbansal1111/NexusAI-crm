@@ -57,6 +57,7 @@ import {
   realCustomFields,
   accountRefFieldsFor,
   contactRefFieldsFor,
+  additionalFieldKeysFor,
   type OptionList,
 } from "./accountFields";
 import { AsyncEntitySelect } from "./AsyncEntitySelect";
@@ -220,6 +221,19 @@ export function EditListFiltersDialog({
         type: "string" as LogicalType,
       })),
     [customFields, entity],
+  );
+
+  // Mirror the form / "Select Fields to display" picker: catalog fields the form
+  // groups under "Additional Information" are shown under an "Additional Fields"
+  // heading (alongside genuine custom fields), not under "Standard Fields".
+  const additionalKeys = React.useMemo(() => additionalFieldKeysFor(entity), [entity]);
+  const coreStandard = React.useMemo(
+    () => standard.filter((f) => !additionalKeys.has(f.key)),
+    [standard, additionalKeys],
+  );
+  const additional = React.useMemo<FieldMeta[]>(
+    () => [...standard.filter((f) => additionalKeys.has(f.key)), ...custom],
+    [standard, additionalKeys, custom],
   );
   // Async reference fields (server search) per module.
   const accountRefs = React.useMemo(() => accountRefFieldsFor(entity), [entity]);
@@ -478,9 +492,9 @@ export function EditListFiltersDialog({
       const arr = Array.isArray(draft.value) ? draft.value : ["", ""];
       return (
         <div className="flex items-center gap-1">
-          <Input type={inputType} value={arr[0] ?? ""} onChange={(e) => patchDraft({ value: [e.target.value, arr[1] ?? ""] })} className="h-9" />
-          <span className="text-xs text-muted-foreground">to</span>
-          <Input type={inputType} value={arr[1] ?? ""} onChange={(e) => patchDraft({ value: [arr[0] ?? "", e.target.value] })} className="h-9" />
+          <Input type={inputType} value={arr[0] ?? ""} onChange={(e) => patchDraft({ value: [e.target.value, arr[1] ?? ""] })} className="h-9 min-w-0 flex-1" />
+          <span className="shrink-0 text-xs text-muted-foreground">to</span>
+          <Input type={inputType} value={arr[1] ?? ""} onChange={(e) => patchDraft({ value: [arr[0] ?? "", e.target.value] })} className="h-9 min-w-0 flex-1" />
         </div>
       );
     }
@@ -580,14 +594,14 @@ export function EditListFiltersDialog({
                   <SelectContent className="max-h-72">
                     <SelectGroup>
                       <SelectLabel className="border-b border-border bg-primary/10 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">Standard Fields</SelectLabel>
-                      {standard.map((f) => (
+                      {coreStandard.map((f) => (
                         <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
                       ))}
                     </SelectGroup>
-                    {custom.length > 0 && (
+                    {additional.length > 0 && (
                       <SelectGroup>
-                        <SelectLabel className="mt-1 border-t border-border bg-primary/10 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">Custom Fields</SelectLabel>
-                        {custom.map((f) => (
+                        <SelectLabel className="mt-1 border-t border-border bg-primary/10 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">Additional Fields</SelectLabel>
+                        {additional.map((f) => (
                           <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
                         ))}
                       </SelectGroup>

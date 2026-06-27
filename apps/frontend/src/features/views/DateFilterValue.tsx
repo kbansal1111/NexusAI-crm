@@ -103,9 +103,13 @@ export function DateFilterValue({
     const arr = Array.isArray(value) ? value : ["", ""];
     return (
       <div className="flex items-center gap-1">
-        <CalendarPickButton value={arr[0] || ""} onPick={(v) => onChange([v, arr[1] || ""])} placeholder="Start date" />
-        <span className="text-xs text-muted-foreground">to</span>
-        <CalendarPickButton value={arr[1] || ""} onPick={(v) => onChange([arr[0] || "", v])} placeholder="End date" />
+        <div className="min-w-0 flex-1">
+          <CalendarPickButton value={arr[0] || ""} onPick={(v) => onChange([v, arr[1] || ""])} placeholder="Start date" />
+        </div>
+        <span className="shrink-0 text-xs text-muted-foreground">to</span>
+        <div className="min-w-0 flex-1">
+          <CalendarPickButton value={arr[1] || ""} onPick={(v) => onChange([arr[0] || "", v])} placeholder="End date" />
+        </div>
       </div>
     );
   }

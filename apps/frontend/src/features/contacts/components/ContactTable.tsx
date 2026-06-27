@@ -60,6 +60,7 @@ import { ImportDataDialog, normalizeImportResult } from "@/components/shared/Imp
 import { entityViewsService } from "@/lib/api/services/entity-views.service";
 import { customFieldsService, type EntityType } from "@/lib/api/services/field-registry.service";
 import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
 import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
@@ -455,7 +456,9 @@ export function ContactTable({
         <div className="w-full">
             <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                 {/* Saved-view selector */}
-                <ListViewSelector entity={entity} presetLabel="All records" />
+                <ListCountHeader label="Contacts" count={pagination.total ?? rows.length}>
+                    <ListViewSelector entity={entity} presetLabel="All records" />
+                </ListCountHeader>
 
                 <div className="flex flex-wrap items-center gap-2">
                     {/* Search */}

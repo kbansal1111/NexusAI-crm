@@ -26,6 +26,10 @@ export interface EntityView {
   sort_dir: "asc" | "desc";
   is_public: boolean;
   is_default: boolean;
+  /** Seeded system preset view (Today / Yesterday / …) — grouped under "Presets". */
+  is_system?: boolean;
+  /** Stable registry key for a system preset (e.g. "today"); null for user views. */
+  preset_key?: string | null;
   created_by: string;
   tenant_id: string;
   created_at: string;

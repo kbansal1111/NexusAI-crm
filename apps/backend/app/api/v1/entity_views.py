@@ -108,6 +108,12 @@ class FilterIn(BaseModel):
 @router.get("/views/{entity_type}")
 async def list_views(entity_type: str, current_user: User = Depends(get_current_user)):
     _check(entity_type)
+    # Lazily provision the standard "Presets" (Today / Yesterday / This Week /
+    # This Month) for this tenant+entity on first access — idempotent, never
+    # clobbers user edits. Mirrors the standard-field lazy-seed pattern.
+    from app.core.system_views import seed_preset_views
+    await seed_preset_views(entity_type, current_user.tenant_id, current_user.id)
+
     rows = await EntityView.find(
         {"tenant_id": current_user.tenant_id, "entity_type": entity_type}
     ).to_list()

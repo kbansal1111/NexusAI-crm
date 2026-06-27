@@ -69,7 +69,8 @@ import { Switch } from "@/components/ui/switch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { entityViewsService } from "@/lib/api/services/entity-views.service";
 import { customFieldsService, type EntityType } from "@/lib/api/services/field-registry.service";
-import { ListViewSelector, ListViewSettings, type ViewPreset } from "@/features/views/ListViewMenu";
+import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
 import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
@@ -673,20 +674,6 @@ export function LeadTable({
     const router = useRouter();
 
     const total = pagination.total ?? table.getRowModel().rows.length;
-    const currentView = searchParams.get("view") || "today";
-
-    const leadViews: ViewPreset[] = [
-        { label: "Today Leads", value: "today" },
-        { label: "Recently Viewed", value: "recent" },
-        { label: "All Leads", value: "all" },
-        { label: "Yesterday Leads", value: "yesterday" },
-        { label: "Last Week Leads", value: "last_week" },
-        { label: "WhatsApp Enquiry Leads", value: "whatsapp" },
-        { label: "lead check count", value: "lead_check_count" },
-    ];
-
-    const currentViewLabel =
-        leadViews.find((v) => v.value === currentView)?.label || "Today Leads";
 
     const setParams = React.useCallback((mut: (p: URLSearchParams) => void) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -787,14 +774,9 @@ export function LeadTable({
             <div className="w-full">
                 <div className="mb-4 rounded-lg border bg-card text-card-foreground shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b px-4 py-3">
-                        <div className="flex flex-col gap-1">
-                            <div className="text-sm font-semibold">
-                                Leads ({total})
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <ListViewSelector entity={entity} presets={leadViews} presetLabel="Today Leads" />
-                            </div>
-                        </div>
+                        <ListCountHeader label="Leads" count={total}>
+                            <ListViewSelector entity={entity} presetLabel="All Leads" />
+                        </ListCountHeader>
                         <div className="flex flex-wrap items-center gap-2">
                             {/* Search */}
                             <div className="relative">

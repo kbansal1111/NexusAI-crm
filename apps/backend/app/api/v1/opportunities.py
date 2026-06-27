@@ -317,16 +317,14 @@ async def get_opportunities(
         if not effective_owner_id and visible_owner_ids is not None:
             effective_owner_id = {"$in": visible_owner_ids}
         
-        # Apply view filters
+        # Apply view filters. Date views (Today / Yesterday / This Week / This
+        # Month) are now real saved views seeded per tenant (app/core/system_views.py)
+        # and applied via `active_view` below — no bespoke `created_at` handling here.
         from datetime import datetime, timedelta
         now = datetime.utcnow()
-        today_start = datetime(now.year, now.month, now.day)
         stage_filter = ObjectId(sales_stage_id) if sales_stage_id else None
-        
-        if view == "today":
-            # Created today
-            filters["created_at"] = {"$gte": today_start}
-        elif view == "recent":
+
+        if view == "recent":
             # Last 7 days
             week_ago = now - timedelta(days=7)
             filters["created_at"] = {"$gte": week_ago}

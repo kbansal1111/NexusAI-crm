@@ -1443,32 +1443,15 @@ class LeadService(ActivityMixin):
 
         all_leads: List[Lead] = []
 
-        # Date-based views — compute the day boundaries in the tenant's local
-        # timezone, then convert back to UTC for the query (created_at is stored
-        # in UTC). Using UTC midnight directly dropped leads created in the early
-        # local morning into the previous day, hiding them from "Today Leads".
-        biz_tz = await _resolve_tenant_tz(tenant_id)
-        now_local = datetime.now(biz_tz)
-        today_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        def _to_utc_naive(dt_local: datetime) -> datetime:
-            # pymongo compares naive datetimes as UTC, matching stored created_at.
-            return dt_local.astimezone(_dt_timezone.utc).replace(tzinfo=None)
-
-        today_start = _to_utc_naive(today_local)
-        tomorrow_start = _to_utc_naive(today_local + timedelta(days=1))
-        yesterday_start = _to_utc_naive(today_local - timedelta(days=1))
-        last_week_start = _to_utc_naive(today_local - timedelta(days=7))
-
-        if view in ("today", "todays_lead", "todays"):
-            base_filter["created_at"] = {"$gte": today_start, "$lt": tomorrow_start}
-        elif view == "yesterday":
-            base_filter["created_at"] = {"$gte": yesterday_start, "$lt": today_start}
-        elif view == "last_week":
-            base_filter["created_at"] = {"$gte": last_week_start, "$lt": tomorrow_start}
-        elif view in ("whatsapp", "whatsapp_enquiry"):
-            # "WhatsApp Enquiry Leads" — previously unimplemented, so it silently
-            # returned every lead (including non-WhatsApp ones). Scope it properly.
+        # Date-based views (Today / Yesterday / This Week / This Month) are now
+        # real saved views, seeded per tenant as filter_rules on created_at — see
+        # app/core/system_views.py. They arrive via `view_id` → `active_view` and
+        # are applied through the shared filter engine below, so there is no longer
+        # any bespoke `created_at` view-string handling here.
+        if view in ("whatsapp", "whatsapp_enquiry"):
+            # "WhatsApp Enquiry Leads" — scope to WhatsApp-sourced leads. (Kept as a
+            # special preset: it matches a *set* of source ids, which a single
+            # equals filter_rule can't express yet.)
             await self._apply_whatsapp_filter(base_filter, tenant_id)
 
         # Structured "Edit List Filters" rows (+ custom-field rules) from the view.

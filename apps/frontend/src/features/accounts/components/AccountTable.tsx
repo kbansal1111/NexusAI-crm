@@ -82,6 +82,7 @@ import type { EntityType } from "@/lib/api/services/field-registry.service";
 import { standardFieldsService, customFieldsService } from "@/lib/api/services/field-registry.service";
 import { useEntityViews } from "@/features/views/useEntityViews";
 import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
 import { buildLookupOptions } from "@/features/views/accountFields";
@@ -605,14 +606,9 @@ export function AccountTable({
                     <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground sm:h-10 sm:w-10">
                         <Briefcase className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <div className="flex flex-col">
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-primary sm:text-xs">
-                            Accounts
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <ListViewSelector entity={entity} />
-                        </div>
-                    </div>
+                    <ListCountHeader label="Accounts" count={pagination.total ?? rows.length}>
+                        <ListViewSelector entity={entity} />
+                    </ListCountHeader>
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
