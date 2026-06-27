@@ -31,9 +31,9 @@ export default function LeadsClientPage() {
     const per_page = parseInt(searchParams.get("per_page") || "100");
     const search = searchParams.get("search") || undefined;
     const view_id = searchParams.get("view_id") || undefined;
-    // Date views (Today / Yesterday / …) are now seeded system views applied via
-    // `view_id`; the selector auto-selects "Today" on fresh load. `view` only
-    // carries the special presets (recent / whatsapp).
+    // Date views (Today / Yesterday / …) and "WhatsApp Enquiry Leads" are now
+    // seeded system views applied via `view_id`; the selector auto-selects "Today"
+    // on fresh load. `view` only carries the ordering-based `recent` preset.
     const view = searchParams.get("view") || undefined;
     const owner_id = searchParams.get("owner_id") || undefined;
     const lead_status_id = searchParams.get("lead_status_id") || undefined;

@@ -130,7 +130,7 @@ async def get_leads(
     is_converted: Optional[bool] = None,
     view: Optional[str] = Query(
         None,
-        description="Predefined view filter: today, yesterday, last_week, recent, whatsapp, all, etc.",
+        description="Predefined view filter: recent (recently viewed). Date and WhatsApp Enquiry views are seeded saved views applied via view_id.",
     ),
     search: Optional[str] = None,
     lead_status_id: Optional[str] = None,

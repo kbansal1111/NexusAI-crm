@@ -209,7 +209,7 @@ export interface LeadFilters {
     owner_id?: string;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
-    // Predefined backend view: today, yesterday, last_week, recent, whatsapp, all, etc.
+    // Predefined backend view: `recent` (recently viewed). Date and WhatsApp Enquiry views are seeded saved views applied via view_id.
     view?: string;
     // Saved EntityView id (lead) whose stored filters the server should apply.
     view_id?: string;

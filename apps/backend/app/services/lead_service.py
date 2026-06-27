@@ -1331,35 +1331,6 @@ class LeadService(ActivityMixin):
         await lead.save()
         return lead
 
-    async def _apply_whatsapp_filter(self, base_filter: dict, tenant_id) -> None:
-        """Scope ``base_filter`` to WhatsApp-sourced leads (the 'whatsapp' view).
-
-        'WhatsApp' is seeded as a Source ("Whatsapp", "Double Click Whatsapp").
-        Match any such source id. The condition is appended under ``$and`` so it
-        co-exists with the free-text ``$or`` search instead of overwriting it.
-        """
-        import re as _re
-        from app.models.lead_picklists import Source
-        from app.core.picklist_query import build_picklist_query
-        from app.services.industry_service import get_tenant_industry, TenantNotFoundError
-
-        try:
-            industry = await get_tenant_industry(tenant_id)
-        except TenantNotFoundError:
-            industry = None
-
-        wa_re = _re.compile("whatsapp", _re.IGNORECASE)
-        sources = await Source.find(
-            build_picklist_query(tenant_id, industry=industry, picklist_type="source")
-        ).to_list()
-        source_ids = [s.id for s in sources if wa_re.search(s.name or "")]
-
-        # No WhatsApp source configured → the view should be empty rather than
-        # unfiltered, so constrain to a never-match.
-        base_filter.setdefault("$and", []).append(
-            {"source_id": {"$in": source_ids}} if source_ids else {"_id": None}
-        )
-
     async def get_leads_with_metadata(
         self,
         tenant_id: ObjectId,
@@ -1443,16 +1414,12 @@ class LeadService(ActivityMixin):
 
         all_leads: List[Lead] = []
 
-        # Date-based views (Today / Yesterday / This Week / This Month) are now
-        # real saved views, seeded per tenant as filter_rules on created_at — see
-        # app/core/system_views.py. They arrive via `view_id` → `active_view` and
-        # are applied through the shared filter engine below, so there is no longer
-        # any bespoke `created_at` view-string handling here.
-        if view in ("whatsapp", "whatsapp_enquiry"):
-            # "WhatsApp Enquiry Leads" — scope to WhatsApp-sourced leads. (Kept as a
-            # special preset: it matches a *set* of source ids, which a single
-            # equals filter_rule can't express yet.)
-            await self._apply_whatsapp_filter(base_filter, tenant_id)
+        # Date-based views (Today / Yesterday / This Week / This Month) and the
+        # "WhatsApp Enquiry Leads" view are now real saved views, seeded per tenant
+        # as filter_rules — see app/core/system_views.py. They arrive via `view_id`
+        # → `active_view` and are applied through the shared filter engine below, so
+        # there is no longer any bespoke view-string handling here (only the
+        # ordering-based `recent` preset remains, handled further down).
 
         # Structured "Edit List Filters" rows (+ custom-field rules) from the view.
         if active_view:

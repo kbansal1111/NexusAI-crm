@@ -11,11 +11,16 @@ Each preset filters ``created_at`` with a *relative-date token* (resolved to a d
 range at query time by entity_filter.py), so the definitions are entity-agnostic
 and never go stale. Keep the tokens in sync with ``_RELATIVE_TOKENS`` there.
 
+Besides the date set, an entity may declare *extra* presets that carry their own
+concrete ``filter_rules`` (see ``_EXTRA_PRESETS``). Lead "WhatsApp Enquiry Leads"
+is one such preset — it mirrors the client's legacy CRM saved view (Campaign Name
+equals "WhatsApp Enquiry") and rides the same saved-view stack as the date presets.
+
 Note: "Recently Viewed" is intentionally NOT here — it is an *ordering* (by view
 recency), not a filter, and stays a special ``?view=recent`` preset on the modules
-that track views (lead / opportunity). Set-based specials (lead "WhatsApp",
-opportunity "Closed") likewise remain special ``?view=`` presets for now, since a
-single ``equals`` rule can't express "any of N ids".
+that track views (lead / opportunity). The opportunity "Closed" special likewise
+remains a ``?view=`` preset for now, since it matches a *set* of stage ids that a
+single ``equals`` rule can't express.
 """
 from __future__ import annotations
 
@@ -43,6 +48,25 @@ _DATE_PRESETS: List[Dict[str, Any]] = [
 # Stable ordering for the frontend (preset_key -> position).
 PRESET_ORDER: Dict[str, int] = {p["preset_key"]: p["order"] for p in _DATE_PRESETS}
 
+# Entity-specific non-date presets. Unlike the date set, these carry their own
+# concrete ``filter_rules`` (a real equality match), so they are stored inline
+# rather than derived from a relative-date token. Lead "WhatsApp Enquiry Leads"
+# mirrors the client's legacy CRM saved view: Campaign Name equals "WhatsApp
+# Enquiry". They have no PRESET_ORDER entry, so the selector sorts them after the
+# date presets.
+_EXTRA_PRESETS: Dict[str, List[Dict[str, Any]]] = {
+    "lead": [
+        {
+            "preset_key": "whatsapp_enquiry",
+            "name": "WhatsApp Enquiry Leads",
+            "filter_rules": [
+                {"field": "campaign_name", "operator": "equals", "value": "WhatsApp Enquiry"},
+            ],
+            "is_default": False,
+        },
+    ],
+}
+
 
 def _created_at_rule(token: str) -> List[Dict[str, Any]]:
     return [{"field": "created_at", "operator": "equals", "value": token}]
@@ -52,7 +76,7 @@ def preset_defs(entity_type: str) -> List[Dict[str, Any]]:
     """Standard preset view definitions for an ``entity_type`` (empty if unsupported)."""
     if entity_type not in PRESET_ENTITY_TYPES:
         return []
-    return [
+    date_defs = [
         {
             "preset_key": p["preset_key"],
             "name": p["name"],
@@ -61,6 +85,8 @@ def preset_defs(entity_type: str) -> List[Dict[str, Any]]:
         }
         for p in _DATE_PRESETS
     ]
+    extra_defs = [dict(p) for p in _EXTRA_PRESETS.get(entity_type, [])]
+    return date_defs + extra_defs
 
 
 async def seed_preset_views(
