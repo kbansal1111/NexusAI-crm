@@ -212,7 +212,6 @@ class SupplierService(ActivityMixin):
             "deleted_at": None,
             "$or": [
                 {"name": {"$regex": query, "$options": "i"}},
-                {"company_name": {"$regex": query, "$options": "i"}},
                 {"email": {"$regex": query, "$options": "i"}},
                 {"city": {"$regex": query, "$options": "i"}}
             ]

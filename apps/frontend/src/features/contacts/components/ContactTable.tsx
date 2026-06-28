@@ -453,7 +453,7 @@ export function ContactTable({
     });
 
     return (
-        <div className="w-full">
+        <div className="w-full px-4">
             <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                 {/* Saved-view selector */}
                 <ListCountHeader label="Contacts" count={pagination.total ?? rows.length}>

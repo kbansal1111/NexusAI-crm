@@ -75,6 +75,14 @@ const GEO_KIND: Record<string, GeoKind> = {
   billing_city: "city",
   city: "city",
   "industry_data.starting_city": "city",
+  // Contact mailing address.
+  mailing_country: "country",
+  mailing_state: "state",
+  mailing_city: "city",
+  // Supplier service-area arrays (stored as location-name arrays).
+  countries: "country",
+  states: "state",
+  service_cities: "city",
 };
 const GEO_PLACEHOLDER: Record<GeoKind, string> = {
   country: "Search countries…",
@@ -100,6 +108,18 @@ type Row = { field: string; operator: string; value: any };
 type FieldMeta = { key: string; label: string; type: LogicalType };
 
 const ADD = "additional:";
+
+// "Show me" header label, per module (mirrors each list's record noun rather
+// than always reading "All accounts").
+const SHOW_ME_LABEL: Record<EntityType, string> = {
+  account: "All accounts",
+  personal_account: "All person accounts",
+  contact: "All contacts",
+  lead: "All leads",
+  opportunity: "All opportunities",
+  supplier: "All suppliers",
+  task: "All tasks",
+};
 
 /**
  * Destination filter value editor — multi-select chip picker mirroring the
@@ -265,8 +285,20 @@ export function EditListFiltersDialog({
   // options into a plain <Select>, load the full set once (for label resolution)
   // and drive the value editor with a type-to-search picker, mirroring how
   // Account/Contact references already work in this dialog.
-  const DEST_FIELD = "industry_data.destination_ids";
-  const hasDestination = React.useMemo(() => standard.some((f) => f.key === DEST_FIELD), [standard]);
+  // Destination filter fields. Lead/Opportunity store destination IDS
+  // (industry_data.destination_ids); Supplier stores destination NAMES
+  // (destinations). Both drive the same multi-select picker — only the stored
+  // value (id vs name) differs.
+  const DEST_ID_FIELD = "industry_data.destination_ids";
+  const DEST_NAME_FIELD = "destinations";
+  const isDestField = React.useCallback(
+    (f: string) => f === DEST_ID_FIELD || f === DEST_NAME_FIELD,
+    [],
+  );
+  const hasDestination = React.useMemo(
+    () => standard.some((f) => isDestField(f.key)),
+    [standard, isDestField],
+  );
   const { data: allDestinations = [], isLoading: destinationsLoading } = useQuery({
     queryKey: ["destinations", "filter-all"],
     queryFn: () => destinationsService.getDestinations({ limit: 100000 }).then((r) => r.destinations),
@@ -318,9 +350,11 @@ export function EditListFiltersDialog({
     // While async labels are still resolving (destinations / account-contact
     // refs load after open), show a neutral placeholder rather than flashing the
     // raw id for a frame.
-    if (field === DEST_FIELD) {
-      const ids = Array.isArray(value) ? value : value ? [value] : [];
-      return ids
+    if (isDestField(field)) {
+      const vals = Array.isArray(value) ? value : value ? [value] : [];
+      // Supplier destinations persist the NAME, so the value is already the label.
+      if (field === DEST_NAME_FIELD) return vals.join(", ");
+      return vals
         .map((id) => destMap.get(id) || labelCache[id] || (destinationsLoading ? "…" : id))
         .join(", ");
     }
@@ -414,18 +448,22 @@ export function EditListFiltersDialog({
 
     // Destination → unbounded picklist; multi-select (matches ANY selected),
     // mirroring the Lead/Opportunity forms' destination chip picker.
-    if (draft.field === DEST_FIELD) {
+    if (isDestField(draft.field)) {
       const selected: string[] = Array.isArray(draft.value)
         ? draft.value
         : draft.value
           ? [String(draft.value)]
           : [];
+      // Supplier stores destination NAMES; option ids are the names themselves
+      // (de-duped) and labels are the names. Lead/Opportunity store ids.
+      const byName = draft.field === DEST_NAME_FIELD;
+      const options = byName ? uniqueNamed(allDestinations) : allDestinations;
       return (
         <DestinationMultiSelect
           value={selected}
-          options={allDestinations}
-          labelFor={(id) => destMap.get(id) || labelCache[id] || id}
-          onChange={(ids) => patchDraft({ value: ids })}
+          options={options}
+          labelFor={byName ? (n) => n : (id) => destMap.get(id) || labelCache[id] || id}
+          onChange={(vals) => patchDraft({ value: vals })}
         />
       );
     }
@@ -541,7 +579,7 @@ export function EditListFiltersDialog({
           <div className="rounded-md bg-muted/40 p-3">
             <div className="text-xs text-muted-foreground">Show me</div>
             <div className="mt-1 font-medium">
-              All {entity === "personal_account" ? "person accounts" : "accounts"}
+              {SHOW_ME_LABEL[entity] ?? "All records"}
             </div>
           </div>
 

@@ -35,15 +35,13 @@ class Supplier(BaseDocument):
     
     # Basic Information
     name: Indexed(str)
-    company_name: Optional[str] = None
     supplier_type: str  # Hotel, Airline, Tour Operator, Transport, etc.
     
     # Contact Information
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     mobile: Optional[str] = None
-    website: Optional[str] = None
-    
+
     # Address
     street: Optional[str] = None
     city: Optional[str] = None
@@ -70,17 +68,13 @@ class Supplier(BaseDocument):
     # Contact persons (embedded; first/primary seeded from contact_person_* on create)
     contacts: List[SupplierContact] = Field(default_factory=list)
 
-    # Payment Terms
-    payment_terms: Optional[str] = None
+    # Finance
     credit_limit: Optional[float] = None
-    
+
     # Status
     is_active: bool = True
     is_preferred: bool = False
-    
-    # Rating
-    rating: Optional[int] = None  # 1-5
-    
+
     # Tenant & Ownership
     tenant_id: Indexed(PydanticObjectId)
     owner_id: Indexed(PydanticObjectId)

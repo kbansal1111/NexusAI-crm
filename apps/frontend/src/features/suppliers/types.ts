@@ -3,15 +3,13 @@ import { PaginatedResponse } from "@/lib/api/types";
 export interface Supplier {
     id: string;
     name: string;
-    company_name?: string;
     supplier_type: string;
     owner_name?: string;
 
     email?: string;
     phone?: string;
     mobile?: string;
-    website?: string;
-    
+
     // Service Areas
     services?: string[];
     countries?: string[];
@@ -34,13 +32,11 @@ export interface Supplier {
     contacts?: SupplierContact[];
 
     // Finance
-    payment_terms?: string;
     credit_limit?: number;
 
     // Metadata
     is_preferred: boolean;
     is_active: boolean;
-    rating?: number;
     notes?: string;
 
     owner_id: string;

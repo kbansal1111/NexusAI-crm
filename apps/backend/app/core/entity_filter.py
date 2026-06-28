@@ -84,6 +84,12 @@ _CONTACT_FIELDS: Dict[str, str] = {
     "mobile": "string",
     "title": "string",
     "account_id": "lookup",
+    # Mailing address — mirrors the contact form's "Address Information" section.
+    "mailing_street": "string",
+    "mailing_city": "string",
+    "mailing_state": "string",
+    "mailing_zip": "string",
+    "mailing_country": "string",
     "owner_id": "lookup",
     "created_by": "lookup",
     "last_modified_by_id": "lookup",
@@ -176,16 +182,22 @@ _TASK_FIELDS: Dict[str, str] = {
 }
 
 _SUPPLIER_FIELDS: Dict[str, str] = {
+    # Kept in lock-step with the Supplier FORM (SUPPLIER_STANDARD_FIELDS on the
+    # frontend) — only fields the form can actually set are filterable.
     "name": "string",
-    "company_name": "string",
     "supplier_type": "string",
+    "contact_person_name": "string",
     "email": "string",
     "phone": "string",
     "mobile": "string",
-    "website": "string",
-    "is_preferred": "bool",
-    "rating": "number",
-    "payment_terms": "string",
+    # List[str] fields — a plain {field: regex} clause matches any array element.
+    "services": "string",
+    "countries": "string",
+    "states": "string",
+    "service_cities": "string",
+    # destinations is a List[str] of NAMES; strlookup's {field: {$in: [...]}}
+    # array-contains match lets a multi-select pick any of several destinations.
+    "destinations": "strlookup",
     "street": "string",
     "city": "string",
     "state": "string",

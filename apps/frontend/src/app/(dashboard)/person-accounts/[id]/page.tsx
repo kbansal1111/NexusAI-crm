@@ -4,9 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { AccountDetailView } from "@/features/accounts/components/AccountDetailView";
 import { getApiBaseUrlNoSlash } from "@/lib/env";
+import { fetchWithRetry } from "@/lib/server-fetch";
 
 async function getAccountDetail(id: string, token: string) {
-    const res = await fetch(
+    const res = await fetchWithRetry(
         `${getApiBaseUrlNoSlash()}/accounts/${id}?include_related=true`,
         {
             headers: {

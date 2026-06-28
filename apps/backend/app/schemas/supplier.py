@@ -45,14 +45,12 @@ class SupplierContactResponse(SupplierContactBase):
 class SupplierBase(BaseModel):
     """Base schema for Supplier"""
     name: str = Field(..., min_length=2, max_length=255)
-    company_name: Optional[str] = None
     supplier_type: str = Field(..., min_length=1)
     
     email: Annotated[Optional[EmailStr], BeforeValidator(lambda v: v if v else None)] = None
     phone: Annotated[str, BeforeValidator(strict_phone_validator)] = Field(..., pattern=PHONE_REGEX, description=PHONE_REGEX_MESSAGE)
     mobile: Annotated[Optional[str], BeforeValidator(strict_phone_validator)] = Field(None, pattern=PHONE_REGEX, description=PHONE_REGEX_MESSAGE)
-    website: Optional[str] = None
-    
+
     # Multi-select fields
     services: List[str] = Field(default_factory=list)
     countries: List[str] = Field(default_factory=list)
@@ -69,12 +67,10 @@ class SupplierBase(BaseModel):
     contact_person_name: Optional[str] = None
     contact_person_email: Annotated[Optional[EmailStr], BeforeValidator(lambda v: v if v else None)] = None
     contact_person_phone: Annotated[Optional[str], BeforeValidator(lambda v: v if v else None)] = None
-    
-    payment_terms: Optional[str] = None
+
     credit_limit: Optional[float] = None
-    
+
     is_preferred: bool = False
-    rating: Optional[int] = None
     notes: Optional[str] = None
 
     # Custom field values (Phase 1 §C) — accepted on create, populated on read
@@ -89,14 +85,12 @@ class SupplierCreate(SupplierBase):
 class SupplierUpdate(BaseModel):
     """Schema for updating a supplier"""
     name: Optional[str] = None
-    company_name: Optional[str] = None
     supplier_type: Optional[str] = None
     
     email: Annotated[Optional[EmailStr], BeforeValidator(lambda v: v if v else None)] = None
     phone: Annotated[Optional[str], BeforeValidator(strict_phone_validator)] = Field(None, pattern=PHONE_REGEX, description=PHONE_REGEX_MESSAGE)
     mobile: Annotated[Optional[str], BeforeValidator(strict_phone_validator)] = Field(None, pattern=PHONE_REGEX, description=PHONE_REGEX_MESSAGE)
-    website: Optional[str] = None
-    
+
     # Multi-select fields
     services: Optional[List[str]] = None
     countries: Optional[List[str]] = None
@@ -117,12 +111,10 @@ class SupplierUpdate(BaseModel):
     contact_person_phone: Annotated[Optional[str], BeforeValidator(lambda v: v if v else None)] = None
     
     # Finance
-    payment_terms: Optional[str] = None
     credit_limit: Optional[float] = None
-    
+
     is_active: Optional[bool] = None
     is_preferred: Optional[bool] = None
-    rating: Optional[int] = None
     notes: Optional[str] = None
 
     # Custom field values (Phase 1 §C)

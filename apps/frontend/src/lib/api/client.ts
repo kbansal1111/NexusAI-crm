@@ -17,6 +17,24 @@ export const apiClient = axios.create({
     ...(typeof window === 'undefined' ? { adapter: 'fetch' as const } : {}),
 });
 
+// ── Transient-failure retry (idempotent GETs only) ──────────────────────────
+// A brief backend/DB blip surfaces as a 5xx response or a connection error. On
+// the server (SSR / Cloudflare Workers) that bubbles out of the data fetch and
+// trips the dashboard error boundary ("Something went wrong"); on the client it
+// shows a "Failed to load" state. Retrying a GET a couple of times with backoff
+// absorbs those blips so the page renders. Only GETs are retried — they're
+// idempotent, so a retry can never double-submit a create/update/delete.
+const RETRYABLE_STATUS = new Set([500, 502, 503, 504]);
+const MAX_TRANSIENT_RETRIES = 2;
+
+function isRetryableError(error: AxiosError): boolean {
+    // A caller-aborted request (e.g. autocomplete) must never be retried.
+    if (axios.isCancel(error) || error.code === 'ERR_CANCELED') return false;
+    // No response object → network / DNS / connection error (backend unreachable).
+    if (!error.response) return true;
+    return RETRYABLE_STATUS.has(error.response.status);
+}
+
 // In-memory access token, kept in sync with the NextAuth session by the
 // <ApiTokenSync> component. This lets the request interceptor attach the
 // bearer token synchronously instead of awaiting getSession() — which hits
@@ -129,6 +147,18 @@ apiClient.interceptors.response.use(
         if (error.response?.status === 403) {
             if (typeof window !== 'undefined' && !(originalRequest as any)._suppressForbiddenToast) {
                 toast.warning("Access Denied: You do not have permission for this resource.");
+            }
+        }
+
+        // Retry transient failures on idempotent GETs before giving up.
+        const method = (originalRequest?.method || 'get').toLowerCase();
+        if (originalRequest && method === 'get' && isRetryableError(error)) {
+            const cfg = originalRequest as InternalAxiosRequestConfig & { _transientRetries?: number };
+            cfg._transientRetries = cfg._transientRetries ?? 0;
+            if (cfg._transientRetries < MAX_TRANSIENT_RETRIES) {
+                cfg._transientRetries += 1;
+                await new Promise((resolve) => setTimeout(resolve, 300 * cfg._transientRetries!));
+                return apiClient(cfg);
             }
         }
 

@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { getApiBaseUrlNoSlash } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { compressPermissions, decompressPermissions } from "@/lib/permissions-compression";
+import { fetchWithRetry } from "@/lib/server-fetch";
 
 // Fallback access-token lifetime if the JWT exp can't be decoded. Kept well
 // under the 30-day refresh-token / session lifetime so refresh still fires.
@@ -33,7 +34,10 @@ function decodeJwtExpiryMs(jwt?: string): number | null {
 async function refreshAccessToken(token: JWT): Promise<JWT> {
     try {
         const baseUrl = getApiBaseUrlNoSlash().replace(/\/api\/v1$/, "");
-        const res = await fetch(`${baseUrl}/auth/refresh`, {
+        // Retry transient 5xx/connection blips so a momentary backend hiccup
+        // doesn't flag a valid session for sign-out. A real expired/invalid
+        // refresh token returns 401 (not retried) and falls through to error.
+        const res = await fetchWithRetry(`${baseUrl}/auth/refresh`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ refresh_token: token.refreshToken }),

@@ -358,16 +358,15 @@ async def search_by_module(
             "deleted_at": None,
             "$or": [
                 {"name": {"$regex": pattern}},
-                {"company_name": {"$regex": pattern}},
                 {"email": {"$regex": pattern}},
                 {"phone": {"$regex": pattern}},
             ]
         }
         if visible_owner_ids is not None:
             query["owner_id"] = {"$in": visible_owner_ids}
-            
+
         docs = await Supplier.find(query).sort("name").skip(skip).limit(limit).to_list()
-        docs = _relevance_sort(docs, q, ["name", "company_name", "email"])
+        docs = _relevance_sort(docs, q, ["name", "email"])
 
         items = [
             {
@@ -502,12 +501,11 @@ async def global_search(
             "owner_id": owner_match,
             "$or": [
                 {"name": {"$regex": pattern}},
-                {"company_name": {"$regex": pattern}},
                 {"email": {"$regex": pattern}},
                 {"phone": {"$regex": pattern}},
             ]
         }).limit(limit).to_list(),
-        
+
         File.find({
             "tenant_id": tenant_id,
             "deleted_at": None,
@@ -601,7 +599,7 @@ async def global_search(
             "items": [
                 {
                     "id": str(s.id),
-                    "title": s.name or s.company_name or "Unnamed Supplier",
+                    "title": s.name or "Unnamed Supplier",
                     "subtitle": s.supplier_type,
                     "url": f"/suppliers/{s.id}",
                 }

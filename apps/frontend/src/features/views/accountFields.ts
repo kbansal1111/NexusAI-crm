@@ -87,6 +87,12 @@ export const CONTACT_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "mobile", label: "Mobile", type: "string" },
   { key: "title", label: "Job Title", type: "string" },
   { key: "account_id", label: "Account", type: "lookup" },
+  // Mailing address — mirrors the contact form's "Address Information" section.
+  { key: "mailing_street", label: "Mailing Street", type: "string" },
+  { key: "mailing_city", label: "Mailing City", type: "string" },
+  { key: "mailing_state", label: "Mailing State", type: "string" },
+  { key: "mailing_zip", label: "Mailing Zip", type: "string" },
+  { key: "mailing_country", label: "Mailing Country", type: "string" },
   ...AUDIT_FIELDS,
   { key: "id", label: "Contact ID", type: "string" },
 ];
@@ -146,22 +152,30 @@ export const OPPORTUNITY_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "id", label: "Opportunity ID", type: "string" },
 ];
 
+// Mirrors the Supplier form exactly: every filterable field here is a field the
+// user can actually set on the form (and vice-versa). Form-only display fields
+// that have no input (company_name / website / payment_terms / rating /
+// is_preferred) were removed so the filter no longer offers fields the form
+// can't produce.
 export const SUPPLIER_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "name", label: "Supplier Name", type: "string" },
-  { key: "company_name", label: "Company Name", type: "string" },
   { key: "supplier_type", label: "Supplier Type", type: "lookup" },
+  { key: "contact_person_name", label: "Contact Person", type: "string" },
   { key: "email", label: "Email", type: "string" },
   { key: "phone", label: "Phone", type: "string" },
   { key: "mobile", label: "Mobile", type: "string" },
-  { key: "website", label: "Website", type: "string" },
-  { key: "payment_terms", label: "Payment Terms", type: "string" },
-  { key: "rating", label: "Rating", type: "number" },
-  { key: "is_preferred", label: "Preferred", type: "bool" },
-  { key: "street", label: "Street", type: "string" },
-  { key: "city", label: "City", type: "string" },
-  { key: "state", label: "State", type: "string" },
-  { key: "zip", label: "Zip", type: "string" },
-  { key: "country", label: "Country", type: "string" },
+  { key: "services", label: "Service(s)", type: "string" },
+  // Service Area (multi-select name arrays on the form) — geo-picker filters.
+  { key: "countries", label: "Service Area Country", type: "string" },
+  { key: "states", label: "Service Area State", type: "string" },
+  { key: "service_cities", label: "Service Area City", type: "string" },
+  { key: "destinations", label: "Destination(s)", type: "lookup" },
+  // Billing address (labels match the form's "Address Information" section).
+  { key: "street", label: "Billing Street", type: "string" },
+  { key: "city", label: "Billing City", type: "string" },
+  { key: "state", label: "Billing State", type: "string" },
+  { key: "zip", label: "Billing Zip", type: "string" },
+  { key: "country", label: "Billing Country", type: "string" },
   { key: "created_at", label: "Created Date", type: "date" },
   { key: "updated_at", label: "Last Modified Date", type: "date" },
   { key: "created_by", label: "Created By", type: "lookup" },

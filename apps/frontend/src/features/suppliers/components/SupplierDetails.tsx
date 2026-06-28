@@ -179,7 +179,6 @@ export function SupplierDetails({
                                     <DetailField label="Phone" value={supplier.phone} />
                                     <DetailField label="Mobile" value={supplier.mobile} />
                                     <DetailField label="Email ID" value={supplier.email} />
-                                    <DetailField label="Rating" value={supplier.rating?.toString()} />
                                     <DetailField label="Destinations" value={supplier.destinations?.join(", ")} isLink />
                                     <DetailField label="Countries" value={supplier.countries?.join(", ")} />
                                     <DetailField label="Rate List" value="-" />
