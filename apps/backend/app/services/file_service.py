@@ -78,6 +78,22 @@ def detect_extension_mismatch(
     return f"content does not match extension .{ext}"
 
 
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def slugify(value: str, max_length: int = 80) -> str:
+    """Return a lowercase, S3-key-safe slug (e.g. 'Bali & Ubud' -> 'bali-ubud').
+
+    Used to build destination-namespaced folder prefixes for itinerary PDFs.
+    Falls back to 'unknown' when the input has no usable characters.
+    """
+    if not value:
+        return "unknown"
+    normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    slug = _SLUG_RE.sub("-", normalized.lower()).strip("-")
+    return (slug[:max_length].strip("-") or "unknown")
+
+
 def sanitize_filename(name: str, max_length: int = 200) -> str:
     """Return a filesystem- and S3-safe filename.
 
@@ -114,25 +130,28 @@ class LocalFileService:
         filename: str,
         content_type: str,
         tenant_id: Optional[ObjectId] = None,
+        subfolder: str = "uploads",
     ) -> str:
         """Upload file to local storage and return file key.
 
         Tenant ID is included in the path so listing the local upload dir
-        cannot accidentally cross-tenant.
+        cannot accidentally cross-tenant. ``subfolder`` mirrors the S3 key
+        prefix (e.g. ``itineraries/bali``).
         """
 
         safe_name = sanitize_filename(filename)
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{timestamp}_{uuid.uuid4().hex[:8]}_{safe_name}"
-        tenant_dir = self.upload_dir / (str(tenant_id) if tenant_id else "shared")
-        tenant_dir.mkdir(parents=True, exist_ok=True)
-        file_path = tenant_dir / unique_filename
+        tenant_name = str(tenant_id) if tenant_id else "shared"
+        dest_dir = self.upload_dir / tenant_name / subfolder
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        file_path = dest_dir / unique_filename
 
         file_content = file_obj.read()
         with open(file_path, "wb") as f:
             f.write(file_content)
 
-        return f"local_uploads/{tenant_dir.name}/{unique_filename}"
+        return f"local_uploads/{tenant_name}/{subfolder}/{unique_filename}"
     
     async def download_file(self, file_key: str) -> bytes:
         """Download file from local storage"""
@@ -202,12 +221,14 @@ class S3Service:
         filename: str,
         content_type: str,
         tenant_id: Optional[ObjectId] = None,
+        subfolder: str = "uploads",
     ) -> str:
         """Upload file to S3 or local storage and return file key.
 
-        S3 keys are tenant-namespaced (`{tenant_id}/uploads/...`) so accidental
+        S3 keys are tenant-namespaced (`{tenant_id}/{subfolder}/...`) so accidental
         unprefixed list/access of one tenant's bucket prefix cannot reveal
-        another's data.
+        another's data. ``subfolder`` lets callers namespace by feature — e.g.
+        itinerary PDFs use ``itineraries/{destination}``.
         """
 
         safe_name = sanitize_filename(filename)
@@ -216,7 +237,7 @@ class S3Service:
         tenant_prefix = f"{tenant_id}/" if tenant_id else "shared/"
 
         if self.use_aws:
-            s3_key = f"{tenant_prefix}uploads/{timestamp}_{unique_suffix}_{safe_name}"
+            s3_key = f"{tenant_prefix}{subfolder}/{timestamp}_{unique_suffix}_{safe_name}"
 
             self.s3_client.upload_fileobj(
                 file_obj,
@@ -228,7 +249,7 @@ class S3Service:
             return s3_key
         else:
             return await self.local_service.upload_file(
-                file_obj, filename, content_type, tenant_id=tenant_id
+                file_obj, filename, content_type, tenant_id=tenant_id, subfolder=subfolder
             )
     
     async def download_file(self, file_key: str) -> bytes:
@@ -291,7 +312,8 @@ class FileService:
         tenant_id: ObjectId,
         fileable_type: Optional[str] = None,
         fileable_id: Optional[str] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        subfolder: str = "uploads",
     ) -> File:
         """Upload file and create file record. Filename is sanitized; S3 key is tenant-namespaced."""
 
@@ -301,6 +323,7 @@ class FileService:
             safe_name,
             content_type,
             tenant_id=tenant_id,
+            subfolder=subfolder,
         )
 
         # Record the storage backend that was ACTUALLY used. Hardcoding "s3"

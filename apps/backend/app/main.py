@@ -210,8 +210,6 @@ from app.api.v1 import search_extras
 from app.api.v1 import imports_exports
 # Phase 9 — Files extras (folders, shares, versions, public links)
 from app.api.v1 import files_extra
-# Phase 5 — Itinerary engine extension
-from app.api.v1 import itineraries_extra
 # Phase 16 — Mobile API
 from app.api.v1 import mobile
 # Phase 17 — Misc / utility
@@ -240,8 +238,6 @@ app.include_router(emails.router, prefix="/api/v1/emails", tags=["Emails"])
 app.include_router(files_extra.router, prefix="/api/v1/files", tags=["Files Extras"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["Files"])
 app.include_router(suppliers.router, prefix="/api/v1/suppliers", tags=["Suppliers"])
-# Phase 5 — Itinerary engine extension (categories, schedule, hotels, flights, PDF, proforma)
-app.include_router(itineraries_extra.router, prefix="/api/v1/itineraries", tags=["Itineraries Extras"])
 app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 app.include_router(packages.router, prefix="/api/v1/packages", tags=["Packages"])
 app.include_router(departures.router, prefix="/api/v1/departures", tags=["Departures"])

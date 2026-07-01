@@ -1,69 +1,41 @@
 """
-Itinerary service layer - Business logic for itinerary management
+Itinerary service layer - Business logic for itinerary management (simple PDF model)
 """
+import re as _re
 from typing import List, Optional
 from bson import ObjectId
-from datetime import datetime, date
-from app.models.itinerary import Itinerary, ItineraryDay, ItineraryOpportunity
-from app.schemas.itinerary import ItineraryCreate, ItineraryUpdate, ItineraryDayCreate
+from app.models.itinerary import Itinerary, ItineraryOpportunity
+from app.schemas.itinerary import ItineraryUpdate
 from app.models.opportunity import Opportunity
+
 
 class ItineraryService:
     """Service for Itinerary business logic"""
-    
-    async def create_itinerary(
+
+    async def create_uploaded_itinerary(
         self,
-        itinerary_data: ItineraryCreate,
+        name: str,
+        destination_ids: List[ObjectId],
+        destination_names: List[str],
         user_id: ObjectId,
-        tenant_id: ObjectId
+        tenant_id: ObjectId,
     ) -> Itinerary:
-        """Create a new itinerary with days"""
-        
-        # Create itinerary
+        """Create a bare itinerary record for an uploaded PDF.
+
+        The PDF File is uploaded separately (it needs this itinerary's id as the
+        ``fileable_id``); the caller sets ``pdf_file_id`` afterwards and saves.
+        """
         itinerary = Itinerary(
-            **itinerary_data.model_dump(exclude_unset=True, exclude={'days', 'destination_ids'}),
+            name=name,
+            destination_ids=destination_ids,
+            destination_names=destination_names,
             tenant_id=tenant_id,
             owner_id=user_id,
-            created_by=user_id
+            created_by=user_id,
         )
-        
-        # Convert destination IDs
-        if itinerary_data.destination_ids:
-            itinerary.destination_ids = [ObjectId(d) for d in itinerary_data.destination_ids]
-        
         await itinerary.insert()
-        
-        # Create days
-        if itinerary_data.days:
-            for day_data in itinerary_data.days:
-                await self.create_itinerary_day(
-                    str(itinerary.id),
-                    day_data,
-                    tenant_id
-                )
-        
         return itinerary
-    
-    async def create_itinerary_day(
-        self,
-        itinerary_id: str,
-        day_data: ItineraryDayCreate,
-        tenant_id: ObjectId
-    ) -> ItineraryDay:
-        """Create a day for an itinerary"""
-        
-        day = ItineraryDay(
-            **day_data.model_dump(exclude_unset=True, exclude={'destination_id'}),
-            itinerary_id=ObjectId(itinerary_id),
-            tenant_id=tenant_id
-        )
-        
-        if day_data.destination_id:
-            day.destination_id = ObjectId(day_data.destination_id)
-        
-        await day.insert()
-        return day
-    
+
     async def get_itinerary(
         self,
         itinerary_id: str,
@@ -77,28 +49,7 @@ class ItineraryService:
         return await Itinerary.find_one(
             {"_id": oid, "tenant_id": tenant_id, "deleted_at": None}
         )
-    
-    async def get_itinerary_with_days(
-        self,
-        itinerary_id: str,
-        tenant_id: ObjectId
-    ) -> Optional[dict]:
-        """Get itinerary with all days"""
-        itinerary = await self.get_itinerary(itinerary_id, tenant_id)
-        
-        if not itinerary:
-            return None
-        
-        # Get all days
-        days = await ItineraryDay.find(
-            {"itinerary_id": ObjectId(itinerary_id), "tenant_id": tenant_id}
-        ).sort("+day_number").to_list()
-        
-        return {
-            "itinerary": itinerary,
-            "days": days
-        }
-    
+
     async def update_itinerary(
         self,
         itinerary_id: str,
@@ -108,20 +59,19 @@ class ItineraryService:
     ) -> Optional[Itinerary]:
         """Update an itinerary"""
         itinerary = await self.get_itinerary(itinerary_id, tenant_id)
-        
+
         if not itinerary:
             return None
-        
-        # Update fields
+
         update_data = itinerary_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(itinerary, field, value)
-        
+
         itinerary.last_modified_by_id = user_id
         await itinerary.save()
-        
+
         return itinerary
-    
+
     async def delete_itinerary(
         self,
         itinerary_id: str,
@@ -129,32 +79,47 @@ class ItineraryService:
     ) -> bool:
         """Soft delete an itinerary"""
         itinerary = await self.get_itinerary(itinerary_id, tenant_id)
-        
+
         if not itinerary:
             return False
-        
+
         await itinerary.soft_delete()
         return True
-    
+
     async def get_itineraries_by_tenant(
         self,
         tenant_id: ObjectId,
-        is_template: Optional[bool] = None
+        search: Optional[str] = None,
+        visible_owner_ids: Optional[List[ObjectId]] = None,
+        is_template: Optional[bool] = None,
     ) -> List[Itinerary]:
-        """Get itineraries for a tenant"""
-        
-        query = {
+        """List itineraries for a tenant, honoring visibility scope and search.
+
+        ``search`` matches (case-insensitive) on name OR any destination name.
+        """
+        query: dict = {
             "tenant_id": tenant_id,
             "deleted_at": None,
-            "is_active": True
+            "is_active": True,
         }
-        
+
         if is_template is not None:
             query["is_template"] = is_template
-        
+
+        # Ownership/hierarchy visibility (None = admin, sees everything)
+        if visible_owner_ids is not None:
+            query["owner_id"] = {"$in": visible_owner_ids}
+
+        if search and search.strip():
+            pattern = {"$regex": _re.compile(f".*{_re.escape(search.strip())}.*", _re.IGNORECASE)}
+            query["$or"] = [
+                {"name": pattern},
+                {"destination_names": pattern},
+            ]
+
         itineraries = await Itinerary.find(query).sort("-created_at").to_list()
         return itineraries
-    
+
     async def link_to_opportunity(
         self,
         itinerary_id: str,
@@ -163,7 +128,7 @@ class ItineraryService:
         notes: Optional[str] = None
     ) -> ItineraryOpportunity:
         """Link itinerary to opportunity"""
-        
+
         # Verify both entities exist and belong to the current tenant
         itinerary = await Itinerary.find_one(
             Itinerary.id == ObjectId(itinerary_id),
@@ -171,27 +136,27 @@ class ItineraryService:
         )
         if not itinerary:
             raise ValueError("Itinerary not found or access denied")
-            
+
         opportunity = await Opportunity.find_one(
             Opportunity.id == ObjectId(opportunity_id),
             Opportunity.tenant_id == tenant_id
         )
         if not opportunity:
             raise ValueError("Opportunity not found or access denied")
-        
+
         # Check if already linked
         existing = await ItineraryOpportunity.find_one(
             ItineraryOpportunity.itinerary_id == ObjectId(itinerary_id),
             ItineraryOpportunity.opportunity_id == ObjectId(opportunity_id),
             ItineraryOpportunity.tenant_id == tenant_id
         )
-        
+
         if existing:
             if notes:
                 existing.notes = notes
                 await existing.save()
             return existing
-        
+
         # Create new link
         link = ItineraryOpportunity(
             itinerary_id=ObjectId(itinerary_id),
@@ -199,10 +164,10 @@ class ItineraryService:
             tenant_id=tenant_id,
             notes=notes
         )
-        
+
         await link.insert()
         return link
-    
+
     async def unlink_from_opportunity(
         self,
         itinerary_id: str,
@@ -210,19 +175,19 @@ class ItineraryService:
         tenant_id: ObjectId
     ) -> bool:
         """Unlink itinerary from opportunity"""
-        
+
         link = await ItineraryOpportunity.find_one(
             ItineraryOpportunity.itinerary_id == ObjectId(itinerary_id),
             ItineraryOpportunity.opportunity_id == ObjectId(opportunity_id),
             ItineraryOpportunity.tenant_id == tenant_id
         )
-        
+
         if link:
             await link.delete()
             return True
-        
+
         return False
-    
+
     async def get_itineraries_for_opportunity(
         self,
         opportunity_id: str,

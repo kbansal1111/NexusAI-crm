@@ -7,7 +7,6 @@ import {
     Globe,
     MapPin,
     Building2,
-    Calendar,
     User as UserIcon,
     Edit,
     CheckCircle2,
@@ -639,7 +638,6 @@ export function OpportunityDetails({
                     <Tabs defaultValue="activity" className="w-full rounded-lg border bg-card shadow-sm">
                         <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 max-w-full overflow-x-auto flex-nowrap scrollbar-hide">
                             <TabsTrigger value="activity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Activity</TabsTrigger>
-                            {industry === "travel" && <TabsTrigger value="departures" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Departures</TabsTrigger>}
                             <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Details</TabsTrigger>
                             {industry === "travel" && <TabsTrigger value="itineraries" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Itineraries</TabsTrigger>}
                             <TabsTrigger value="financial" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Financial</TabsTrigger>
@@ -810,24 +808,6 @@ export function OpportunityDetails({
                                     <p className="text-sm">WhatsApp integration coming soon</p>
                                 </div>
                             )}
-                        </TabsContent>
-
-                        {/* ── DEPARTURES TAB ── */}
-                        <TabsContent value="departures" className="p-6 focus-visible:outline-none focus-visible:ring-0">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-blue-500" />
-                                    Departures
-                                </h3>
-                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8 text-xs">
-                                    + Add Departure
-                                </Button>
-                            </div>
-                            <div className="crm-empty-state">
-                                <Calendar className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
-                                <p className="font-medium text-foreground">No departures added</p>
-                                <p className="mt-1 text-sm text-muted-foreground">Add departure dates and details for this record.</p>
-                            </div>
                         </TabsContent>
 
                         {/* ── DETAILS TAB ── */}

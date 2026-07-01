@@ -419,29 +419,6 @@ async def email_setup(
     return {"saved": True}
 
 
-@router.get("/check-pdf-status")
-async def check_pdf_status_alias(
-    job_id: Optional[str] = Query(None),
-    current_user: User = Depends(get_current_user),
-):
-    """Mirror old `/check_pdf_status`. Polls itinerary PDF job."""
-    if not job_id:
-        return {"status": "no_job"}
-    from app.models.itinerary_extras import ItineraryPDFJob
-    try:
-        obj = await ItineraryPDFJob.get(PydanticObjectId(job_id))
-    except Exception:
-        return {"status": "not_found"}
-    if not obj or obj.tenant_id != current_user.tenant_id:
-        return {"status": "not_found"}
-    return {
-        "job_id": str(obj.id),
-        "status": obj.status,
-        "pdf_url": obj.pdf_url,
-        "error": obj.error,
-    }
-
-
 @router.get("/get-tenant-user-details", tags=["Public"])
 @limiter.limit("10/minute")
 async def public_tenant_user_details(

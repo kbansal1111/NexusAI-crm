@@ -17,6 +17,9 @@ from typing import Dict, Any
 
 BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000/api/v1")
 
+# Smallest bytes that pass the PDF magic-byte sniff (`%PDF-`) on upload.
+MINIMAL_PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+
 TENANTS = {
     "travel": {
         "email": "admin@tutterfly.com",
@@ -190,10 +193,18 @@ async def run_all_tests():
             assert pkg_resp.status_code in [200, 201], f"Package: {pkg_resp.status_code} -- {pkg_resp.text}"
             travel_entities["package_id"] = pkg_resp.json()["id"]
 
-            # Create Itinerary
+            # Create Itinerary via the PDF-upload flow (the old JSON create was removed).
+            # Upload resolves destinations against the destination PICKLIST, so grab a picklist id.
+            dpick_resp = await client.get(f"{BASE_URL}/picklists/destination", headers=t_headers)
+            assert dpick_resp.status_code == 200, f"Destination picklist: {dpick_resp.status_code} -- {dpick_resp.text}"
+            dpick_items = dpick_resp.json()
+            assert dpick_items, "No destination picklist items seeded for travel tenant"
+            travel_dest_pick_id = dpick_items[0]["id"]
+
             itinerary_resp = await client.post(
-                f"{BASE_URL}/itineraries/",
-                json={"name": f"Travel Dream Route {ts}", "total_days": 5, "total_nights": 4},
+                f"{BASE_URL}/itineraries/upload",
+                data={"name": f"Travel Dream Route {ts}", "destination_ids": travel_dest_pick_id},
+                files={"file": ("route.pdf", MINIMAL_PDF, "application/pdf")},
                 headers=t_headers
             )
             assert itinerary_resp.status_code in [200, 201], f"Itinerary: {itinerary_resp.status_code} -- {itinerary_resp.text}"

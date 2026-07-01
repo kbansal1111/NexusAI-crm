@@ -20,7 +20,7 @@ from app.models.note import Note
 from app.models.email import Email
 from app.models.file import File
 from app.models.supplier import Supplier
-from app.models.itinerary import Itinerary, ItineraryDay
+from app.models.itinerary import Itinerary
 from app.models.package import Package, PackagePricing
 from app.models.role import Role
 from app.models.department import Department
@@ -109,14 +109,6 @@ from app.models.search_extras import (
 # Phase 9 — File folders / shares / versions / public links
 from app.models.file_extras import (
     FileFolder, FileVersion, FilePublicLink,
-)
-# Phase 5 — Itinerary engine extension
-from app.models.itinerary_extras import (
-    ItineraryCategory, ItinerarySubCategory,
-    ItineraryScheduleItem, ItineraryHotel, ItineraryFlight,
-    ItineraryInclusion, UserItineraryInclusion,
-    ItineraryHeaderFooter, ProformaInvoice, TourItinerary,
-    ItineraryPDFJob,
 )
 # Phase 17 — Email tokens
 from app.models.email_token import EmailToken
@@ -211,7 +203,6 @@ async def init_db():
             # Travel CRM
             Supplier,
             Itinerary,
-            ItineraryDay,
             Package,
             PackagePricing,
             Destination,

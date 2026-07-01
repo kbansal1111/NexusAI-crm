@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/format";
-import { Plus, Search, MoreHorizontal, FileText, Mail, Copy, Trash2, Edit } from "lucide-react";
-import Link from "next/link";
+import { Upload, Search, MoreHorizontal, FileText, Download, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,14 +22,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useItineraries, useDeleteItinerary } from "@/features/itineraries/api/useItineraries";
+import { itinerariesService } from "@/lib/api/services/itineraries.service";
+import { UploadItineraryDrawer } from "@/features/itineraries/components/UploadItineraryDrawer";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 export default function ItinerariesClient() {
     const [searchQuery, setSearchQuery] = useState("");
-    const { data: itineraries, isLoading } = useItineraries();
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [uploadOpen, setUploadOpen] = useState(false);
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
+
+    const { data: itineraries, isLoading } = useItineraries(debouncedSearch || undefined);
     const deleteMutation = useDeleteItinerary();
-    const router = useRouter();
 
     const handleDelete = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this itinerary?")) {
@@ -43,9 +50,20 @@ export default function ItinerariesClient() {
         }
     };
 
-    const filteredItineraries = itineraries?.filter(itinerary => 
-        itinerary.name.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
+    const openPdf = async (fileId?: string | null) => {
+        if (!fileId) {
+            toast.error("No PDF attached to this itinerary");
+            return;
+        }
+        try {
+            const url = await itinerariesService.getPdfUrl(fileId);
+            window.open(url, "_blank", "noopener,noreferrer");
+        } catch {
+            toast.error("Could not open the PDF");
+        }
+    };
+
+    const rows = itineraries || [];
 
     return (
         <div className="flex-1 min-w-0 w-full space-y-6 max-w-[1400px] mx-auto p-4 sm:p-6">
@@ -57,24 +75,25 @@ export default function ItinerariesClient() {
                         <div className="h-8 w-8 bg-blue-500 rounded flex items-center justify-center shrink-0">
                             <FileText className="h-4 w-4 text-white" />
                         </div>
-                        <CardTitle className="text-base font-semibold text-foreground">Itinerary Builder</CardTitle>
+                        <CardTitle className="text-base font-semibold text-foreground">Itineraries</CardTitle>
                     </div>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-initial">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search"
+                                placeholder="Search name or destination"
                                 className="pl-9 h-9 w-full sm:w-[250px] text-sm bg-background border-border text-foreground placeholder:text-muted-foreground"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <Link href="/itineraries/create" className="shrink-0">
-                            <Button size="icon" className="h-9 w-9 bg-blue-500 hover:bg-blue-600">
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </Link>
+                        <Button
+                            onClick={() => setUploadOpen(true)}
+                            className="h-9 shrink-0 bg-blue-500 hover:bg-blue-600 gap-2"
+                        >
+                            <Upload className="h-4 w-4" /> Upload Itinerary
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -83,9 +102,8 @@ export default function ItinerariesClient() {
                             <TableHeader className="bg-muted/40 whitespace-nowrap">
                                 <TableRow className="border-border hover:bg-transparent">
                                     <TableHead className="font-semibold text-muted-foreground">Itinerary Name</TableHead>
-                                    <TableHead className="font-semibold text-muted-foreground">Starts From</TableHead>
                                     <TableHead className="font-semibold text-muted-foreground">Destinations</TableHead>
-                                    <TableHead className="font-semibold text-muted-foreground">Durations</TableHead>
+                                    <TableHead className="font-semibold text-muted-foreground">PDF</TableHead>
                                     <TableHead className="font-semibold text-muted-foreground">Created On</TableHead>
                                     <TableHead className="font-semibold text-muted-foreground w-[100px]"></TableHead>
                                 </TableRow>
@@ -93,33 +111,44 @@ export default function ItinerariesClient() {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading itineraries...</TableCell>
+                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading itineraries...</TableCell>
                                     </TableRow>
-                                ) : filteredItineraries.length === 0 ? (
+                                ) : rows.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No itineraries found</TableCell>
+                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No itineraries found</TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredItineraries.map((itinerary) => (
+                                    rows.map((itinerary) => (
                                         <TableRow key={itinerary.id} className="border-border hover:bg-muted/40 block sm:table-row">
                                             <TableCell className="block sm:table-cell">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-[10px] font-medium text-muted-foreground text-center leading-tight border border-border shrink-0">
-                                                        ID<br/>BLD
+                                                    <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground border border-border shrink-0">
+                                                        <FileText className="h-4 w-4" />
                                                     </div>
-                                                    <Link href={`/itineraries/${itinerary.id}`} className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium break-words">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openPdf(itinerary.pdf_file_id)}
+                                                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium break-words text-left"
+                                                    >
                                                         {itinerary.name}
-                                                    </Link>
+                                                    </button>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground block sm:table-cell whitespace-nowrap">
-                                                {itinerary.tour_starts_from || "-"}
-                                            </TableCell>
                                             <TableCell className="text-muted-foreground font-medium block sm:table-cell whitespace-nowrap">
-                                                {itinerary.destination_ids?.length > 0 ? `${itinerary.destination_ids.length} Destination(s)` : "-"}
+                                                {itinerary.destination_names?.length ? itinerary.destination_names.join(", ") : "-"}
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground block sm:table-cell whitespace-nowrap">
-                                                {itinerary.total_nights || 0} N / {itinerary.total_days || 0} D
+                                            <TableCell className="block sm:table-cell whitespace-nowrap">
+                                                {itinerary.pdf_file_id ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openPdf(itinerary.pdf_file_id)}
+                                                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" /> View
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-sm">-</span>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground block sm:table-cell whitespace-nowrap">
                                                 {itinerary.created_at ? formatDate(itinerary.created_at) : "-"}
@@ -132,19 +161,10 @@ export default function ItinerariesClient() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-56">
-                                                        <DropdownMenuItem onClick={() => router.push(`/itineraries/${itinerary.id}/edit`)}>
-                                                            <Edit className="h-4 w-4 mr-2 text-muted-foreground" /> Edit
+                                                        <DropdownMenuItem onClick={() => openPdf(itinerary.pdf_file_id)}>
+                                                            <Download className="h-4 w-4 mr-2 text-muted-foreground" /> Download PDF
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem>
-                                                            <FileText className="h-4 w-4 mr-2 text-muted-foreground" /> Preview & Generate Pdf
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem>
-                                                            <Mail className="h-4 w-4 mr-2 text-muted-foreground" /> E-mail Itinerary
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem>
-                                                            <Copy className="h-4 w-4 mr-2 text-muted-foreground" /> Copy
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem 
+                                                        <DropdownMenuItem
                                                             onClick={() => handleDelete(itinerary.id)}
                                                             className="text-red-600 focus:text-red-600"
                                                         >
@@ -161,6 +181,8 @@ export default function ItinerariesClient() {
                     </div>
                 </CardContent>
             </Card>
+
+            <UploadItineraryDrawer open={uploadOpen} onOpenChange={setUploadOpen} />
         </div>
     );
 }
