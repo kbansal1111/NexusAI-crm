@@ -50,7 +50,6 @@ class LeadBase(BaseModel):
 
     # Universal CRM fields
     campaign_name: Optional[str] = None
-    ip_address: Optional[str] = None
     segment: Optional[str] = "B2C"
     creation_type: Optional[str] = "manual"
 
@@ -94,7 +93,6 @@ class LeadUpdate(BaseModel):
 
     # Universal CRM fields
     campaign_name: Optional[str] = None
-    ip_address: Optional[str] = None
     segment: Optional[str] = None  # B2C / B2B / CORPORATE — persisted on update
 
     # Industry-specific data
@@ -163,7 +161,6 @@ class LeadResponse(BaseModel):
 
     # Universal CRM fields
     campaign_name: Optional[str] = None
-    ip_address: Optional[str] = None
     segment: Optional[str] = "B2C"
     creation_type: Optional[str] = "manual"
 

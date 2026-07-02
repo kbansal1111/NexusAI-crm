@@ -1,37 +1,34 @@
-# Tutterfly CRM — Web-to-Lead Integration Payload (v1 draft)
+# Tutterfly CRM — Web-to-Lead Integration Payload (FINAL)
 
-Yeh JSON contract website/landing-page forms se Tutterfly CRM mein lead bhejne ke liye hai.
-Endpoint abhi build hona baaki hai (`POST /api/v1/integrations/leads` — TBD); payload shape final
-karke team ke saath share kiya ja raha hai taaki dono taraf ka kaam parallel chale.
+Website se Tutterfly CRM mein lead bhejne ka JSON contract — **structure exactly hamare Lead
+schema ke according** (`app/models/lead.py` + `TravelLeadData`). Travel fields `industry_data`
+ke andar, traceability `custom_fields` mein. Endpoint abhi build hona baaki hai
+(`POST /api/v1/integrations/leads` — TBD); URL + token go-live se pehle milega.
 
-## Full payload
+## Payload
 
 ```json
 {
-  "token": "<TUTTERFLY_INTEGRATION_TOKEN — Tutterfly team provide karegi, per-tenant>",
+  "token": "<TUTTERFLY_INTEGRATION_TOKEN — hum denge>",
   "lead": {
     "salutation": "Mr.",
     "first_name": "Rahul",
     "last_name": "Sharma",
-
     "email": "rahul.sharma@example.com",
     "mobile": "+91 9876543210",
     "phone": "+91 1141234567",
-
     "company": "Acme Pvt Ltd",
+    "title": "Manager",
+    "no_employees": 10,
     "website": "https://acme.example.com",
-
     "street": "12, MG Road",
     "city": "New Delhi",
     "state": "Delhi",
     "zip": "110001",
     "country": "India",
-
     "source": "Web",
     "campaign_name": "bali-summer-2026",
-    "ip_address": "203.0.113.7",
     "segment": "B2C",
-
     "industry_data": {
       "travel_date": "2026-09-15",
       "no_of_nights": 5,
@@ -43,92 +40,73 @@ karke team ke saath share kiya ja raha hai taaki dono taraf ka kaam parallel cha
       "experience": "Honeymoon",
       "is_fixed": false
     },
-
     "custom_fields": {
       "ref_id": "WEB-2026-000123",
       "enquiry_id": "98765",
       "campaign_url": "https://dooktravels.com/packages/bali?utm_campaign=bali-summer-2026",
       "form_type": "package_enquiry",
       "bnpl": "no",
-      "description": "Customer wants beach-facing villa, flexible on dates by 2-3 days."
+      "description": "Customer wants beach-facing villa, flexible on dates."
     }
   }
 }
 ```
 
-## Field rules
+> Sirf ek deviation schema se: `source` aur `industry_data.experience` mein team **name** bhejegi
+> (`source_id`/`experience_id` ObjectIds unke paas nahi hote) — name→id resolve endpoint karega.
+> Isi tarah `destinations` names hain; `destination_ids` hum resolve karenge.
 
-| Field | Required | Format / Notes |
-|---|---|---|
-| `token` | ✅ | Har request mein. Tutterfly per-tenant token dega. Leak hone par rotate hoga. |
-| `last_name` | ✅ | Max 100 chars. Agar form mein ek hi "Name" field hai to pura naam yahan bhejo, `first_name` khali. |
-| `first_name` | optional | Max 100. Khali string chalegi. |
-| `salutation` | optional | `Mr.` / `Mrs.` / `Ms.` / `Dr.` / `Prof.` |
-| `email` | optional* | Valid email. *Email ya mobile mein se kam-se-kam ek hona chahiye. |
-| `mobile` | optional* | **`+<country code> <10 digits>`** — e.g. `+91 9876543210`. Sirf 10 digits bhejoge to hum `+91` maan lenge; country code ke saath bhejna best hai. |
-| `phone` | optional | Same format as mobile. Landline/alternate ke liye. |
-| `company` | optional | B2B enquiry ho to. Max 255. |
-| `website` | optional | Customer ki company website (form ka URL nahi — wo `custom_fields.campaign_url` mein). |
-| `street`/`city`/`state`/`zip`/`country` | optional | Customer ka address. Purana `region` ab `state` hai. |
-| `source` | ✅ | Picklist **name** bhejo (e.g. `Web`, `Instagram`, `Google`, `Whatsapp`). ID resolve hum karenge. Naya source chahiye to pehle Tutterfly team ko bolo. |
-| `campaign_name` | optional | Campaign identifier (purana `campaign_id` value). |
-| `ip_address` | optional | Visitor IP (purana `ip`). |
-| `segment` | optional | `B2C` (default) / `B2B` / `CORPORATE`. |
-| `industry_data.travel_date` | ✅ | `YYYY-MM-DD`. Travel lead ke liye **mandatory** — form mein date field required rakho. |
-| `industry_data.no_of_nights` | optional | Integer ≥ 0 (purana `no_of_nights`/`duration`). Number bhejo, string nahi. |
-| `industry_data.no_of_pax` | optional | Integer ≥ 0 — total travellers (purana `no_of_pax`/`no_of_passengers`). |
-| `industry_data.no_of_adults` / `no_of_childs` / `no_of_infants` | optional | Integer ≥ 0. Breakdown available ho to bhejo. |
-| `industry_data.destinations` | optional | **Names ka array** (e.g. `["Bali"]`). Purane `destination_json`/`destinations_name`/`min_country_data` ki jagah sirf yeh. |
-| `industry_data.experience` | optional | Experience **name**: `Budget` / `Standard` / `Luxury` / `Ultra-Luxury` / `Adventure` / `Honeymoon` / `Family`. |
-| `industry_data.is_fixed` | optional | Boolean (purana `fixed_departure`). |
-| `custom_fields.ref_id` | strongly recommended | Tumhare system ka unique reference — **dedupe isi par hoga**, duplicate submission par dobara lead nahi banegi. |
-| `custom_fields.enquiry_id` | optional | Purana `dook_enquiry_id`. |
-| `custom_fields.campaign_url` | optional | Landing page ka full URL (purana `url`). |
-| `custom_fields.form_type` / `bnpl` / `description` | optional | Free-form; jaise pehle bhejte the. |
+## Required (CRM enforce karta hai — `validate_lead_record`)
 
-## Purane payload se kya HATA (mat bhejna)
-
-| Purana field | Kyun |
+| Field | Rule |
 |---|---|
-| `source_medium` | Field system se remove ho chuki hai — sirf `source` hai. |
-| `destination_json`, `destinations_name`, `min_country_data` | Ab sirf `industry_data.destinations` (names array). |
-| `departure_id` | Lead par exist nahi karta. |
-| `region` | Ab `state`. |
-| `ip` | Ab `ip_address`. |
-| `no_of_pax` (top-level), `travel_date` (top-level), `experience` (top-level), `fixed_departure`, `no_of_nights` (top-level) | Sab `industry_data` ke andar. |
-| `custom_fields.segment`, `custom_fields.destination`, `custom_fields.no_of_passengers`, `custom_fields.date_of_travel`, `custom_fields.experience` | Duplicates the — canonical jagah upar define hai. |
+| `token` | Har request. Server-to-server only, browser mein expose nahi. |
+| `last_name` | Max 100. Single "Name" field ho to pura naam yahan, `first_name` = `""`. |
+| `city`, `state`, `country` | Teeno mandatory. |
+| `source` | Picklist name — `Web`, `Instagram`, `Google`, `Whatsapp`… Naya value pehle humein batao. |
+| `industry_data.travel_date` | `YYYY-MM-DD`. Form par required rakho. |
+| `industry_data.destinations` | Names ka array, kam-se-kam ek. |
 
-## Minimal example (chhota enquiry form)
+## Optional
 
-```json
-{
-  "token": "<TOKEN>",
-  "lead": {
-    "first_name": "",
-    "last_name": "Priya Verma",
-    "email": "priya@example.com",
-    "mobile": "+91 9812345678",
-    "city": "Mumbai",
-    "state": "Maharashtra",
-    "country": "India",
-    "source": "Web",
-    "industry_data": {
-      "travel_date": "2026-10-05",
-      "no_of_pax": 2,
-      "destinations": ["Maldives"]
-    },
-    "custom_fields": {
-      "ref_id": "WEB-2026-000124"
-    }
-  }
-}
-```
+| Field | Note |
+|---|---|
+| `email` / `mobile` | Kam-se-kam ek bhejo. Phone format `+91 9876543210`; sirf 10 digits → `+91` maan lenge. |
+| `phone` | Alternate/landline, same format. |
+| `salutation` | `Mr.` / `Mrs.` / `Ms.` / `Dr.` / `Prof.` |
+| `company`, `title`, `no_employees`, `website` | B2B info. `no_employees` integer ≥ 1. |
+| `street`, `zip` | Address extras. |
+| `campaign_name` | Campaign identifier. |
+| `segment` | `B2C` (default) / `B2B` / `CORPORATE`. |
+| `industry_data.no_of_nights/pax/adults/childs/infants` | Integers ≥ 0 — number bhejo, string nahi. |
+| `industry_data.experience` | `Budget` / `Standard` / `Luxury` / `Ultra-Luxury` / `Adventure` / `Honeymoon` / `Family`. |
+| `industry_data.is_fixed` | Boolean — fixed departure. |
+| `custom_fields.ref_id` | **Strongly recommended** — unique per enquiry, dedupe key (retry-safe). |
+| `custom_fields.enquiry_id` | Purana `dook_enquiry_id`; fallback dedupe key. |
+| `custom_fields.campaign_url` | Landing page full URL (purana `url`). |
+| `custom_fields.form_type` / `bnpl` / `description` | Free-form. |
+
+## Purane (old CRM) payload se mapping — team ke reference ke liye
+
+| Purana | Naya |
+|---|---|
+| `region` | `state` |
+| `travel_date`, `no_of_nights`, `no_of_pax`, `fixed_departure`, `experience` (top-level) | `industry_data.*` (`fixed_departure` → `is_fixed`) |
+| `destinations_name` / `destination_json` / `min_country_data` | `industry_data.destinations` (names array) |
+| `url` | `custom_fields.campaign_url` |
+| `ref_id` (top-level) | `custom_fields.ref_id` |
+| `dook_enquiry_id` | `custom_fields.enquiry_id` |
+| `source_medium` | ❌ mat bhejo — CRM se removed |
+| `ip` | ❌ mat bhejo — CRM se removed |
+| `departure_id` | ❌ drop |
+| `custom_fields.segment` / `destination` / `date_of_travel` / `no_of_passengers` / `experience` | ❌ duplicates — canonical jagah upar |
 
 ## Backend implementation notes (Tutterfly-internal, endpoint banate waqt)
 
 1. **Auth**: per-tenant integration token, hashed store; tenant_id token se resolve — body se kabhi nahi.
-2. **Owner assignment**: system user vs default user vs round-robin — DECISION PENDING. `creation_type="auto"` set hoga.
-3. **Normalization**: phone → `+91 ` default prefix; ints cast; `source`/`experience`/`destinations` name→picklist-id resolve (`build_picklist_query`); unknown names ki policy decide karni hai.
-4. **Dedupe**: `custom_fields.ref_id` (fallback `enquiry_id`) par idempotency — same ref dobara aaye to existing lead return, duplicate create nahi.
-5. **travel_date policy**: travel tenants ke liye required (`require_for_travel=True`); missing par 422 ya default — decide karna hai (contract mein abhi mandatory bola hai).
+2. **Owner assignment**: system user vs default user vs round-robin — DECISION PENDING. `creation_type="auto"`.
+3. **Resolution**: `source`/`experience`/`destinations` names → picklist ObjectIds (`build_picklist_query`, case-insensitive); phone normalize (`+91` default — `safe_phone_validator` invalid ko silently null karta hai, isliye pehle normalize); unknown-name policy decide karni hai.
+4. **Required-field validation**: `validate_lead_record` (entity_required_fields.py).
+5. **Dedupe**: `custom_fields.ref_id` (fallback `enquiry_id`) par idempotency.
 6. **Security test**: tenant-isolation test `apps/backend/tests/security/` mein (CLAUDE.md rule).
+7. Unknown/extra fields ignore karna, error mat dena.

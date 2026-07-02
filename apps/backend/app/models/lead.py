@@ -47,7 +47,6 @@ class Lead(BaseDocument):
 
     # Universal CRM fields
     campaign_name: Optional[str] = None
-    ip_address: Optional[str] = None
     segment: Optional[str] = "B2C"  # Default to B2C
     creation_type: str = "manual"  # manual or auto
     
