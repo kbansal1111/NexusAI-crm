@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutterfly Web-to-Lead Payload Spec</title>
+</head>
+<body>
+<style>
+  :root{
+    --paper:#FAFBF9; --ink:#1C2528; --muted:#5A6A6B; --line:#DEE6E3;
+    --accent:#0E7C7B; --accent-deep:#0A5150; --accent-wash:#EAF4F2;
+    --warn:#A8442E; --warn-wash:#F8EFEA;
+    --code-bg:#131B1C; --code-ink:#D7E2E0; --code-key:#82CFC6; --code-str:#E7C795; --code-lit:#A9C7E8;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+       font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:48px 24px 96px}
+
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-size:clamp(28px,4.5vw,38px);line-height:1.15;font-weight:700;letter-spacing:-.015em;margin:0 0 14px;text-wrap:balance}
+  .lede{color:var(--muted);max-width:62ch;margin:0}
+  .lede b{color:var(--ink)}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .chip{display:inline-block;font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:99px;border:1px solid var(--line);color:var(--muted);background:#fff}
+  .chip.status{border-color:transparent;background:var(--accent-wash);color:var(--accent-deep)}
+
+  section{margin-top:56px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:8px;margin-bottom:20px}
+  .sec-num{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+  h2{font-size:21px;font-weight:700;letter-spacing:-.01em;margin:0}
+  p{max-width:68ch}
+
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .rule{background:#fff;padding:16px 18px}
+  .rule b{display:block;font-size:14px;margin-bottom:4px}
+  .rule span{font-size:13.5px;color:var(--muted);line-height:1.5;display:block}
+  .rule .no{color:var(--warn)}
+
+  .codebox{position:relative;background:var(--code-bg);border-radius:10px;margin:18px 0 6px}
+  .codebox pre{margin:0;padding:22px 24px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.65;color:var(--code-ink)}
+  .codebox .k{color:var(--code-key)}
+  .codebox .s{color:var(--code-str)}
+  .codebox .l{color:var(--code-lit)}
+  .copy{position:absolute;top:10px;right:10px;font:600 12px var(--sans);letter-spacing:.02em;
+        background:rgba(255,255,255,.08);color:#BFCFCC;border:1px solid rgba(255,255,255,.18);
+        border-radius:6px;padding:5px 12px;cursor:pointer}
+  .copy:hover{background:rgba(255,255,255,.16);color:#fff}
+  .copy:focus-visible{outline:2px solid var(--code-key);outline-offset:2px}
+  .copy.done{background:var(--accent);border-color:var(--accent);color:#fff}
+  .caption{font-size:13px;color:var(--muted);margin:6px 2px 0}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff;margin:14px 0 4px}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:14px}
+  th{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+  td{padding:10px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.field{font-family:var(--mono);font-size:13px;white-space:nowrap}
+  td.notes{color:var(--muted);font-size:13.5px;min-width:260px}
+  .req,.opt,.rec,.dead{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;padding:2px 9px;border-radius:5px;white-space:nowrap}
+  .req{background:var(--accent-wash);color:var(--accent-deep)}
+  .rec{background:#FBF3E4;color:#8A6116}
+  .opt{background:#F0F2F1;color:var(--muted)}
+  .dead{background:var(--warn-wash);color:var(--warn)}
+  code{font-family:var(--mono);font-size:.88em;background:#EEF1F0;border-radius:4px;padding:1px 5px}
+  .field-inline{font-family:var(--mono);font-size:12.5px}
+
+  .callout{border-left:3px solid var(--accent);background:var(--accent-wash);border-radius:0 8px 8px 0;padding:14px 18px;font-size:14.5px;margin:20px 0;max-width:none}
+  .callout b{font-weight:700}
+
+  footer{margin-top:72px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 24px;justify-content:space-between}
+  @media (prefers-reduced-motion:no-preference){ .copy{transition:background .15s,color .15s} }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Tutterfly CRM · Integration Spec</p>
+    <h1>Web-to-Lead JSON Payload</h1>
+    <p class="lede">Contract for sending website enquiries into Tutterfly CRM as leads. <b>The structure
+    mirrors the Tutterfly Lead schema</b> — contact and address fields at the top level, travel details
+    inside <code>industry_data</code>. Every field here maps to a field on the CRM's lead form. The
+    endpoint URL and token will be shared before go-live.</p>
+    <div class="meta">
+      <span class="chip status">v4 · final for team</span>
+      <span class="chip">July 2026</span>
+      <span class="chip">Audience: website / forms team</span>
+      <span class="chip">Method: POST · JSON body</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">1</span><h2>Six rules before anything else</h2></div>
+    <div class="rules">
+      <div class="rule"><b>Required fields</b><span><code>last_name</code>, <code>city</code>, <code>state</code>, <code>country</code>, <code>source</code> + inside <code>industry_data</code>: <code>travel_date</code>, <code>destinations</code>. The CRM rejects the lead if any is missing.</span></div>
+      <div class="rule"><b>Send names, not IDs</b><span><code>source</code>, <code>experience</code>, <code>destinations</code> are plain names ("Web", "Honeymoon", ["Bali"]). ID resolution happens on the Tutterfly side.</span></div>
+      <div class="rule"><b>Always send <code>ref_id</code></b><span>Unique per enquiry. It is the dedupe key — retries and double-submits will not create duplicate leads. (Integration-only field; it doesn't appear on the CRM lead form.)</span></div>
+      <div class="rule"><b>Phone format</b><span><code>+91 9876543210</code> — country code, space, 10 digits. Bare 10-digit numbers are accepted and treated as +91. Send at least one of email / mobile.</span></div>
+      <div class="rule"><b>Numbers as numbers</b><span>Nights, pax, adults, children, infants go as JSON integers — <code>5</code>, not <code>"5"</code>.</span></div>
+      <div class="rule"><b class="no">Do not send <code>source_medium</code> or <code>ip</code></b><span>Both fields are removed from the CRM. Source tracking is <code>source</code> only.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">2</span><h2>Full payload</h2></div>
+    <p>Every supported field with realistic values. Optional fields may be omitted entirely.</p>
+
+    <div class="codebox">
+      <button class="copy" type="button" aria-label="Copy full payload JSON">Copy</button>
+      <pre>{
+  <span class="k">"token"</span>: <span class="s">"&lt;TUTTERFLY_INTEGRATION_TOKEN&gt;"</span>,
+  <span class="k">"lead"</span>: {
+    <span class="k">"salutation"</span>: <span class="s">"Mr."</span>,
+    <span class="k">"first_name"</span>: <span class="s">"Rahul"</span>,
+    <span class="k">"last_name"</span>: <span class="s">"Sharma"</span>,
+    <span class="k">"email"</span>: <span class="s">"rahul.sharma@example.com"</span>,
+    <span class="k">"mobile"</span>: <span class="s">"+91 9876543210"</span>,
+    <span class="k">"phone"</span>: <span class="s">"+91 1141234567"</span>,
+    <span class="k">"company"</span>: <span class="s">"Acme Pvt Ltd"</span>,
+    <span class="k">"title"</span>: <span class="s">"Manager"</span>,
+    <span class="k">"no_employees"</span>: <span class="l">10</span>,
+    <span class="k">"website"</span>: <span class="s">"https://acme.example.com"</span>,
+    <span class="k">"street"</span>: <span class="s">"12, MG Road"</span>,
+    <span class="k">"city"</span>: <span class="s">"New Delhi"</span>,
+    <span class="k">"state"</span>: <span class="s">"Delhi"</span>,
+    <span class="k">"zip"</span>: <span class="s">"110001"</span>,
+    <span class="k">"country"</span>: <span class="s">"India"</span>,
+    <span class="k">"source"</span>: <span class="s">"Web"</span>,
+    <span class="k">"campaign_name"</span>: <span class="s">"bali-summer-2026"</span>,
+    <span class="k">"segment"</span>: <span class="s">"B2C"</span>,
+    <span class="k">"industry_data"</span>: {
+      <span class="k">"travel_date"</span>: <span class="s">"2026-09-15"</span>,
+      <span class="k">"no_of_nights"</span>: <span class="l">5</span>,
+      <span class="k">"no_of_pax"</span>: <span class="l">4</span>,
+      <span class="k">"no_of_adults"</span>: <span class="l">2</span>,
+      <span class="k">"no_of_childs"</span>: <span class="l">1</span>,
+      <span class="k">"no_of_infants"</span>: <span class="l">1</span>,
+      <span class="k">"destinations"</span>: [<span class="s">"Bali"</span>, <span class="s">"Singapore"</span>],
+      <span class="k">"experience"</span>: <span class="s">"Honeymoon"</span>,
+      <span class="k">"is_fixed"</span>: <span class="l">false</span>
+    },
+    <span class="k">"ref_id"</span>: <span class="s">"WEB-2026-000123"</span>
+  }
+}</pre>
+    </div>
+    <p class="caption">The Copy button copies plain JSON, ready to paste into your handler or Postman.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">3</span><h2>Field reference</h2></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Field</th><th>Requirement</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="field">token</td><td><span class="req">REQUIRED</span></td><td class="notes">Every request. Server-to-server only — never expose in browser code. Rotated if leaked.</td></tr>
+          <tr><td class="field">last_name</td><td><span class="req">REQUIRED</span></td><td class="notes">Max 100. Single "Name" field? Send the full name here, <span class="field-inline">first_name</span> as <code>""</code>.</td></tr>
+          <tr><td class="field">city · state · country</td><td><span class="req">REQUIRED</span></td><td class="notes">All three enforced by the CRM. The old payload's <span class="field-inline">region</span> is now <span class="field-inline">state</span>.</td></tr>
+          <tr><td class="field">source</td><td><span class="req">REQUIRED</span></td><td class="notes">Picklist <b>name</b> — <code>Web</code>, <code>Instagram</code>, <code>Google</code>, <code>Whatsapp</code>… New value? Tell the Tutterfly team first.</td></tr>
+          <tr><td class="field">industry_data.travel_date</td><td><span class="req">REQUIRED</span></td><td class="notes"><code>YYYY-MM-DD</code>. Keep the date field required on the form.</td></tr>
+          <tr><td class="field">industry_data.destinations</td><td><span class="req">REQUIRED</span></td><td class="notes">Array of destination <b>names</b>, at least one — <code>["Bali"]</code>. Replaces <span class="field-inline">destinations_name</span> / <span class="field-inline">destination_json</span> / <span class="field-inline">min_country_data</span>.</td></tr>
+          <tr><td class="field">email · mobile</td><td><span class="rec">ONE OF</span></td><td class="notes">Send at least one. Mobile: <code>+91 9876543210</code>; bare 10 digits → treated as +91.</td></tr>
+          <tr><td class="field">ref_id</td><td><span class="rec">RECOMMENDED</span></td><td class="notes">Unique per enquiry — <b>dedupe key</b>, safe to retry on network errors. Integration-only: stored internally, not a lead-form field.</td></tr>
+          <tr><td class="field">salutation</td><td><span class="opt">OPTIONAL</span></td><td class="notes"><code>Mr.</code> <code>Mrs.</code> <code>Ms.</code> <code>Dr.</code> <code>Prof.</code></td></tr>
+          <tr><td class="field">phone</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Alternate / landline, same format.</td></tr>
+          <tr><td class="field">company · title · no_employees · website</td><td><span class="opt">OPTIONAL</span></td><td class="notes">B2B info. <span class="field-inline">website</span> = customer's company site, not your landing page. <span class="field-inline">no_employees</span> integer ≥ 1.</td></tr>
+          <tr><td class="field">street · zip</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Address extras.</td></tr>
+          <tr><td class="field">campaign_name</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Campaign identifier (the old <span class="field-inline">campaign_id</span> value).</td></tr>
+          <tr><td class="field">segment</td><td><span class="opt">OPTIONAL</span></td><td class="notes"><code>B2C</code> (default) / <code>B2B</code> / <code>CORPORATE</code>.</td></tr>
+          <tr><td class="field">industry_data.no_of_nights · no_of_pax · no_of_adults · no_of_childs · no_of_infants</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Integers ≥ 0, as JSON numbers.</td></tr>
+          <tr><td class="field">industry_data.experience</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Name: <code>Budget</code> / <code>Standard</code> / <code>Luxury</code> / <code>Ultra-Luxury</code> / <code>Adventure</code> / <code>Honeymoon</code> / <code>Family</code>.</td></tr>
+          <tr><td class="field">industry_data.is_fixed</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Boolean — fixed-departure enquiry (the old <span class="field-inline">fixed_departure</span>).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">4</span><h2>Old payload → new payload cheat-sheet</h2></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Old field</th><th>Status</th><th>Now</th></tr></thead>
+        <tbody>
+          <tr><td class="field">region</td><td><span class="dead">RENAMED</span></td><td class="notes"><span class="field-inline">state</span></td></tr>
+          <tr><td class="field">ref_id</td><td><span class="dead">KEPT</span></td><td class="notes">Same name, top level — dedupe only, not a CRM lead field.</td></tr>
+          <tr><td class="field">travel_date · no_of_nights · no_of_pax · experience · fixed_departure (top level)</td><td><span class="dead">MOVED</span></td><td class="notes">All travel fields now live inside <span class="field-inline">industry_data</span> (<span class="field-inline">fixed_departure</span> → <span class="field-inline">is_fixed</span>, boolean).</td></tr>
+          <tr><td class="field">destinations_name · destination_json · min_country_data</td><td><span class="dead">REPLACED</span></td><td class="notes"><span class="field-inline">industry_data.destinations</span> — array of names</td></tr>
+          <tr><td class="field">no_of_traveler · no_of_passengers</td><td><span class="dead">RENAMED</span></td><td class="notes"><span class="field-inline">industry_data.no_of_pax</span> (integer)</td></tr>
+          <tr><td class="field">source_medium</td><td><span class="dead">REMOVED</span></td><td class="notes">Do not send — field no longer exists in the CRM.</td></tr>
+          <tr><td class="field">ip</td><td><span class="dead">REMOVED</span></td><td class="notes">Do not send — field no longer exists in the CRM.</td></tr>
+          <tr><td class="field">url · dook_enquiry_id · departure_id · form_type · bnpl</td><td><span class="dead">DROPPED</span></td><td class="notes">No equivalent field on the CRM lead.</td></tr>
+          <tr><td class="field">custom_fields block (segment · destination · description · date_of_travel · no_of_passengers · experience)</td><td><span class="dead">DROPPED</span></td><td class="notes">The CRM's custom-fields system is not in use. Send <span class="field-inline">segment</span> at the top level; the rest have canonical fields above.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">5</span><h2>Minimal example</h2></div>
+    <p>The smallest valid enquiry — every required field, nothing else.</p>
+    <div class="codebox">
+      <button class="copy" type="button" aria-label="Copy minimal payload JSON">Copy</button>
+      <pre>{
+  <span class="k">"token"</span>: <span class="s">"&lt;TOKEN&gt;"</span>,
+  <span class="k">"lead"</span>: {
+    <span class="k">"first_name"</span>: <span class="s">""</span>,
+    <span class="k">"last_name"</span>: <span class="s">"Priya Verma"</span>,
+    <span class="k">"mobile"</span>: <span class="s">"+91 9812345678"</span>,
+    <span class="k">"city"</span>: <span class="s">"Mumbai"</span>,
+    <span class="k">"state"</span>: <span class="s">"Maharashtra"</span>,
+    <span class="k">"country"</span>: <span class="s">"India"</span>,
+    <span class="k">"source"</span>: <span class="s">"Web"</span>,
+    <span class="k">"industry_data"</span>: {
+      <span class="k">"travel_date"</span>: <span class="s">"2026-10-05"</span>,
+      <span class="k">"destinations"</span>: [<span class="s">"Maldives"</span>]
+    },
+    <span class="k">"ref_id"</span>: <span class="s">"WEB-2026-000124"</span>
+  }
+}</pre>
+    </div>
+    <div class="callout"><b>Endpoint URL &amp; token:</b> shared separately before go-live. Build and test your handler
+    against this contract — the payload shape is final.</div>
+  </section>
+
+  <footer>
+    <span>Tutterfly CRM · Web-to-Lead Integration · v4 final</span>
+    <span>Questions → CRM team (Kartik)</span>
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var pre = btn.parentElement.querySelector('pre');
+      var text = pre.textContent;
+      function done(){
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1800);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function(){ fallback(); });
+      } else { fallback(); }
+      function fallback(){
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch(e){}
+        document.body.removeChild(ta);
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
