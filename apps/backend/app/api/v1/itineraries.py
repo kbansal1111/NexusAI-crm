@@ -19,7 +19,12 @@ from app.models.user import User
 from app.schemas.itinerary import (
     ItineraryUpdate, ItineraryResponse, ItineraryListResponse,
 )
-from app.services.file_service import FileService, detect_extension_mismatch, slugify
+from app.services.file_service import (
+    FileService,
+    StorageBackendUnavailable,
+    detect_extension_mismatch,
+    slugify,
+)
 from app.services.itinerary_service import ItineraryService
 from app.services.visibility_scope import get_visible_owner_ids, is_record_visible
 from app.api.deps import check_permission
@@ -139,6 +144,11 @@ async def upload_itinerary(
             category="itinerary_pdf",
             subfolder=f"itineraries/{primary_slug}",
         )
+    except StorageBackendUnavailable:
+        # Roll back, then let the app-level handler surface the storage
+        # misconfiguration as a clear 503 instead of a generic 500.
+        await itinerary.soft_delete()
+        raise
     except Exception:
         # Roll back the bare itinerary so we don't leave a PDF-less orphan
         await itinerary.soft_delete()

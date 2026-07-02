@@ -12,6 +12,7 @@ import {
 } from "@/features/itineraries/api/useItineraries";
 import { itinerariesService } from "@/lib/api/services/itineraries.service";
 import { UploadItineraryDrawer } from "@/features/itineraries/components/UploadItineraryDrawer";
+import { blobErrorDetail } from "@/lib/api/blobError";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,9 +40,9 @@ async function openPdf(itineraryId: string, hasPdf?: string | null) {
         const url = await itinerariesService.getPdfObjectUrl(itineraryId);
         if (win) win.location.href = url;
         else window.open(url, "_blank", "noopener,noreferrer");
-    } catch {
+    } catch (e) {
         if (win) win.close();
-        toast.error("Could not open the PDF");
+        toast.error((await blobErrorDetail(e)) ?? "Could not open the PDF");
     }
 }
 

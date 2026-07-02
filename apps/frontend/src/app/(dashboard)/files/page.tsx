@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Trash, FileIcon, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { apiClient } from "@/lib/api/client";
+import { blobErrorDetail } from "@/lib/api/blobError";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -29,8 +30,8 @@ export default function FilesPage() {
             link.click();
             link.parentNode?.removeChild(link);
             window.URL.revokeObjectURL(url);
-        } catch {
-            toast.error("Download failed");
+        } catch (e) {
+            toast.error((await blobErrorDetail(e)) ?? "Download failed");
         }
     };
 

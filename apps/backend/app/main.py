@@ -126,6 +126,27 @@ async def lifespan(app: FastAPI):
     except Exception:
         _logger.exception("Cache backend health check failed at startup")
 
+    # File storage: without AWS credentials S3Service falls back to the
+    # container's LOCAL disk — uploads then silently disappear on the next
+    # redeploy and downloads of S3-stored files fail. In production uploads
+    # are rejected outright (see FileService.upload_file), so surface the
+    # misconfiguration loudly at startup.
+    try:
+        from app.services.file_service import S3Service
+        if not S3Service().use_aws:
+            msg = (
+                "AWS S3 credentials are not configured — file storage is "
+                "falling back to the container's ephemeral local disk. Set "
+                "AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / "
+                "S3_BUCKET_NAME in the deploy environment."
+            )
+            if settings.ENVIRONMENT == "production":
+                _logger.critical(msg)
+            else:
+                _logger.warning(msg)
+    except Exception:
+        _logger.exception("File storage configuration check failed at startup")
+
     yield
     # Shutdown (cleanup if needed)
     await close_cache()
@@ -158,6 +179,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from app.services.file_service import StorageBackendUnavailable
+
+
+@app.exception_handler(StorageBackendUnavailable)
+async def storage_unavailable_handler(request: Request, exc: StorageBackendUnavailable):
+    """Storage misconfiguration (e.g. S3 file on a server without S3 creds).
+
+    503 with the real reason, so ops sees "S3 is not configured" instead of a
+    generic 500 when file uploads/downloads break.
+    """
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

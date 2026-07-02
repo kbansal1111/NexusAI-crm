@@ -13,6 +13,13 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - SECRET_KEY=${SECRET_KEY}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,https://tutterfly-frontend.vercel.app,https://tutterfly-backend.bigfat.ai}
+      # S3 file storage — REQUIRED in production. Without these the backend
+      # falls back to the container's ephemeral disk: uploads are lost on the
+      # next redeploy and downloads of S3-stored files fail.
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-tutterfly-crm}
     depends_on:
       - redis
     networks:
@@ -27,6 +34,10 @@ services:
       - MONGODB_URL=${MONGODB_URL}
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-tutterfly-crm}
     depends_on:
       - redis
     networks:

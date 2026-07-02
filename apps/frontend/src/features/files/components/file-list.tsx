@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Download, Trash, FileIcon } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { apiClient } from "@/lib/api/client";
+import { blobErrorDetail } from "@/lib/api/blobError";
+import { toast } from "sonner";
 
 interface FileListProps {
     entityType: string; // e.g., 'Lead', 'Account'
@@ -31,7 +33,7 @@ export function FileList({ entityType, entityId }: FileListProps) {
             link.parentNode?.removeChild(link);
         } catch (e) {
             console.error("Download failed", e);
-            alert("Download failed");
+            toast.error((await blobErrorDetail(e)) ?? "Download failed");
         }
     };
 

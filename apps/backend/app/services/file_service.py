@@ -2,6 +2,7 @@
 S3 and File service layer - AWS S3 integration and file management
 """
 import boto3
+import logging
 import os
 import re
 import unicodedata
@@ -9,12 +10,24 @@ import uuid
 from pathlib import Path
 from typing import Optional, List, BinaryIO
 from bson import ObjectId
+from botocore.exceptions import ClientError
 from datetime import datetime
 from app.core.config import settings
 from app.models.file import File
 
+_logger = logging.getLogger(__name__)
 
 _FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+class StorageBackendUnavailable(Exception):
+    """The file's storage backend cannot serve it on this server.
+
+    Typical cause: the File record says ``storage_type == "s3"`` but the server
+    is running without AWS credentials (S3Service fell back to local disk).
+    Surfaced to clients as HTTP 503 by the app-level exception handler, so
+    misconfiguration shows up as a clear message instead of a generic 500.
+    """
 
 
 # Magic-byte signatures for the file types listed in settings.ALLOWED_EXTENSIONS.
@@ -154,16 +167,20 @@ class LocalFileService:
         return f"local_uploads/{tenant_name}/{subfolder}/{unique_filename}"
     
     async def download_file(self, file_key: str) -> bytes:
-        """Download file from local storage"""
-        
+        """Download file from local storage.
+
+        Raises FileNotFoundError both for a missing file and for a key that
+        isn't a local key at all — callers treat either as "object gone".
+        """
+
         if file_key.startswith("local_uploads/"):
             filename = file_key.replace("local_uploads/", "")
             file_path = self.upload_dir / filename
-            
+
             with open(file_path, "rb") as f:
                 return f.read()
-        
-        raise Exception("Invalid file key format")
+
+        raise FileNotFoundError(f"Not a local storage key: {file_key}")
     
     async def delete_file(self, file_key: str) -> bool:
         """Delete file from local storage"""
@@ -195,12 +212,17 @@ class S3Service:
     """Service for AWS S3 operations with local storage fallback"""
     
     def __init__(self):
+        # Local storage is always available: even a server configured for S3
+        # must be able to serve/delete legacy files recorded with
+        # storage_type == "local".
+        self.local_service = LocalFileService()
+
         # Check if AWS credentials are properly configured
-        if (settings.AWS_ACCESS_KEY_ID and 
-            settings.AWS_SECRET_ACCESS_KEY and 
-            settings.AWS_ACCESS_KEY_ID != "your_access_key" and 
+        if (settings.AWS_ACCESS_KEY_ID and
+            settings.AWS_SECRET_ACCESS_KEY and
+            settings.AWS_ACCESS_KEY_ID != "your_access_key" and
             settings.AWS_SECRET_ACCESS_KEY != "your_secret_key"):
-            
+
             # Use AWS S3
             self.s3_client = boto3.client(
                 's3',
@@ -211,8 +233,7 @@ class S3Service:
             self.bucket_name = settings.S3_BUCKET_NAME
             self.use_aws = True
         else:
-            # Use local storage
-            self.local_service = LocalFileService()
+            # Fall back to local storage for uploads
             self.use_aws = False
     
     async def upload_file(
@@ -252,22 +273,50 @@ class S3Service:
                 file_obj, filename, content_type, tenant_id=tenant_id, subfolder=subfolder
             )
     
-    async def download_file(self, file_key: str) -> bytes:
-        """Download file from S3 or local storage"""
-        
-        if self.use_aws:
+    async def download_s3(self, file_key: str) -> bytes:
+        """Download an object stored in S3. Requires S3 to be configured.
+
+        Raises StorageBackendUnavailable when the server has no S3 credentials,
+        FileNotFoundError when the object no longer exists in the bucket.
+        """
+        if not self.use_aws:
+            raise StorageBackendUnavailable(
+                "This file is stored in S3, but file storage (S3) is not "
+                "configured on this server. Ask your administrator to set the "
+                "AWS credentials in the backend environment."
+            )
+        try:
             response = self.s3_client.get_object(
                 Bucket=self.bucket_name,
                 Key=file_key
             )
-            return response['Body'].read()
-        else:
-            return await self.local_service.download_file(file_key)
-    
-    async def delete_file(self, file_key: str) -> bool:
-        """Delete file from S3 or local storage"""
-        
-        if self.use_aws:
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code in ("NoSuchKey", "404"):
+                raise FileNotFoundError(f"S3 object missing: {file_key}") from e
+            raise
+        return response['Body'].read()
+
+    async def download_local(self, file_key: str) -> bytes:
+        """Download an object stored on this server's local disk."""
+        return await self.local_service.download_file(file_key)
+
+    async def delete_file(self, file_key: str, storage_type: str = None) -> bool:
+        """Delete a stored object from the backend it was stored with.
+
+        ``storage_type`` is the File record's value ("s3" | "local"); when
+        omitted, falls back to the server's current backend (legacy behavior).
+        """
+        if storage_type is None:
+            storage_type = "s3" if self.use_aws else "local"
+
+        if storage_type == "s3":
+            if not self.use_aws:
+                _logger.warning(
+                    "Cannot delete S3 object %s — S3 is not configured on this server",
+                    file_key,
+                )
+                return False
             try:
                 self.s3_client.delete_object(
                     Bucket=self.bucket_name,
@@ -316,6 +365,22 @@ class FileService:
         subfolder: str = "uploads",
     ) -> File:
         """Upload file and create file record. Filename is sanitized; S3 key is tenant-namespaced."""
+
+        # In production a silent fall-back to container-local disk means the
+        # file is quietly lost on the next redeploy. Fail loudly instead so a
+        # missing-credentials misconfiguration is caught immediately.
+        if not self.s3_service.use_aws and settings.ENVIRONMENT == "production":
+            _logger.critical(
+                "Rejecting upload of %s: AWS S3 credentials are not configured "
+                "on this production server — files would be written to the "
+                "container's ephemeral disk and lost on redeploy.",
+                filename,
+            )
+            raise StorageBackendUnavailable(
+                "File storage (S3) is not configured on the server, so the "
+                "upload cannot be stored safely. Ask your administrator to set "
+                "the AWS credentials in the backend environment."
+            )
 
         safe_name = sanitize_filename(filename)
         s3_key = await self.s3_service.upload_file(
@@ -369,18 +434,39 @@ class FileService:
         file_id: str,
         tenant_id: ObjectId
     ) -> Optional[tuple[bytes, str, str]]:
-        """Download file content"""
+        """Download file content.
+
+        Routes by the backend the file was STORED with (the record's
+        ``storage_type``), never by the server's current backend: a file
+        uploaded to S3 must not be looked up on local disk (and vice versa)
+        just because this server's credentials changed.
+
+        Returns None when the record or the stored object is gone (→ 404).
+        Raises StorageBackendUnavailable when the record says S3 but this
+        server has no S3 credentials (→ 503, a deploy misconfiguration).
+        """
         file_record = await self.get_file(file_id, tenant_id)
-        
+
         if not file_record:
             return None
-        
-        # Download from S3
-        content = await self.s3_service.download_file(file_record.s3_key)
-        
+
+        try:
+            if file_record.storage_type == "s3":
+                content = await self.s3_service.download_s3(file_record.s3_key)
+            else:
+                content = await self.s3_service.download_local(file_record.s3_key)
+        except FileNotFoundError:
+            # Record exists but the stored bytes are gone — e.g. it was written
+            # to a container's local disk that has since been redeployed.
+            _logger.warning(
+                "Stored object missing for file %s (storage=%s, key=%s)",
+                file_id, file_record.storage_type, file_record.s3_key,
+            )
+            return None
+
         # Increment download count
         await file_record.increment_download_count()
-        
+
         return content, file_record.original_filename, file_record.mime_type
     
     async def delete_file(
@@ -398,11 +484,14 @@ class FileService:
         # Only owner can delete
         if file_record.owner_id != user_id:
             return False
-        
-        # Delete from S3
-        if file_record.storage_type == "s3":
-            await self.s3_service.delete_file(file_record.s3_key)
-        
+
+        # Delete the stored object from the backend it was stored with; the
+        # record is soft-deleted regardless so a storage hiccup can't leave a
+        # "live" record pointing at a half-deleted file.
+        await self.s3_service.delete_file(
+            file_record.s3_key, storage_type=file_record.storage_type
+        )
+
         # Soft delete record
         await file_record.soft_delete()
         return True
@@ -460,8 +549,15 @@ class FileService:
     ) -> Optional[str]:
         """Get presigned URL for file"""
         file_record = await self.get_file(file_id, tenant_id)
-        
-        if not file_record or file_record.storage_type != "s3":
+
+        # Presigning only makes sense for S3-stored files on a server that has
+        # S3 configured — otherwise S3Service would hand back a bogus
+        # localhost URL for an S3 key.
+        if (
+            not file_record
+            or file_record.storage_type != "s3"
+            or not self.s3_service.use_aws
+        ):
             return None
         
         url = await self.s3_service.get_presigned_url(

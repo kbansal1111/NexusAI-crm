@@ -24,6 +24,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useItineraries, useDeleteItinerary } from "@/features/itineraries/api/useItineraries";
 import { itinerariesService } from "@/lib/api/services/itineraries.service";
 import { UploadItineraryDrawer } from "@/features/itineraries/components/UploadItineraryDrawer";
+import { blobErrorDetail } from "@/lib/api/blobError";
 import { toast } from "sonner";
 
 export default function ItinerariesClient() {
@@ -62,9 +63,9 @@ export default function ItinerariesClient() {
             const url = await itinerariesService.getPdfObjectUrl(itineraryId);
             if (win) win.location.href = url;
             else window.open(url, "_blank", "noopener,noreferrer");
-        } catch {
+        } catch (e) {
             if (win) win.close();
-            toast.error("Could not open the PDF");
+            toast.error((await blobErrorDetail(e)) ?? "Could not open the PDF");
         }
     };
 

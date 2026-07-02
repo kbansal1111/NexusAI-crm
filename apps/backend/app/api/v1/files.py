@@ -11,7 +11,11 @@ from io import BytesIO
 from app.core.config import settings
 from app.models.user import User
 from app.schemas.file import FileResponse, FileListResponse
-from app.services.file_service import FileService, detect_extension_mismatch
+from app.services.file_service import (
+    FileService,
+    StorageBackendUnavailable,
+    detect_extension_mismatch,
+)
 from app.api.deps import get_current_user, check_permission
 from app.core.rate_limiter import limiter
 
@@ -93,7 +97,9 @@ async def upload_file(
             category=category,
         )
         return FileResponse.from_orm(file_record)
-    except HTTPException:
+    except (HTTPException, StorageBackendUnavailable):
+        # StorageBackendUnavailable is turned into a clear 503 by the
+        # app-level handler — don't mask it as a generic 500.
         raise
     except Exception:
         _logger.exception(
