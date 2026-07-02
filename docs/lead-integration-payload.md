@@ -1,8 +1,8 @@
 # Tutterfly CRM — Web-to-Lead Integration Payload (FINAL)
 
 Website se Tutterfly CRM mein lead bhejne ka JSON contract — **structure exactly hamare Lead
-schema ke according** (`app/models/lead.py` + `TravelLeadData`). Travel fields `industry_data`
-ke andar, traceability `custom_fields` mein. Endpoint abhi build hona baaki hai
+schema + Lead form ke according** (`app/models/lead.py` + `TravelLeadData`). Har field jo yahan
+hai wo CRM ke lead form mein dikhti hai. Endpoint abhi build hona baaki hai
 (`POST /api/v1/integrations/leads` — TBD); URL + token go-live se pehle milega.
 
 ## Payload
@@ -40,21 +40,19 @@ ke andar, traceability `custom_fields` mein. Endpoint abhi build hona baaki hai
       "experience": "Honeymoon",
       "is_fixed": false
     },
-    "custom_fields": {
-      "ref_id": "WEB-2026-000123",
-      "enquiry_id": "98765",
-      "campaign_url": "https://dooktravels.com/packages/bali?utm_campaign=bali-summer-2026",
-      "form_type": "package_enquiry",
-      "bnpl": "no",
-      "description": "Customer wants beach-facing villa, flexible on dates."
-    }
+    "ref_id": "WEB-2026-000123"
   }
 }
 ```
 
-> Sirf ek deviation schema se: `source` aur `industry_data.experience` mein team **name** bhejegi
-> (`source_id`/`experience_id` ObjectIds unke paas nahi hote) — name→id resolve endpoint karega.
-> Isi tarah `destinations` names hain; `destination_ids` hum resolve karenge.
+> **Notes:**
+> - `source` / `industry_data.experience` / `industry_data.destinations` mein team **name** bhejegi —
+>   name→picklist-id resolve endpoint karega (`source_id`, `experience_id`, `destination_ids`).
+> - `ref_id` CRM ka lead field **nahi** hai — sirf **dedupe/idempotency** ke liye hai (retry ya
+>   double-submit par duplicate lead nahi banegi). Endpoint isse internally store karega, lead form
+>   mein nahi dikhega.
+> - Custom fields system (admin-defined additional fields) humne use nahi kiya hai, isliye contract
+>   mein koi `custom_fields` block **nahi** hai.
 
 ## Required (CRM enforce karta hai — `validate_lead_record`)
 
@@ -76,15 +74,12 @@ ke andar, traceability `custom_fields` mein. Endpoint abhi build hona baaki hai
 | `salutation` | `Mr.` / `Mrs.` / `Ms.` / `Dr.` / `Prof.` |
 | `company`, `title`, `no_employees`, `website` | B2B info. `no_employees` integer ≥ 1. |
 | `street`, `zip` | Address extras. |
-| `campaign_name` | Campaign identifier. |
+| `campaign_name` | Campaign identifier — CRM form ke "Campaign" field mein dikhta hai. |
 | `segment` | `B2C` (default) / `B2B` / `CORPORATE`. |
 | `industry_data.no_of_nights/pax/adults/childs/infants` | Integers ≥ 0 — number bhejo, string nahi. |
 | `industry_data.experience` | `Budget` / `Standard` / `Luxury` / `Ultra-Luxury` / `Adventure` / `Honeymoon` / `Family`. |
 | `industry_data.is_fixed` | Boolean — fixed departure. |
-| `custom_fields.ref_id` | **Strongly recommended** — unique per enquiry, dedupe key (retry-safe). |
-| `custom_fields.enquiry_id` | Purana `dook_enquiry_id`; fallback dedupe key. |
-| `custom_fields.campaign_url` | Landing page full URL (purana `url`). |
-| `custom_fields.form_type` / `bnpl` / `description` | Free-form. |
+| `ref_id` | **Strongly recommended** — unique per enquiry, dedupe key (retry-safe). CRM field nahi, sirf integration ke liye. |
 
 ## Purane (old CRM) payload se mapping — team ke reference ke liye
 
@@ -93,20 +88,19 @@ ke andar, traceability `custom_fields` mein. Endpoint abhi build hona baaki hai
 | `region` | `state` |
 | `travel_date`, `no_of_nights`, `no_of_pax`, `fixed_departure`, `experience` (top-level) | `industry_data.*` (`fixed_departure` → `is_fixed`) |
 | `destinations_name` / `destination_json` / `min_country_data` | `industry_data.destinations` (names array) |
-| `url` | `custom_fields.campaign_url` |
-| `ref_id` (top-level) | `custom_fields.ref_id` |
-| `dook_enquiry_id` | `custom_fields.enquiry_id` |
+| `no_of_traveler` / `no_of_passengers` | `industry_data.no_of_pax` |
+| `ref_id` | `ref_id` (dedupe ke liye, CRM field nahi) |
 | `source_medium` | ❌ mat bhejo — CRM se removed |
 | `ip` | ❌ mat bhejo — CRM se removed |
-| `departure_id` | ❌ drop |
-| `custom_fields.segment` / `destination` / `date_of_travel` / `no_of_passengers` / `experience` | ❌ duplicates — canonical jagah upar |
+| `url`, `dook_enquiry_id`, `departure_id`, `form_type`, `bnpl` | ❌ drop — CRM lead mein koi field nahi |
+| `custom_fields` block (segment/destination/description/…) | ❌ drop — custom fields system use nahi ho raha; `segment` top-level bhejo |
 
 ## Backend implementation notes (Tutterfly-internal, endpoint banate waqt)
 
 1. **Auth**: per-tenant integration token, hashed store; tenant_id token se resolve — body se kabhi nahi.
 2. **Owner assignment**: system user vs default user vs round-robin — DECISION PENDING. `creation_type="auto"`.
-3. **Resolution**: `source`/`experience`/`destinations` names → picklist ObjectIds (`build_picklist_query`, case-insensitive); phone normalize (`+91` default — `safe_phone_validator` invalid ko silently null karta hai, isliye pehle normalize); unknown-name policy decide karni hai.
-4. **Required-field validation**: `validate_lead_record` (entity_required_fields.py).
-5. **Dedupe**: `custom_fields.ref_id` (fallback `enquiry_id`) par idempotency.
+3. **Resolution**: `source`/`experience`/`destinations` names → picklist ObjectIds (`build_picklist_query`, case-insensitive); phone normalize (`+91` default — `safe_phone_validator` invalid ko silently null karta hai, isliye pehle normalize).
+4. **Required-field validation**: `validate_lead_record` (entity_required_fields.py) — last_name, city, state, country, source_id + travel: travel_date, destinations.
+5. **Dedupe**: `ref_id` par idempotency. Storage: Lead doc ke `custom_fields` dict mein internally rakh sakte hain (`{"ref_id": ...}`) — UI join isse overwrite karta hai to display mein nahi aayega, sirf query ke kaam aayega. NOTE: built-in `_check_duplicate_lead` (email+mobile) bhi create par chalta hai — integration ke liye iski policy decide karni hai (same person, nayi enquiry?).
 6. **Security test**: tenant-isolation test `apps/backend/tests/security/` mein (CLAUDE.md rule).
-7. Unknown/extra fields ignore karna, error mat dena.
+7. Unknown/extra fields ignore karna, error mat dena (old site extras bhej sakti hai).
