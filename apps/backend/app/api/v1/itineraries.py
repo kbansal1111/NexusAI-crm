@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File as FastAPIFile, Form
+from fastapi.responses import StreamingResponse
 
 from app.core.config import settings
 from app.core.picklist_query import build_picklist_query
@@ -201,6 +202,36 @@ async def get_itinerary(
         raise HTTPException(status_code=404, detail="Itinerary not found")
 
     return ItineraryResponse.from_orm(itinerary)
+
+
+@router.get("/{itinerary_id}/pdf")
+async def get_itinerary_pdf(
+    itinerary_id: str,
+    current_user: User = Depends(check_permission("view_itinerary")),
+):
+    """Stream the itinerary's PDF inline.
+
+    Streams through the backend (rather than handing out a presigned URL) so it
+    works with BOTH S3 and local-disk storage, and so access is gated by
+    ``view_itinerary`` — the same permission that lets the user see the record.
+    """
+    service = ItineraryService()
+
+    itinerary = await service.get_itinerary(itinerary_id, current_user.tenant_id)
+    if not itinerary or not itinerary.pdf_file_id:
+        raise HTTPException(status_code=404, detail="Itinerary PDF not found")
+
+    file_service = FileService()
+    result = await file_service.download_file(str(itinerary.pdf_file_id), current_user.tenant_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Itinerary PDF not found")
+
+    content, filename, mime_type = result
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=mime_type or "application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 @router.put("/{itinerary_id}", response_model=ItineraryResponse)

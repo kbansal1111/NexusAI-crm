@@ -27,15 +27,20 @@ interface OpportunityItinerariesTabProps {
     opportunityId: string;
 }
 
-async function openPdf(fileId?: string | null) {
-    if (!fileId) {
+async function openPdf(itineraryId: string, hasPdf?: string | null) {
+    if (!hasPdf) {
         toast.error("No PDF attached to this itinerary");
         return;
     }
+    // Open the tab synchronously (in the click gesture) to avoid popup blocking,
+    // then point it at the blob once fetched.
+    const win = window.open("", "_blank");
     try {
-        const url = await itinerariesService.getPdfUrl(fileId);
-        window.open(url, "_blank", "noopener,noreferrer");
+        const url = await itinerariesService.getPdfObjectUrl(itineraryId);
+        if (win) win.location.href = url;
+        else window.open(url, "_blank", "noopener,noreferrer");
     } catch {
+        if (win) win.close();
         toast.error("Could not open the PDF");
     }
 }
@@ -123,7 +128,7 @@ export function OpportunityItinerariesTab({ opportunityId }: OpportunityItinerar
                                     <button
                                         type="button"
                                         title="Download PDF"
-                                        onClick={() => openPdf(item.itinerary.pdf_file_id)}
+                                        onClick={() => openPdf(item.itinerary.id, item.itinerary.pdf_file_id)}
                                         className="text-blue-500 hover:text-blue-600 p-1"
                                     >
                                         <Download className="h-4 w-4" />
@@ -188,7 +193,10 @@ function AttachItineraryDialog({ open, onOpenChange, linkedIds, isLinking, onAtt
 
     // Only fetch while the dialog is open.
     const { data: results, isLoading } = useItineraries(open ? debounced || undefined : undefined);
-    const available = (results || []).filter((i) => !linkedIds.has(i.id));
+    // Show every matching itinerary; already-attached ones are shown disabled
+    // rather than hidden (so an "everything is attached" state doesn't look like
+    // "no itineraries found").
+    const rows = results || [];
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -214,28 +222,37 @@ function AttachItineraryDialog({ open, onOpenChange, linkedIds, isLinking, onAtt
                         <div className="flex items-center justify-center py-8 text-muted-foreground">
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading...
                         </div>
-                    ) : available.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-muted-foreground">No itineraries found</p>
+                    ) : rows.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-muted-foreground">
+                            {debounced ? "No itineraries match your search" : "No itineraries yet — upload one first"}
+                        </p>
                     ) : (
                         <ul className="divide-y divide-border">
-                            {available.map((itinerary) => (
-                                <li key={itinerary.id}>
-                                    <button
-                                        type="button"
-                                        disabled={isLinking}
-                                        onClick={() => onAttach(itinerary.id)}
-                                        className="flex w-full items-center justify-between gap-3 px-2 py-2.5 text-left hover:bg-muted/60 rounded-md disabled:opacity-50"
-                                    >
-                                        <span className="min-w-0">
-                                            <span className="block truncate text-sm font-medium text-foreground">{itinerary.name}</span>
-                                            <span className="block truncate text-xs text-muted-foreground">
-                                                {itinerary.destination_names?.length ? itinerary.destination_names.join(", ") : "No destination"}
+                            {rows.map((itinerary) => {
+                                const attached = linkedIds.has(itinerary.id);
+                                return (
+                                    <li key={itinerary.id}>
+                                        <button
+                                            type="button"
+                                            disabled={isLinking || attached}
+                                            onClick={() => onAttach(itinerary.id)}
+                                            className="flex w-full items-center justify-between gap-3 px-2 py-2.5 text-left hover:bg-muted/60 rounded-md disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            <span className="min-w-0">
+                                                <span className="block truncate text-sm font-medium text-foreground">{itinerary.name}</span>
+                                                <span className="block truncate text-xs text-muted-foreground">
+                                                    {itinerary.destination_names?.length ? itinerary.destination_names.join(", ") : "No destination"}
+                                                </span>
                                             </span>
-                                        </span>
-                                        <Paperclip className="h-4 w-4 text-emerald-500 shrink-0" />
-                                    </button>
-                                </li>
-                            ))}
+                                            {attached ? (
+                                                <span className="text-xs font-medium text-muted-foreground shrink-0">Attached</span>
+                                            ) : (
+                                                <Paperclip className="h-4 w-4 text-emerald-500 shrink-0" />
+                                            )}
+                                        </button>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
                 </div>

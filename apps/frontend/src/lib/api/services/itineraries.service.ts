@@ -44,9 +44,11 @@ export const itinerariesService = {
         await apiClient.delete(`${BASE_URL}/opportunity/${opportunityId}/unlink?itinerary_id=${itineraryId}`);
     },
 
-    // Presigned URL for previewing/downloading the itinerary PDF.
-    getPdfUrl: async (fileId: string): Promise<string> => {
-        const response = await apiClient.get<{ url: string }>(`/files/${fileId}/url`);
-        return response.data.url;
+    // Fetch the itinerary PDF as an authenticated blob and return an object URL.
+    // Streams through the backend so it works for both S3 and local storage, and
+    // is gated by view_itinerary (not view_file).
+    getPdfObjectUrl: async (itineraryId: string): Promise<string> => {
+        const response = await apiClient.get(`${BASE_URL}/${itineraryId}/pdf`, { responseType: "blob" });
+        return URL.createObjectURL(response.data as Blob);
     },
 };

@@ -50,15 +50,20 @@ export default function ItinerariesClient() {
         }
     };
 
-    const openPdf = async (fileId?: string | null) => {
-        if (!fileId) {
+    const openPdf = async (itineraryId: string, hasPdf?: string | null) => {
+        if (!hasPdf) {
             toast.error("No PDF attached to this itinerary");
             return;
         }
+        // Open the tab synchronously (in the click gesture) to avoid popup blocking,
+        // then point it at the blob once fetched.
+        const win = window.open("", "_blank");
         try {
-            const url = await itinerariesService.getPdfUrl(fileId);
-            window.open(url, "_blank", "noopener,noreferrer");
+            const url = await itinerariesService.getPdfObjectUrl(itineraryId);
+            if (win) win.location.href = url;
+            else window.open(url, "_blank", "noopener,noreferrer");
         } catch {
+            if (win) win.close();
             toast.error("Could not open the PDF");
         }
     };
@@ -127,7 +132,7 @@ export default function ItinerariesClient() {
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        onClick={() => openPdf(itinerary.pdf_file_id)}
+                                                        onClick={() => openPdf(itinerary.id, itinerary.pdf_file_id)}
                                                         className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium break-words text-left"
                                                     >
                                                         {itinerary.name}
@@ -141,7 +146,7 @@ export default function ItinerariesClient() {
                                                 {itinerary.pdf_file_id ? (
                                                     <button
                                                         type="button"
-                                                        onClick={() => openPdf(itinerary.pdf_file_id)}
+                                                        onClick={() => openPdf(itinerary.id, itinerary.pdf_file_id)}
                                                         className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
                                                     >
                                                         <Download className="h-3.5 w-3.5" /> View
@@ -161,7 +166,7 @@ export default function ItinerariesClient() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-56">
-                                                        <DropdownMenuItem onClick={() => openPdf(itinerary.pdf_file_id)}>
+                                                        <DropdownMenuItem onClick={() => openPdf(itinerary.id, itinerary.pdf_file_id)}>
                                                             <Download className="h-4 w-4 mr-2 text-muted-foreground" /> Download PDF
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem
