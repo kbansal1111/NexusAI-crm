@@ -19,7 +19,7 @@ from app.core.config import settings
 from app.models.consolidated_picklists import (
     BasePicklist, Salutation, TaskStatus, TaskPriority,
     SalesStage, OpportunityType, Experience, OpportunityTag,
-    LeadStatus, Source, SourceMedium,
+    LeadStatus, Source,
     AccountType, Industry, AccountSource, SupplierServicePicklist,
 )
 
@@ -69,7 +69,7 @@ async def main():
         document_models=[
             BasePicklist, Salutation, TaskStatus, TaskPriority,
             SalesStage, OpportunityType, Experience, OpportunityTag,
-            LeadStatus, Source, SourceMedium,
+            LeadStatus, Source,
             AccountType, Industry, AccountSource, SupplierServicePicklist,
         ],
         recreate_views=False,

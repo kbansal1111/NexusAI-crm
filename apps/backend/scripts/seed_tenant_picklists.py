@@ -40,7 +40,7 @@ async def main():
     from app.models.tenant import Tenant
     from app.models.consolidated_picklists import (
         AccountType, Industry, Rating, AccountSource, SupplierServicePicklist,
-        LeadStatus, Source, SourceMedium, SalesStage, OpportunityType, Experience, OpportunityTag,
+        LeadStatus, Source, SalesStage, OpportunityType, Experience, OpportunityTag,
     )
     from app.models.opportunity import Opportunity
     from app.models.user import User
@@ -48,7 +48,7 @@ async def main():
     # The list of picklist models to seed
     PICKLIST_MODELS = [
         AccountType, Industry, Rating, AccountSource, SupplierServicePicklist,
-        LeadStatus, Source, SourceMedium, OpportunityType, Experience, OpportunityTag
+        LeadStatus, Source, OpportunityType, Experience, OpportunityTag
     ]
     # Note: SalesStage was already seeded by seed_tenant_stages.py, so we skip it here.
 

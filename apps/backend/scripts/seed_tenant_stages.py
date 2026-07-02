@@ -39,7 +39,7 @@ async def main():
     from app.models.opportunity_picklists import SalesStage
     from app.models.consolidated_picklists import (
         AccountType, Industry, Rating, AccountSource, SupplierServicePicklist,
-        LeadStatus, Source, SourceMedium, OpportunityType, Experience, OpportunityTag,
+        LeadStatus, Source, OpportunityType, Experience, OpportunityTag,
     )
     from app.models.opportunity import Opportunity
     from app.models.user import User
@@ -49,7 +49,7 @@ async def main():
         document_models=[
             Tenant, User, Opportunity, SalesStage,
             AccountType, Industry, Rating, AccountSource, SupplierServicePicklist,
-            LeadStatus, Source, SourceMedium, OpportunityType, Experience, OpportunityTag,
+            LeadStatus, Source, OpportunityType, Experience, OpportunityTag,
         ]
     )
 

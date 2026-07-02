@@ -26,7 +26,6 @@ INDUSTRY_SEEDS = {
 SEED_KEY_MAP = {
     "lead_statuses": ("lead_status", "LeadStatus"),
     "sources": ("source", "Source"),
-    "source_mediums": ("source_medium", "SourceMedium"),
     "sales_stages": ("sales_stage", "SalesStage"),
     "experiences": ("experience", "Experience"),
     "industries": ("industry", "Industry"),

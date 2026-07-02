@@ -143,8 +143,6 @@ class OpportunityService(ActivityMixin):
                 opp_dict['experience_id'] = ObjectId(opp_dict['experience_id'])
             if 'source_id' in opp_dict and opp_dict['source_id']:
                 opp_dict['source_id'] = ObjectId(opp_dict['source_id'])
-            if 'source_medium_id' in opp_dict and opp_dict['source_medium_id']:
-                opp_dict['source_medium_id'] = ObjectId(opp_dict['source_medium_id'])
             
             opp_dict.pop("owner_id", None)
             opp_dict['owner_id'] = user_id

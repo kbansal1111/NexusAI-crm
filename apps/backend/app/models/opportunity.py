@@ -41,7 +41,6 @@ class Opportunity(BaseDocument):
     
     # Source tracking
     source_id: Optional[PydanticObjectId] = None
-    source_medium_id: Optional[PydanticObjectId] = None
     source_url: Optional[str] = None
     
     # Close lost reason

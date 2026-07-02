@@ -4,7 +4,7 @@ Picklists API — Phase 1 parity port.
 Single polymorphic resource that replaces the 18 separate Laravel resources:
   rest_salutations, rest_lead_statuses, rest_task_priorities, rest_sales_stages,
   rest_experiences, rest_opportunity_tags, rest_itinerary_inclusions,
-  rest_task_statuses, rest_inclusions, rest_source, rest_source_medium,
+  rest_task_statuses, rest_inclusions, rest_source,
   rest_destinations, supplier_rest_ratings, supplier_rest_types,
   supplier_rest_services, rest_industries, rest_ratings, rest_categories.
 
@@ -31,7 +31,7 @@ from app.models.user import User
 from app.models.consolidated_picklists import (
     Industry, AccountType, AccountSource,
     SupplierServicePicklist, SalesStage, OpportunityType,
-    Experience, OpportunityTag, LeadStatus, Source, SourceMedium,
+    Experience, OpportunityTag, LeadStatus, Source,
     Salutation, TaskStatus, TaskPriority,
     Inclusion, ItineraryInclusion, SupplierType, DestinationPicklist,
     BDActivityType, ExpenseCategory,
@@ -53,7 +53,6 @@ PICKLIST_MAP: Dict[str, Type[Document]] = {
     "opportunity_tag": OpportunityTag,
     "lead_status": LeadStatus,
     "source": Source,
-    "source_medium": SourceMedium,
     "salutation": Salutation,
     "task_priority": TaskPriority,
     "task_status": TaskStatus,

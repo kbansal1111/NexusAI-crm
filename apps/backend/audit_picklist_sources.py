@@ -9,7 +9,7 @@ from app.core.config import settings
 PICKLIST_TYPES = [
     "industry", "account_type", "account_source", "supplier_service",
     "sales_stage", "opportunity_type", "experience", "opportunity_tag",
-    "lead_status", "source", "source_medium", "salutation",
+    "lead_status", "source", "salutation",
     "task_priority", "task_status", "inclusion", "supplier_type",
     "destination", "itinerary_inclusion",
 ]

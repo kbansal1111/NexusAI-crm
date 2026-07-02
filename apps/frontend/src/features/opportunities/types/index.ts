@@ -20,7 +20,6 @@ export interface Opportunity {
 
     // Source
     source_id?: string;
-    source_medium_id?: string;
     source_url?: string;
     source_name?: string;
     experience_name?: string;
@@ -89,7 +88,6 @@ export interface OpportunityCreateData {
 
     // Source
     source_id?: string;
-    source_medium_id?: string;
     source_url?: string;
 
     key_deal?: boolean;

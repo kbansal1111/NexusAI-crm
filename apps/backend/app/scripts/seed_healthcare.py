@@ -6,7 +6,7 @@ ARCHITECTURE:
   - This script only seeds tenant-scoped items: SalesStage (which is
     auto-seeded per tenant because stages vary heavily between organizations).
 
-For all other picklists (LeadStatus, Source, SourceMedium, etc.),
+For all other picklists (LeadStatus, Source, etc.),
 tenants inherit platform defaults automatically via the build_picklist_query
 pattern: $or: [{tenant_id: current}, {tenant_id: None}]
 """

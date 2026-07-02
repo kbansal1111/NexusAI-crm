@@ -31,7 +31,6 @@ class OpportunityBase(BaseModel):
     
     # Source tracking
     source_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    source_medium_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     source_url: Optional[str] = Field(None, max_length=500)
     
     # Universal CRM fields
@@ -80,7 +79,6 @@ class OpportunityUpdate(BaseModel):
     account_id: Optional[str] = None
     contact_id: Optional[str] = None
     source_id: Optional[str] = None
-    source_medium_id: Optional[str] = None
     source_url: Optional[str] = None
     key_deal: Optional[bool] = None
     verified_by_account: Optional[bool] = None
@@ -165,7 +163,6 @@ class OpportunityResponse(BaseModel):
     
     # Source
     source_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    source_medium_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     source_url: Optional[str] = None
     source_name: Optional[str] = None
     experience_name: Optional[str] = None
@@ -245,8 +242,6 @@ class OpportunityResponse(BaseModel):
                 data['opportunity_type_id'] = str(obj.opportunity_type_id)
             if hasattr(obj, 'source_id') and obj.source_id:
                 data['source_id'] = str(obj.source_id)
-            if hasattr(obj, 'source_medium_id') and obj.source_medium_id:
-                data['source_medium_id'] = str(obj.source_medium_id)
             if hasattr(obj, 'locked_by') and obj.locked_by:
                 data['locked_by'] = str(obj.locked_by)
             if hasattr(obj, 'lead_id') and obj.lead_id:

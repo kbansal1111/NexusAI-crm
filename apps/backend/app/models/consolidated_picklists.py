@@ -102,15 +102,8 @@ class Source(BasePicklist):
     class Settings:
         name = "picklists"
 
-class SourceMedium(BasePicklist):
-    """Lead source medium picklist"""
-    picklist_type: Literal["source_medium"] = "source_medium"
-    
-    class Settings:
-        name = "picklists"
 
-
-# Opportunity Picklists  
+# Opportunity Picklists
 class SalesStage(BasePicklist):
     """Sales stage/pipeline stage"""
     picklist_type: Literal["sales_stage"] = "sales_stage"

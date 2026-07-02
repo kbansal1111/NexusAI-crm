@@ -12,7 +12,6 @@ const VALID: PicklistType[] = [
   "opportunity_tag",
   "lead_status",
   "source",
-  "source_medium",
   "salutation",
   "task_priority",
   "task_status",

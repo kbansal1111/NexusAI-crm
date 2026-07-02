@@ -11,7 +11,6 @@ from datetime import datetime
 MIGRATION_MAP = {
     "lead_statuses": "lead_status",
     "sources": "source",
-    "source_mediums": "source_medium",
     "sales_stages": "sales_stage",
     "experiences": "experience",
     "industries": "industry",
@@ -92,7 +91,6 @@ def type_to_class(picklist_type: str) -> str:
     mapping = {
         "lead_status": "LeadStatus",
         "source": "Source",
-        "source_medium": "SourceMedium",
         "sales_stage": "SalesStage",
         "experience": "Experience",
         "industry": "Industry",

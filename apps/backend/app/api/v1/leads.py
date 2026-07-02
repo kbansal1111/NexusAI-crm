@@ -13,7 +13,7 @@ import logging
 from app.models.user import User
 from app.models.lead import Lead
 from app.models.tenant import Tenant
-from app.models.lead_picklists import LeadStatus, Source, SourceMedium
+from app.models.lead_picklists import LeadStatus, Source
 from app.models.lead_custom_fields import UserLeadView
 from app.schemas.lead import (
     LeadCreate, LeadUpdate, LeadResponse, LeadListResponse, LeadConvert,

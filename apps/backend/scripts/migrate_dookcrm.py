@@ -325,7 +325,7 @@ async def run_migration(dry_run: bool = True):
     from app.models.contact import Contact
     from app.models.opportunity import Opportunity
     from app.models.account_contact import AccountContact
-    from app.models.consolidated_picklists import SalesStage, Source, SourceMedium, Experience
+    from app.models.consolidated_picklists import SalesStage, Source, Experience
     from app.models.tenant_counter import next_opportunity_number
     
     print("=" * 70)
@@ -439,13 +439,6 @@ async def run_migration(dry_run: bool = True):
     ).to_list()
     source_by_name = {s.name.lower(): s.id for s in sources}
     print(f"  Sources found: {len(sources)} — {[s.name for s in sources]}")
-    
-    # Load source mediums
-    mediums = await SourceMedium.find(
-        {"$or": [{"tenant_id": tenant_id}, {"tenant_id": None}], "is_active": True}
-    ).to_list()
-    medium_by_name = {m.name.lower(): m.id for m in mediums}
-    print(f"  Source mediums found: {len(mediums)} — {[m.name for m in mediums]}")
     
     # Load experiences
     experiences = await Experience.find(
@@ -762,15 +755,6 @@ async def run_migration(dry_run: bool = True):
             if 0 <= idx < len(source_list):
                 resolved_source_id = source_list[idx].id
         
-        # --- Resolve source_medium_id ---
-        resolved_medium_id = None
-        legacy_medium = row.get('source_medium_id')
-        if legacy_medium is not None:
-            medium_list = sorted(mediums, key=lambda m: m.sorting)
-            idx = int(legacy_medium) - 1 if isinstance(legacy_medium, (int, float)) else 0
-            if 0 <= idx < len(medium_list):
-                resolved_medium_id = medium_list[idx].id
-        
         # --- Build industry_data ---
         travel_date_raw = row.get('travel_date')
         travel_date_dt = _parse_datetime(travel_date_raw)
@@ -836,7 +820,6 @@ async def run_migration(dry_run: bool = True):
             account_id=resolved_account_id,
             contact_id=resolved_contact_id,
             source_id=resolved_source_id,
-            source_medium_id=resolved_medium_id,
             source_url=_empty_to_none(row.get('source_url')),
             close_lost_reason=_empty_to_none(row.get('loss_reason')),
             owner_id=default_owner_id,

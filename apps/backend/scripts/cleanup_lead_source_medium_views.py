@@ -14,8 +14,8 @@ dead ``source_medium_id`` key:
     field.
 
 This script strips those dead keys. It is tenant-scoped and entity-scoped to
-``lead`` only — it never touches opportunity (which legitimately keeps
-source_medium_id) or any other entity.
+``lead`` only. (source_medium has since been removed from the whole system —
+for Opportunity + picklist remnants see cleanup_source_medium_remnants.py.)
 
 DRY-RUN by default — prints what WOULD change. Pass --apply to write.
 

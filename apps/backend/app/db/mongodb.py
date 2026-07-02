@@ -48,7 +48,7 @@ from app.models.billing import SubscriptionPlan, TenantSubscription, BillingInvo
 from app.models.webhook import WebhookEndpoint, WebhookEvent, WebhookDelivery
 from app.models.consolidated_picklists import (
     BasePicklist, SalesStage, OpportunityType, Experience, OpportunityTag,
-    LeadStatus, Source, SourceMedium,
+    LeadStatus, Source,
     AccountType, Industry, AccountSource, AccountCategory, SupplierServicePicklist,
     Salutation, TaskStatus, TaskPriority,
     Inclusion, ItineraryInclusion, SupplierType, DestinationPicklist,
@@ -321,7 +321,6 @@ async def init_db():
             OpportunityTag,
             LeadStatus,
             Source,
-            SourceMedium,
             Industry,
             AccountType,
             AccountSource,

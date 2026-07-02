@@ -38,10 +38,6 @@ TRAVEL_DEFAULTS: Dict[str, List] = {
         "Organic", "Manual", "Gmail", "Landline", "Whatsapp", "EMT",
         "Double Click Whatsapp", "TIYA", "Website Chatbot", "Visa", "AC",
     ],
-    "source_medium": [
-        "Phone Call", "WhatsApp", "Email", "Walk-in",
-        "Website Chat", "Social Media DM", "Travel Fair", "Agency Referral",
-    ],
     "experience": [
         "Budget", "Standard", "Luxury", "Ultra-Luxury",
         "Adventure", "Honeymoon", "Family",
@@ -100,10 +96,6 @@ HEALTHCARE_DEFAULTS: Dict[str, List] = {
         "Doctor Referral", "Insurance Portal", "Walk-in", "Emergency",
         "Website", "Social Media", "Phone Call",
     ],
-    "source_medium": [
-        "Phone Call", "Email", "Patient Portal", "Walk-in",
-        "Doctor Referral", "Insurance Portal", "WhatsApp",
-    ],
 }
 
 # ============================================================================
@@ -127,10 +119,6 @@ EDUCATION_DEFAULTS: Dict[str, List] = {
         "Campus Visit", "Education Fair", "Website", "Social Media",
         "Alumni Referral", "Agent / Counselor", "Advertisement", "Phone Call",
     ],
-    "source_medium": [
-        "Phone Call", "Email", "Website Form", "WhatsApp",
-        "Education Fair Booth", "Counselor Chat", "Social Media DM",
-    ],
 }
 
 # ============================================================================
@@ -152,10 +140,6 @@ MANUFACTURING_DEFAULTS: Dict[str, List] = {
     "source": [
         "Trade Show", "Website", "Distributor", "Direct Sales",
         "Tender", "Referral", "Online Marketplace",
-    ],
-    "source_medium": [
-        "Phone Call", "Email", "Trade Show Booth", "WhatsApp",
-        "Online RFQ Form", "Distributor", "Direct Sales Rep",
     ],
 }
 
@@ -206,7 +190,6 @@ _PICKLIST_CLASS_ID_MAP = {
     "account_category": "BasePicklist.AccountCategory",
     "lead_status": "BasePicklist.LeadStatus",
     "source": "BasePicklist.Source",
-    "source_medium": "BasePicklist.SourceMedium",
     "experience": "BasePicklist.Experience",
     "sales_stage": "BasePicklist.SalesStage",
     "opportunity_type": "BasePicklist.OpportunityType",

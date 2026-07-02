@@ -33,7 +33,6 @@ const PICKLIST_TYPES: { key: PicklistType; label: string }[] = [
   { key: "account_type", label: "Account Type" },
   { key: "account_source", label: "Account Source" },
   { key: "source", label: "Source" },
-  { key: "source_medium", label: "Source Medium" },
   { key: "supplier_service", label: "Supplier Service" },
   { key: "supplier_type", label: "Supplier Type" },
   { key: "salutation", label: "Salutation" },

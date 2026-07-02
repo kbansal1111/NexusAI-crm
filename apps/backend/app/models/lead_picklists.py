@@ -18,7 +18,6 @@ from datetime import datetime
 from app.models.consolidated_picklists import (
     LeadStatus,
     Source,
-    SourceMedium,
 )
 
 
@@ -47,4 +46,4 @@ class DestinationLead(Document):
         name = "destination_leads"
 
 
-__all__ = ["LeadStatus", "Source", "SourceMedium", "Destination", "DestinationLead"]
+__all__ = ["LeadStatus", "Source", "Destination", "DestinationLead"]

@@ -42,7 +42,6 @@ _PICKLIST_CLASS_ID_MAP = {
     "account_category": "BasePicklist.AccountCategory",
     "lead_status": "BasePicklist.LeadStatus",
     "source": "BasePicklist.Source",
-    "source_medium": "BasePicklist.SourceMedium",
     "experience": "BasePicklist.Experience",
     "sales_stage": "BasePicklist.SalesStage",
     "opportunity_type": "BasePicklist.OpportunityType",
