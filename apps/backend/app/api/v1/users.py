@@ -73,9 +73,19 @@ async def get_users(
         skip=skip,
         limit=limit
     )
-    
+
+    # Flag super admins (users holding an is_admin role) so the UI can hide the
+    # delete action — super admins cannot be deleted (enforced in delete_user).
+    super_admin_ids = await service.get_super_admin_user_ids(users, current_user.tenant_id)
+
+    responses = []
+    for u in users:
+        r = UserResponse.from_orm(u)
+        r.is_super_admin = str(u.id) in super_admin_ids
+        responses.append(r)
+
     return UserListResponse(
-        users=[UserResponse.from_orm(u) for u in users],
+        users=responses,
         total=len(users)
     )
 
@@ -159,9 +169,18 @@ async def delete_user(
 ):
     """Delete a user (soft delete)"""
     service = UserService()
-    
+
+    # Super admins (users holding an is_admin role) are protected — they can
+    # never be deleted, for any tenant/industry. Enforced here regardless of
+    # what the UI shows.
+    target = await service.get_user(user_id, current_user.tenant_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if await target.is_super_admin():
+        raise HTTPException(status_code=403, detail="Super admin users cannot be deleted")
+
     success = await service.delete_user(user_id, current_user.tenant_id)
-    
+
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     

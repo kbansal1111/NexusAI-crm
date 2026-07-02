@@ -326,6 +326,29 @@ class UserService(ActivityMixin):
         
         return True
     
+    async def get_super_admin_user_ids(
+        self, users: List[User], tenant_id: ObjectId
+    ) -> set:
+        """Return the ids (as str) of users holding an admin role (is_admin=True).
+
+        SECURITY: admin roles are fetched scoped to `tenant_id`, so a role_id
+        pointing at another tenant's role can never mark a user as super admin.
+        One query for the whole page — no per-user lookup.
+        """
+        if not users:
+            return set()
+        admin_roles = await Role.find(
+            {"tenant_id": tenant_id, "is_admin": True, "deleted_at": None}
+        ).to_list()
+        admin_role_ids = {r.id for r in admin_roles}
+        if not admin_role_ids:
+            return set()
+        return {
+            str(u.id)
+            for u in users
+            if any(rid in admin_role_ids for rid in (u.role_ids or []))
+        }
+
     async def _populate_hierarchy_names(self, users: List[User], tenant_id: ObjectId):
         if not users:
             return

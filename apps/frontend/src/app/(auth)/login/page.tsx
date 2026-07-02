@@ -6,7 +6,7 @@ import { LoginForm } from "@/features/auth/components/LoginForm";
 import { SessionExpiredBanner } from "@/features/auth/components/SessionExpiredBanner";
 
 export const metadata: Metadata = {
-    title: "Login | Travel CRM",
+    title: "Login | bigfatAI CRM",
     description: "Login to your account",
 };
 
@@ -21,7 +21,7 @@ export default function LoginPage() {
                 <div className="relative z-10 flex h-full w-full flex-col p-10 text-white">
                     <div className="flex items-center text-lg font-semibold">
                         <Building2 className="mr-2 h-6 w-6" />
-                        Travel CRM
+                        bigfatAI CRM
                     </div>
 
                     <div className="mt-12 max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-md">
@@ -39,7 +39,7 @@ export default function LoginPage() {
                             <p className="text-lg text-white/90">
                                 &ldquo;The next generation multi-industry CRM for modern businesses.&rdquo;
                             </p>
-                            <footer className="text-sm text-white/70">Travel CRM Team</footer>
+                            <footer className="text-sm text-white/70">bigfatAI Team</footer>
                         </blockquote>
                     </div>
                 </div>

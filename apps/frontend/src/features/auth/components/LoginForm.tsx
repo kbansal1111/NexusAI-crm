@@ -52,7 +52,7 @@ function LoginFormContent() {
     const form = useForm<LoginValues>({
         resolver: zodResolver(loginSchema),
         defaultValues: {
-            industry: "",
+            industry: "travel",
             email: "",
             password: "",
         },

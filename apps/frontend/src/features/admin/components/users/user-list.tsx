@@ -129,7 +129,8 @@ export function UserList() {
                                                 >
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
-                                                <UserActions user={user} />
+                                                {/* Super admins cannot be deleted — hide the delete menu. */}
+                                                {!user.is_super_admin && <UserActions user={user} />}
                                             </div>
                                         </TableCell>
                                     </TableRow>

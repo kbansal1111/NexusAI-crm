@@ -134,7 +134,12 @@ class UserResponse(UserBase):
     id: str
     tenant_id: str
     role_ids: List[str]
-    
+
+    # True when the user holds at least one admin role (is_admin=True). Populated
+    # by the API layer (needs a tenant-scoped role lookup). Super admins cannot be
+    # deleted, so the UI hides the delete action when this is True.
+    is_super_admin: bool = False
+
     is_verified: bool
     email_verified_at: Optional[datetime] = None
     last_login_at: Optional[datetime] = None

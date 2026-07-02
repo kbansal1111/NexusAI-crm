@@ -20,6 +20,10 @@ export interface User {
     is_verified: boolean;
     email_verified_at?: string; // ISO Date string
 
+    // True when the user holds an admin role. Super admins cannot be deleted,
+    // so the UI hides the delete action for them.
+    is_super_admin?: boolean;
+
     // Settings
     timezone: string;
     language: string;
