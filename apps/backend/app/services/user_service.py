@@ -368,11 +368,18 @@ class UserService(ActivityMixin):
         skip: int = 0,
         limit: int = 100
     ) -> List[User]:
-        """Get users for a tenant with filters"""
-        
+        """Get users for a tenant with filters.
+
+        Excludes the per-tenant "System" service account (is_system=True) — it
+        only exists to own the unassigned opportunity pool and must never show
+        up in user lists or pickers. `$ne: True` also matches legacy docs
+        created before the field existed.
+        """
+
         query = {
             "tenant_id": tenant_id,
-            "deleted_at": None
+            "deleted_at": None,
+            "is_system": {"$ne": True}
         }
         
         if department_id:
@@ -400,6 +407,8 @@ class UserService(ActivityMixin):
         search_query = {
             "tenant_id": tenant_id,
             "deleted_at": None,
+            # Never surface the System service account in search/pickers.
+            "is_system": {"$ne": True},
             "$or": [
                 {"name": {"$regex": query, "$options": "i"}},
                 {"email": {"$regex": query, "$options": "i"}},

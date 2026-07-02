@@ -215,7 +215,7 @@ class TargetIn(BaseModel):
 async def list_user_targets(current_user: User = Depends(get_current_user)):
     """Mirror old `/admin/users_sales_target`."""
     rows = await User.find(
-        {"tenant_id": current_user.tenant_id},
+        {"tenant_id": current_user.tenant_id, "is_system": {"$ne": True}},
     ).to_list()
     return [
         {
@@ -480,7 +480,9 @@ async def admin_send_password_reset(
 @router.get("/all")
 async def get_all_users(current_user: User = Depends(get_current_user)):
     """Mirror old `/get_all_users`."""
-    rows = await User.find({"tenant_id": current_user.tenant_id}).to_list()
+    rows = await User.find(
+        {"tenant_id": current_user.tenant_id, "is_system": {"$ne": True}}
+    ).to_list()
     return [
         {"id": str(u.id), "name": u.name, "email": u.email, "is_active": u.is_active}
         for u in rows
