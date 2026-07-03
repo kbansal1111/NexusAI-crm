@@ -28,6 +28,8 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { CommandPalette } from "@/components/search/CommandPalette";
 import { GlobalSearchBar } from "@/components/search/GlobalSearchBar";
 import { RouteGuard } from "@/components/permissions/RouteGuard";
+import { PermissionGate } from "@/components/permissions/PermissionGate";
+import { AssistantPanel } from "@/features/assistant/components/AssistantPanel";
 import { usePermissionRefresh } from "@/hooks/use-permission-refresh";
 
 
@@ -137,6 +139,9 @@ export default function DashboardLayout({
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
+                        <PermissionGate permission="view_opportunity">
+                            <AssistantPanel />
+                        </PermissionGate>
                         <ThemeToggle />
                         <NotificationBell />
                         <DropdownMenu>

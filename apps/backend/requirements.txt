@@ -61,6 +61,9 @@ fastapi-cache2==0.2.1
 python-json-logger==2.0.7
 sentry-sdk[fastapi]==1.39.1
 
+# AI Assistant (OpenRouter is OpenAI-compatible; client only, no OpenAI models used)
+openai>=1.40,<2
+
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
