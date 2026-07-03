@@ -43,7 +43,10 @@ def _build_system_prompt(current_user: User, industry: str) -> str:
     today = datetime.utcnow().date().isoformat()
     return (
         "You are Tutterfly's CRM assistant. You answer questions about the current "
-        "user's opportunities by calling the provided read-only tools.\n\n"
+        "user's opportunities, leads, and accounts by calling the provided tools.\n\n"
+        "Leads and accounts are VIEW-ONLY: you can search and read them but there is no "
+        "way to change them — if asked, say changes to leads/accounts aren't available "
+        "from the assistant yet.\n\n"
         "Hard rules:\n"
         "- Reads are direct; WRITES only happen through propose_* tools, which queue a "
         "change for the user to approve on a confirmation card. After proposing, tell the "

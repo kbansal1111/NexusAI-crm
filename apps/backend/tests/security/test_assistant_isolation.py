@@ -72,7 +72,9 @@ def _static_tool_surface_checks(results: Results):
     """No live backend needed: direct-execute tools must be read-only, and every
     write-shaped tool must go through the propose→confirm pipeline."""
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from app.services.assistant_tools import TOOL_SCHEMAS, _PROPOSAL_TOOLS, _TOOL_IMPLS  # noqa: PLC0415
+    from app.services.assistant_tools import (  # noqa: PLC0415
+        TOOL_SCHEMAS, _PROPOSAL_TOOLS, _TOOL_IMPLS, _TOOL_PERMISSIONS,
+    )
     from app.services.assistant_actions import _ACTIONS  # noqa: PLC0415
 
     write_markers = ("create", "update", "delete", "edit", "upload", "set_", "mark_", "approve", "reject")
@@ -101,6 +103,21 @@ def _static_tool_surface_checks(results: Results):
     missing_perm = [k for k, v in _ACTIONS.items() if not v.get("permission")]
     results.fail("Action permissions", f"actions without permission: {missing_perm}") if missing_perm else \
         results.ok("Every action declares an RBAC permission")
+
+    # 5. Every direct-execute tool has an entry in the per-tool permission map,
+    #    and every entity read tool requires that entity's view permission.
+    uncovered = [n for n in _TOOL_IMPLS if n not in _TOOL_PERMISSIONS]
+    results.fail("Per-tool RBAC coverage", f"tools missing a permission entry: {uncovered}") if uncovered else \
+        results.ok("Every direct-execute tool has a per-tool permission entry")
+    expectations = {"opportunit": "view_opportunity", "lead": "view_lead", "account": "view_account",
+                    "pipeline": "view_opportunity"}
+    wrong = [
+        n for n, perm in _TOOL_PERMISSIONS.items()
+        for marker, expected in expectations.items()
+        if marker in n and perm != expected
+    ]
+    results.fail("Per-tool RBAC mapping", f"tools with wrong view permission: {wrong}") if wrong else \
+        results.ok("Entity read tools require their entity's view permission")
 
 
 async def _session(client: httpx.AsyncClient, key: str) -> dict:

@@ -23,6 +23,8 @@ from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 
+from app.models.account import Account
+from app.models.lead import Lead
 from app.models.opportunity import Opportunity
 from app.models.opportunity_financial import (
     OpportunityCosting, OpportunityTransaction, PaymentScheduleItem,
@@ -134,6 +136,75 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ── Leads & Accounts (read-only — VIEW mode, no write proposals) ───────────
+    {
+        "type": "function",
+        "function": {
+            "name": "search_leads",
+            "description": (
+                "Search the user's leads. Call this when the user asks to find, list, or "
+                "count leads — by name, email, company, city, status, or created date. "
+                "Returns up to 25 matches. Use resolve_picklist(lead_status) for a status name."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query_text": {"type": "string", "description": "Matched against lead name, email, and company."},
+                    "lead_status_id": {"type": "string", "description": "Status id from resolve_picklist(lead_status)."},
+                    "city": {"type": "string"},
+                    "is_converted": {"type": "boolean"},
+                    "created_after": {"type": "string", "description": "ISO date (YYYY-MM-DD)."},
+                    "created_before": {"type": "string", "description": "ISO date (YYYY-MM-DD)."},
+                    "limit": {"type": "integer", "description": "Max results, default 10, cap 25."},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_lead",
+            "description": "Fetch full detail for ONE lead by id (from search_leads). Read-only.",
+            "parameters": {
+                "type": "object",
+                "properties": {"lead_id": {"type": "string"}},
+                "required": ["lead_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_accounts",
+            "description": (
+                "Search the user's accounts (companies AND person accounts). Call this when "
+                "the user asks to find, list, or count accounts/customers — by name, email, "
+                "phone, city, or type. Returns up to 25 matches."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query_text": {"type": "string", "description": "Matched against account name, email, and phone."},
+                    "is_person_account": {"type": "boolean", "description": "true = B2C person accounts, false = companies."},
+                    "acc_type_id": {"type": "string", "description": "Type id from resolve_picklist(account_type)."},
+                    "billing_city": {"type": "string"},
+                    "limit": {"type": "integer", "description": "Max results, default 10, cap 25."},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_account",
+            "description": "Fetch full detail for ONE account by id (from search_accounts). Read-only.",
+            "parameters": {
+                "type": "object",
+                "properties": {"account_id": {"type": "string"}},
+                "required": ["account_id"],
+            },
+        },
+    },
     # ── Write proposals (Phase 2) ──────────────────────────────────────────────
     # These tools NEVER write. They validate + queue a pending action that the
     # user must approve via a confirmation card in the chat UI.
@@ -217,7 +288,7 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
                 "properties": {
                     "picklist_type": {
                         "type": "string",
-                        "enum": ["sales_stage", "destination", "source", "opportunity_type", "account_type"],
+                        "enum": ["sales_stage", "destination", "source", "opportunity_type", "account_type", "lead_status"],
                     },
                     "name": {"type": "string", "description": "Optional case-insensitive name filter."},
                 },
@@ -472,7 +543,7 @@ async def _resolve_picklist(args: Dict[str, Any], current_user: User) -> Any:
     from app.services.industry_service import get_tenant_industry
 
     ptype = str(args.get("picklist_type") or "")
-    if ptype not in ("sales_stage", "destination", "source", "opportunity_type", "account_type"):
+    if ptype not in ("sales_stage", "destination", "source", "opportunity_type", "account_type", "lead_status"):
         return {"error": "Unsupported picklist_type."}
 
     industry = await get_tenant_industry(current_user.tenant_id)
@@ -485,6 +556,136 @@ async def _resolve_picklist(args: Dict[str, Any], current_user: User) -> Any:
     return {"options": [{"id": str(i.id), "name": i.name} for i in items]}
 
 
+# ─────────────────── Leads & Accounts (read-only) ──────────────────────────────
+
+def _lead_row(l: Lead) -> Dict[str, Any]:
+    return {
+        "id": str(l.id),
+        "name": f"{l.first_name} {l.last_name}".strip(),
+        "email": l.email,
+        "phone": l.phone,
+        "company": l.company,
+        "city": l.city,
+        "owner_name": l.owner_name,
+        "is_converted": l.is_converted,
+        "created_at": l.created_at.date().isoformat() if l.created_at else None,
+    }
+
+
+async def _search_leads(args: Dict[str, Any], current_user: User) -> Any:
+    query = await _base_query(current_user)
+
+    text = (args.get("query_text") or "").strip()
+    if text:
+        rx = {"$regex": re.escape(text), "$options": "i"}
+        query["$or"] = [{"first_name": rx}, {"last_name": rx}, {"email": rx}, {"company": rx}]
+
+    if args.get("lead_status_id"):
+        try:
+            query["lead_status_id"] = ObjectId(str(args["lead_status_id"]))
+        except Exception:
+            return {"error": "Invalid lead_status_id."}
+    if args.get("city"):
+        query["city"] = {"$regex": re.escape(str(args["city"])), "$options": "i"}
+    if args.get("is_converted") is not None:
+        query["is_converted"] = bool(args["is_converted"])
+
+    created_cond: Dict[str, Any] = {}
+    if (d := _parse_date(args.get("created_after"))):
+        created_cond["$gte"] = d
+    if (d := _parse_date(args.get("created_before"))):
+        created_cond["$lte"] = d
+    if created_cond:
+        query["created_at"] = created_cond
+
+    limit = min(int(args.get("limit") or 10), MAX_SEARCH_RESULTS)
+    leads = await Lead.find(query).sort("-created_at").limit(limit).to_list()
+    total = await Lead.find(query).count()
+    return {"total_matches": total, "returned": len(leads), "leads": [_lead_row(l) for l in leads]}
+
+
+async def _get_lead(args: Dict[str, Any], current_user: User) -> Any:
+    try:
+        lid = ObjectId(str(args.get("lead_id", "")))
+    except Exception:
+        return {"error": "Invalid lead id."}
+    query = await _base_query(current_user)
+    query["_id"] = lid
+    lead = await Lead.find_one(query)
+    if not lead:
+        return {"error": "Lead not found."}
+
+    detail = _lead_row(lead)
+    detail.update({
+        "title": lead.title,
+        "website": lead.website,
+        "address": ", ".join(x for x in (lead.street, lead.city, lead.state, lead.country) if x) or None,
+        "creation_type": lead.creation_type,
+    })
+    return detail
+
+
+def _account_row(a: Account) -> Dict[str, Any]:
+    return {
+        "id": str(a.id),
+        "name": a.name,
+        "email": a.email,
+        "phone": a.phone,
+        "is_person_account": a.is_person_account,
+        "segment": a.segment,
+        "billing_city": a.billing_city,
+        "owner_name": a.owner_name,
+    }
+
+
+async def _search_accounts(args: Dict[str, Any], current_user: User) -> Any:
+    query = await _base_query(current_user)
+
+    text = (args.get("query_text") or "").strip()
+    if text:
+        rx = {"$regex": re.escape(text), "$options": "i"}
+        query["$or"] = [{"name": rx}, {"email": rx}, {"phone": rx}]
+
+    if args.get("is_person_account") is not None:
+        query["is_person_account"] = bool(args["is_person_account"])
+    if args.get("acc_type_id"):
+        try:
+            query["acc_type_id"] = ObjectId(str(args["acc_type_id"]))
+        except Exception:
+            return {"error": "Invalid acc_type_id."}
+    if args.get("billing_city"):
+        query["billing_city"] = {"$regex": re.escape(str(args["billing_city"])), "$options": "i"}
+
+    limit = min(int(args.get("limit") or 10), MAX_SEARCH_RESULTS)
+    accounts = await Account.find(query).sort("-created_at").limit(limit).to_list()
+    total = await Account.find(query).count()
+    return {"total_matches": total, "returned": len(accounts),
+            "accounts": [_account_row(a) for a in accounts]}
+
+
+async def _get_account(args: Dict[str, Any], current_user: User) -> Any:
+    try:
+        aid = ObjectId(str(args.get("account_id", "")))
+    except Exception:
+        return {"error": "Invalid account id."}
+    query = await _base_query(current_user)
+    query["_id"] = aid
+    account = await Account.find_one(query)
+    if not account:
+        return {"error": "Account not found."}
+
+    detail = _account_row(account)
+    detail.update({
+        "website": account.website,
+        "description": account.description,
+        "billing_address": ", ".join(x for x in (
+            account.billing_street, account.billing_city, account.billing_state,
+            account.billing_zip, account.billing_country) if x) or None,
+        "created_at": account.created_at.date().isoformat() if account.created_at else None,
+    })
+    return detail
+
+
 _TOOL_IMPLS = {
     "search_opportunities": _search_opportunities,
     "get_opportunity": _get_opportunity,
@@ -492,6 +693,27 @@ _TOOL_IMPLS = {
     "list_opportunity_transactions": _list_opportunity_transactions,
     "pipeline_summary": _pipeline_summary,
     "resolve_picklist": _resolve_picklist,
+    "search_leads": _search_leads,
+    "get_lead": _get_lead,
+    "search_accounts": _search_accounts,
+    "get_account": _get_account,
+}
+
+# Per-tool view permission, enforced in dispatch_tool. The endpoint gate admits
+# anyone with at least one CRM view permission; this map keeps a leads-only user
+# from reading opportunities through the assistant (and vice versa). None means
+# any user past the endpoint gate may call it (picklist names only).
+_TOOL_PERMISSIONS: Dict[str, Optional[str]] = {
+    "search_opportunities": "view_opportunity",
+    "get_opportunity": "view_opportunity",
+    "get_opportunity_financials": "view_opportunity",
+    "list_opportunity_transactions": "view_opportunity",
+    "pipeline_summary": "view_opportunity",
+    "resolve_picklist": None,
+    "search_leads": "view_lead",
+    "get_lead": "view_lead",
+    "search_accounts": "view_account",
+    "get_account": "view_account",
 }
 
 # Write-proposal tools: mapped to action types in assistant_actions. They queue
@@ -519,6 +741,11 @@ async def dispatch_tool(
             impl = _TOOL_IMPLS.get(name)
             if impl is None:
                 return json.dumps({"error": f"Unknown tool: {name}"})
+            # Per-entity RBAC: the endpoint gate admits any CRM viewer; each tool
+            # additionally requires ITS entity's view permission.
+            perm = _TOOL_PERMISSIONS.get(name)
+            if perm and not await current_user.has_permission(perm):
+                return json.dumps({"error": f"You don't have the '{perm}' permission for this data."})
             result = await impl(args or {}, current_user)
     except Exception as exc:  # noqa: BLE001 — surfaced to the model, logged by caller
         result = {"error": f"Tool failed: {type(exc).__name__}"}

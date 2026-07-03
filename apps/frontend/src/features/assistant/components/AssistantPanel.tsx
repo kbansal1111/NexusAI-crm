@@ -24,12 +24,17 @@ const TOOL_LABELS: Record<string, string> = {
     propose_update_opportunity: "Preparing an update",
     propose_create_task: "Preparing a task",
     propose_create_note: "Preparing a note",
+    search_leads: "Searching leads",
+    get_lead: "Reading lead",
+    search_accounts: "Searching accounts",
+    get_account: "Reading account",
 };
 
 const SUGGESTIONS = [
     "How is my pipeline looking by stage?",
     "Which deals are closing this month?",
-    "Show opportunities above ₹1,00,000",
+    "Show my leads from this week",
+    "Find accounts in Mumbai",
 ];
 
 export function AssistantPanel() {
@@ -70,7 +75,7 @@ export function AssistantPanel() {
                                 <Bot className="h-4 w-4 text-blue-500" /> Assistant
                             </SheetTitle>
                             <SheetDescription className="text-xs">
-                                Ask about your opportunities. Changes need your approval.
+                                Ask about opportunities, leads &amp; accounts. Changes need your approval.
                             </SheetDescription>
                         </div>
                         <Button
@@ -91,7 +96,7 @@ export function AssistantPanel() {
                         <div className="space-y-3 pt-8 text-center">
                             <Sparkles className="mx-auto h-8 w-8 text-blue-500/60" />
                             <p className="text-sm text-muted-foreground">
-                                Ask anything about your opportunities.
+                                Ask anything about your opportunities, leads, or accounts.
                             </p>
                             <div className="space-y-1.5">
                                 {SUGGESTIONS.map((s) => (

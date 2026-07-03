@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.api.deps import check_permission
+from app.api.deps import check_any_permission
 from app.models.assistant import AssistantAction, AssistantConversation
 from app.models.user import User
 from app.services.assistant_service import AssistantService
@@ -30,7 +30,7 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 async def chat(
     body: ChatRequest,
-    current_user: User = Depends(check_permission("view_opportunity")),
+    current_user: User = Depends(check_any_permission(["view_opportunity", "view_lead", "view_account"])),
 ):
     """Stream one assistant turn as SSE (events: meta, tool, token, done, error)."""
     return StreamingResponse(
@@ -53,7 +53,7 @@ def _owned_query(current_user: User) -> dict:
 
 @router.get("/conversations")
 async def list_conversations(
-    current_user: User = Depends(check_permission("view_opportunity")),
+    current_user: User = Depends(check_any_permission(["view_opportunity", "view_lead", "view_account"])),
 ):
     """The caller's own conversations, newest first (metadata only)."""
     convos = await AssistantConversation.find(
@@ -84,7 +84,7 @@ async def _get_owned_conversation(conversation_id: str, current_user: User) -> A
 @router.get("/conversations/{conversation_id}")
 async def get_conversation(
     conversation_id: str,
-    current_user: User = Depends(check_permission("view_opportunity")),
+    current_user: User = Depends(check_any_permission(["view_opportunity", "view_lead", "view_account"])),
 ):
     convo = await _get_owned_conversation(conversation_id, current_user)
     # Only user/assistant text is renderable in the UI; tool plumbing stays internal.
@@ -99,7 +99,7 @@ async def get_conversation(
 @router.delete("/conversations/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
-    current_user: User = Depends(check_permission("view_opportunity")),
+    current_user: User = Depends(check_any_permission(["view_opportunity", "view_lead", "view_account"])),
 ):
     convo = await _get_owned_conversation(conversation_id, current_user)
     await convo.soft_delete()
@@ -151,7 +151,7 @@ async def _append_action_outcome(action: AssistantAction, outcome_text: str):
 @router.post("/actions/{action_id}/confirm")
 async def confirm_action(
     action_id: str,
-    current_user: User = Depends(check_permission("view_opportunity")),
+    current_user: User = Depends(check_any_permission(["view_opportunity", "view_lead", "view_account"])),
 ):
     """Execute a pending action the user explicitly approved."""
     from app.services.assistant_actions import execute_action
@@ -177,7 +177,7 @@ async def confirm_action(
 @router.post("/actions/{action_id}/reject")
 async def reject_action(
     action_id: str,
-    current_user: User = Depends(check_permission("view_opportunity")),
+    current_user: User = Depends(check_any_permission(["view_opportunity", "view_lead", "view_account"])),
 ):
     """Cancel a pending action."""
     action = await _get_owned_pending_action(action_id, current_user)
