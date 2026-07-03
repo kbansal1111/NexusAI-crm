@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Plus, Search, Send, Sparkles, Square } from "lucide-react";
+import { Bot, Check, Loader2, Plus, Search, Send, Sparkles, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Sheet,
@@ -21,6 +21,9 @@ const TOOL_LABELS: Record<string, string> = {
     list_opportunity_transactions: "Reading transactions",
     pipeline_summary: "Summarizing pipeline",
     resolve_picklist: "Looking up options",
+    propose_update_opportunity: "Preparing an update",
+    propose_create_task: "Preparing a task",
+    propose_create_note: "Preparing a note",
 };
 
 const SUGGESTIONS = [
@@ -30,7 +33,8 @@ const SUGGESTIONS = [
 ];
 
 export function AssistantPanel() {
-    const { messages, isStreaming, error, send, stop, newConversation } = useAssistantChat();
+    const { messages, isStreaming, error, send, stop, resolveAction, newConversation } =
+        useAssistantChat();
     const [input, setInput] = useState("");
     const [open, setOpen] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -66,7 +70,7 @@ export function AssistantPanel() {
                                 <Bot className="h-4 w-4 text-blue-500" /> Assistant
                             </SheetTitle>
                             <SheetDescription className="text-xs">
-                                Ask about your opportunities — read-only.
+                                Ask about your opportunities. Changes need your approval.
                             </SheetDescription>
                         </div>
                         <Button
@@ -131,6 +135,53 @@ export function AssistantPanel() {
                                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                     )}
                                 </div>
+
+                                {/* Write-proposal confirmation cards */}
+                                {(m.actions || []).map((a) => (
+                                    <div
+                                        key={a.action_id}
+                                        className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5"
+                                    >
+                                        <p className="text-xs font-medium text-foreground">{a.summary}</p>
+                                        {a.state === "pending" && (
+                                            <div className="mt-2 flex gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 bg-emerald-600 px-3 text-xs hover:bg-emerald-700"
+                                                    onClick={() => void resolveAction(a.action_id, true)}
+                                                >
+                                                    <Check className="mr-1 h-3 w-3" /> Approve
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 px-3 text-xs"
+                                                    onClick={() => void resolveAction(a.action_id, false)}
+                                                >
+                                                    <X className="mr-1 h-3 w-3" /> Cancel
+                                                </Button>
+                                            </div>
+                                        )}
+                                        {a.state === "executing" && (
+                                            <p className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                                                <Loader2 className="h-3 w-3 animate-spin" /> Applying…
+                                            </p>
+                                        )}
+                                        {a.state === "executed" && (
+                                            <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                                <Check className="h-3 w-3" /> {a.resultMessage || "Applied."}
+                                            </p>
+                                        )}
+                                        {a.state === "rejected" && (
+                                            <p className="mt-1.5 text-[11px] text-muted-foreground">Cancelled.</p>
+                                        )}
+                                        {a.state === "failed" && (
+                                            <p className="mt-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                                                {a.resultMessage || "Failed to apply."}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ))}
@@ -169,7 +220,7 @@ export function AssistantPanel() {
                         )}
                     </div>
                     <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-                        Read-only · answers come from your CRM data
+                        Answers come from your CRM data · changes apply only after you approve
                     </p>
                 </div>
             </SheetContent>

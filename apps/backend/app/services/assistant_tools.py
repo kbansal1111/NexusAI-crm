@@ -134,6 +134,75 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ── Write proposals (Phase 2) ──────────────────────────────────────────────
+    # These tools NEVER write. They validate + queue a pending action that the
+    # user must approve via a confirmation card in the chat UI.
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_update_opportunity",
+            "description": (
+                "Propose changing fields on ONE opportunity (name, amount, probability, "
+                "close date, stage, description). The change is NOT applied — the user gets "
+                "a confirmation card and must press Approve. Call this when the user asks to "
+                "change/update/move a deal. Use resolve_picklist first for a stage name."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "opportunity_id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "amount": {"type": "number"},
+                    "probability": {"type": "integer", "description": "0–100"},
+                    "close_date": {"type": "string", "description": "ISO date (YYYY-MM-DD)."},
+                    "sales_stage_id": {"type": "string", "description": "Stage id from resolve_picklist(sales_stage)."},
+                    "description": {"type": "string"},
+                },
+                "required": ["opportunity_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_create_task",
+            "description": (
+                "Propose creating a task (optionally linked to an opportunity), e.g. a "
+                "follow-up or reminder. NOT applied until the user presses Approve on the "
+                "confirmation card."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Task title."},
+                    "description": {"type": "string"},
+                    "due_date": {"type": "string", "description": "ISO date (YYYY-MM-DD)."},
+                    "priority": {"type": "string", "enum": ["Low", "Normal", "High", "Urgent"]},
+                    "opportunity_id": {"type": "string", "description": "Optional opportunity to attach the task to."},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_create_note",
+            "description": (
+                "Propose adding a note to an opportunity. NOT applied until the user presses "
+                "Approve on the confirmation card."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "opportunity_id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+                "required": ["opportunity_id", "content"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
@@ -425,18 +494,32 @@ _TOOL_IMPLS = {
     "resolve_picklist": _resolve_picklist,
 }
 
+# Write-proposal tools: mapped to action types in assistant_actions. They queue
+# a pending action for user confirmation — they never write directly.
+_PROPOSAL_TOOLS = {
+    "propose_update_opportunity": "update_opportunity",
+    "propose_create_task": "create_task",
+    "propose_create_note": "create_note",
+}
 
-async def dispatch_tool(name: str, args: Dict[str, Any], current_user: User) -> str:
+
+async def dispatch_tool(
+    name: str, args: Dict[str, Any], current_user: User, conversation_id=None
+) -> str:
     """Execute one tool call, tenant-bound to `current_user`. Returns a JSON string.
 
     Never raises: errors come back as {"error": ...} so the model can recover
     and the agent loop keeps streaming.
     """
-    impl = _TOOL_IMPLS.get(name)
-    if impl is None:
-        return json.dumps({"error": f"Unknown tool: {name}"})
     try:
-        result = await impl(args or {}, current_user)
+        if name in _PROPOSAL_TOOLS:
+            from app.services.assistant_actions import propose_action  # lazy: avoid circular import
+            result = await propose_action(_PROPOSAL_TOOLS[name], args or {}, current_user, conversation_id)
+        else:
+            impl = _TOOL_IMPLS.get(name)
+            if impl is None:
+                return json.dumps({"error": f"Unknown tool: {name}"})
+            result = await impl(args or {}, current_user)
     except Exception as exc:  # noqa: BLE001 — surfaced to the model, logged by caller
         result = {"error": f"Tool failed: {type(exc).__name__}"}
     return json.dumps(result, default=str)

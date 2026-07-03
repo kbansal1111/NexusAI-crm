@@ -36,7 +36,7 @@ from app.models.consolidated_settings import (
     UserAssignmentRule, CountryUserAssignment, DepartmentMapping, AgentConnection
 )
 from app.models.tag import Tag
-from app.models.assistant import AssistantConversation
+from app.models.assistant import AssistantConversation, AssistantAction
 from app.models.notification import Notification
 from app.models.comment import Comment
 from app.models.reminder import Reminder
@@ -239,6 +239,7 @@ async def init_db():
             Tag,
             # AI Assistant
             AssistantConversation,
+            AssistantAction,
             # Relations (consolidated - single collection)
 
 

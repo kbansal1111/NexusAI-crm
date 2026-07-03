@@ -16,6 +16,14 @@ export interface AssistantMessage {
     content: string;
 }
 
+export interface PendingAction {
+    action_id: string;
+    summary: string;
+    /** Client-side lifecycle of the confirmation card. */
+    state: "pending" | "executing" | "executed" | "rejected" | "failed";
+    resultMessage?: string;
+}
+
 export interface AssistantStreamHandlers {
     /** Fired once with the (possibly new) conversation id. */
     onMeta?: (conversationId: string) => void;
@@ -23,6 +31,8 @@ export interface AssistantStreamHandlers {
     onTool?: (name: string) => void;
     /** Fired per streamed text token. */
     onToken: (text: string) => void;
+    /** Fired when the assistant queued a write that needs user approval. */
+    onConfirm?: (actionId: string, summary: string) => void;
     onDone?: () => void;
     onError?: (detail: string) => void;
 }
@@ -76,6 +86,7 @@ export async function streamAssistantChat(
             if (event === "meta" && payload.conversation_id) handlers.onMeta?.(payload.conversation_id);
             else if (event === "tool" && payload.name) handlers.onTool?.(payload.name);
             else if (event === "token" && typeof payload.text === "string") handlers.onToken(payload.text);
+            else if (event === "confirm" && payload.action_id) handlers.onConfirm?.(payload.action_id, payload.summary || "Apply this change?");
             else if (event === "done") handlers.onDone?.();
             else if (event === "error") handlers.onError?.(payload.detail || "Assistant error.");
         } catch {
@@ -115,5 +126,16 @@ export const assistantService = {
 
     deleteConversation: async (id: string): Promise<void> => {
         await apiClient.delete(`/assistant/conversations/${id}`);
+    },
+
+    // ── Confirmed write actions ───────────────────────────────────────────────
+    confirmAction: async (actionId: string): Promise<{ status: string; result?: any }> => {
+        const res = await apiClient.post(`/assistant/actions/${actionId}/confirm`);
+        return res.data;
+    },
+
+    rejectAction: async (actionId: string): Promise<{ status: string }> => {
+        const res = await apiClient.post(`/assistant/actions/${actionId}/reject`);
+        return res.data;
     },
 };

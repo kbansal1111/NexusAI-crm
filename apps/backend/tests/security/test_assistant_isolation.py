@@ -69,18 +69,38 @@ class Results:
 
 
 def _static_tool_surface_checks(results: Results):
-    """No live backend needed: the tool registry must be read-only."""
+    """No live backend needed: direct-execute tools must be read-only, and every
+    write-shaped tool must go through the propose→confirm pipeline."""
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-    from app.services.assistant_tools import TOOL_SCHEMAS, _TOOL_IMPLS  # noqa: PLC0415
+    from app.services.assistant_tools import TOOL_SCHEMAS, _PROPOSAL_TOOLS, _TOOL_IMPLS  # noqa: PLC0415
+    from app.services.assistant_actions import _ACTIONS  # noqa: PLC0415
 
     write_markers = ("create", "update", "delete", "edit", "upload", "set_", "mark_", "approve", "reject")
-    offenders = [n for n in _TOOL_IMPLS if any(m in n for m in write_markers)]
-    results.fail("Read-only tool registry", f"write-shaped tools present: {offenders}") if offenders else \
-        results.ok("Tool registry contains no write-shaped tools")
 
+    # 1. Direct-execute registry stays read-only — writes must never live here.
+    offenders = [n for n in _TOOL_IMPLS if any(m in n for m in write_markers)]
+    results.fail("Read-only direct registry", f"write-shaped tools execute directly: {offenders}") if offenders else \
+        results.ok("Direct-execute registry contains no write-shaped tools")
+
+    # 2. Every write-shaped tool schema must be a propose_* tool (confirmation-gated).
     schema_names = {t["function"]["name"] for t in TOOL_SCHEMAS}
-    results.fail("Schema/impl parity", f"{schema_names ^ set(_TOOL_IMPLS)}") if schema_names != set(_TOOL_IMPLS) else \
+    bad = [n for n in schema_names
+           if any(m in n for m in write_markers) and not n.startswith("propose_")]
+    results.fail("Writes are propose-gated", f"non-proposal write tools exposed: {bad}") if bad else \
+        results.ok("All write-shaped tools are propose_* (confirmation-gated)")
+
+    # 3. Parity: schemas == direct impls ∪ proposal tools; proposals map to real actions.
+    expected = set(_TOOL_IMPLS) | set(_PROPOSAL_TOOLS)
+    results.fail("Schema/impl parity", f"{schema_names ^ expected}") if schema_names != expected else \
         results.ok("Tool schemas match implementations 1:1")
+    unmapped = [n for n, a in _PROPOSAL_TOOLS.items() if a not in _ACTIONS]
+    results.fail("Proposal→action mapping", f"proposals without an action spec: {unmapped}") if unmapped else \
+        results.ok("Every proposal tool maps to a registered action (with an RBAC permission)")
+
+    # 4. Every action declares a non-empty RBAC permission string.
+    missing_perm = [k for k, v in _ACTIONS.items() if not v.get("permission")]
+    results.fail("Action permissions", f"actions without permission: {missing_perm}") if missing_perm else \
+        results.ok("Every action declares an RBAC permission")
 
 
 async def _session(client: httpx.AsyncClient, key: str) -> dict:
@@ -169,6 +189,15 @@ async def run() -> bool:
                 results.ok("B's conversation list does not leak A's conversation")
         else:
             results.skip("B list", f"unexpected status {r.status_code}")
+
+        # --- 5. Action endpoints: unknown/foreign ids must 404, never execute ---
+        fake_action = "0" * 24
+        r = await client.post(f"{BASE_URL}/assistant/actions/{fake_action}/confirm", headers=b["headers"])
+        results.ok(f"Confirm of unknown/foreign action blocked ({r.status_code})") if r.status_code in blocked else \
+            results.fail("Action confirm", f"expected 404/403, got {r.status_code}")
+        r = await client.post(f"{BASE_URL}/assistant/actions/{fake_action}/reject", headers=b["headers"])
+        results.ok(f"Reject of unknown/foreign action blocked ({r.status_code})") if r.status_code in blocked else \
+            results.fail("Action reject", f"expected 404/403, got {r.status_code}")
 
     return results.summary()
 
