@@ -314,8 +314,9 @@ DEFAULT_STANDARD_FIELDS: Dict[str, list] = {
         ("state",             "State",               "text",     True,  False),
         ("zip",               "Zip / Postal Code",   "text",     False, False),
         ("country",           "Country",             "text",     True,  False),
-        ("campaign_name",     "Campaign Name",       "text",     False, False),
-        ("segment",           "Segment",             "select",   False, False),
+        ("custom_fields.campaign_name", "Campaign Name", "text",   False, False),
+        ("custom_fields.segment",       "Segment",       "select", False, False),
+        ("custom_fields.experience_id", "Experience",    "lookup", False, False),
         ("creation_type",     "Creation Type",       "select",   False, False),
     ],
 

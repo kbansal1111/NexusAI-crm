@@ -116,12 +116,12 @@ export const LEAD_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "state", label: "State", type: "string" },
   { key: "zip", label: "Zip / Postal Code", type: "string" },
   { key: "country", label: "Country", type: "string" },
-  { key: "campaign_name", label: "Campaign Name", type: "string" },
-  { key: "segment", label: "Segment", type: "lookup" },
+  { key: "custom_fields.campaign_name", label: "Campaign Name", type: "string" },
+  { key: "custom_fields.segment", label: "Segment", type: "lookup" },
+  { key: "custom_fields.experience_id", label: "Experience", type: "lookup" },
   { key: "creation_type", label: "Creation Type", type: "lookup" },
   { key: "industry_data.travel_date", label: "Travel Date", type: "date" },
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
-  { key: "industry_data.experience_id", label: "Experience", type: "lookup" },
   { key: "industry_data.no_of_pax", label: "No. of Pax", type: "number" },
   { key: "industry_data.no_of_nights", label: "No. of Nights", type: "number" },
   { key: "industry_data.no_of_adults", label: "No. of Adults", type: "number" },
@@ -147,7 +147,7 @@ export const OPPORTUNITY_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "industry_data.travel_date", label: "Travel Date", type: "date" },
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
   { key: "industry_data.no_of_pax", label: "No. of Pax", type: "number" },
-  { key: "industry_data.starting_city", label: "Starting City", type: "string" },
+  { key: "custom_fields.starting_city", label: "Starting City", type: "string" },
   ...AUDIT_FIELDS,
   { key: "id", label: "Opportunity ID", type: "string" },
 ];
@@ -226,8 +226,9 @@ export function standardFieldByKey(entity: EntityType): Map<string, ViewFieldDef
 // form's "Additional Information" section gains fields.
 export const ADDITIONAL_FIELD_KEYS_BY_ENTITY: Record<string, string[]> = {
   // Mirrors the Lead form's "Additional Information" section (Segment / Campaign / Experience).
-  lead: ["segment", "campaign_name", "industry_data.experience_id"],
-  opportunity: ["industry_data.starting_city", "close_lost_reason"],
+  // These live in the lead's custom_fields dict.
+  lead: ["custom_fields.segment", "custom_fields.campaign_name", "custom_fields.experience_id"],
+  opportunity: ["custom_fields.starting_city", "close_lost_reason"],
 };
 
 export function additionalFieldKeysFor(entity: EntityType): Set<string> {
@@ -240,7 +241,7 @@ export const DEFAULT_COLUMNS_BY_ENTITY: Record<string, string[]> = {
   account: ["name", "phone", "billing_street", "acc_type_id", "owner_id"],
   personal_account: ["first_name", "last_name", "email", "phone", "mobile", "owner_id"],
   contact: ["first_name", "last_name", "email", "phone", "mobile", "account_id", "owner_id"],
-  lead: ["first_name", "last_name", "email", "phone", "city", "lead_status_id", "segment", "source_id"],
+  lead: ["first_name", "last_name", "email", "phone", "city", "lead_status_id", "custom_fields.segment", "source_id"],
   opportunity: ["name", "amount", "account_id", "sales_stage_id", "close_date", "owner_id"],
   supplier: ["name", "supplier_type", "phone", "email", "owner_id"],
   task: ["name", "status", "priority", "due_date", "assigned_user_id"],
@@ -288,7 +289,7 @@ const LOOKUP_OPTIONS_KEY_BY_ENTITY: Record<string, Record<string, string>> = {
     lead_status_id: "lead_statuses", source_id: "sources",
     industry_id: "industries",
     "industry_data.destination_ids": "destinations",
-    "industry_data.experience_id": "experiences", salutation: "salutations",
+    "custom_fields.experience_id": "experiences", salutation: "salutations",
   },
   opportunity: {
     owner_id: "users", created_by: "users", last_modified_by_id: "users",
@@ -307,7 +308,7 @@ const LOOKUP_OPTIONS_KEY_BY_ENTITY: Record<string, Record<string, string>> = {
 // Fixed-option selects (no metadata source).
 const STATIC_OPTIONS_BY_ENTITY: Record<string, Record<string, { id: string; name: string }[]>> = {
   lead: {
-    segment: SEGMENT_FILTER_OPTIONS,
+    "custom_fields.segment": SEGMENT_FILTER_OPTIONS,
     creation_type: [{ id: "manual", name: "Manual" }, { id: "auto", name: "Auto" }],
   },
   opportunity: {

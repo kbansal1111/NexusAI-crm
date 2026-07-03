@@ -598,10 +598,15 @@ export function LeadForm({
             state: initialData?.state || "",
             zip: initialData?.zip || "",
             country: initialData?.country || "",
-            campaign_name: initialData?.campaign_name || "",
+            // Additional Information lives in custom_fields; top-level reads are
+            // a legacy fallback for not-yet-migrated leads.
+            campaign_name: (initialData?.custom_fields as any)?.campaign_name || (initialData as any)?.campaign_name || "",
             // Normalise the legacy "B2B_DIRECT" value to CORPORATE so edits of
             // not-yet-migrated leads show the right option.
-            segment: (initialData?.segment === "B2B_DIRECT" ? SEGMENTS.CORPORATE : initialData?.segment) || SEGMENTS.B2C,
+            segment: (() => {
+                const raw = (initialData?.custom_fields as any)?.segment || (initialData as any)?.segment;
+                return (raw === "B2B_DIRECT" ? SEGMENTS.CORPORATE : raw) || SEGMENTS.B2C;
+            })(),
             creation_type: normalizedCreationType,
             // Industry-specific defaults — prevents uncontrolled-to-controlled input errors
             ...(isTravel ? {
@@ -619,7 +624,7 @@ export function LeadForm({
                 no_of_infants: initialData?.industry_data?.no_of_infants?.toString() ?? ("0" as any),
                 is_fixed: initialData?.industry_data?.is_fixed || false,
                 destinations: (initialData?.industry_data?.destination_ids as string[] | undefined)?.join(",") || "",
-                experience_id: initialData?.industry_data?.experience_id || "",
+                experience_id: (initialData?.custom_fields as any)?.experience_id || initialData?.industry_data?.experience_id || "",
             } : industry === "healthcare" ? {
                 industry_data: {
                     chief_complaint: initialData?.industry_data?.chief_complaint ?? "",
@@ -741,8 +746,12 @@ export function LeadForm({
                 state: data.state,
                 zip: data.zip,
                 country: data.country,
-                campaign_name: data.campaign_name,
-                segment: data.segment,
+                // Additional Information — stored in the lead's custom_fields dict
+                custom_fields: {
+                    segment: data.segment,
+                    campaign_name: data.campaign_name,
+                    ...(isTravel && data.experience_id ? { experience_id: data.experience_id } : {}),
+                },
                 creation_type: isTravel
                     ? (data.creation_type || "manual")
                     : (["manual", "auto"].includes(data.combined_source) ? data.combined_source : "manual"),
@@ -760,7 +769,6 @@ export function LeadForm({
                     no_of_infants: data.no_of_infants ? Number(data.no_of_infants) : 0,
                     is_fixed: data.is_fixed,
                     destination_ids: data.destinations?.split(",").map((d: string) => d.trim()).filter(Boolean) || [],
-                    experience_id: data.experience_id || undefined,
                 };
             } else {
                 // Non-travel: send industry_data from form

@@ -74,7 +74,7 @@ const GEO_KIND: Record<string, GeoKind> = {
   state: "state",
   billing_city: "city",
   city: "city",
-  "industry_data.starting_city": "city",
+  "custom_fields.starting_city": "city",
   // Contact mailing address.
   mailing_country: "country",
   mailing_state: "state",

@@ -252,7 +252,9 @@ class OpportunityService(ActivityMixin):
                     await pivot.insert()
 
             # Save custom fields via unified registry (Phase 1 §A — fixes dead-code bug)
-            if custom_fields:
+            # Only a LIST of {id, value} pairs targets the registry — a plain
+            # dict (e.g. starting_city) is already stored on the document.
+            if custom_fields and isinstance(custom_fields, list):
                 import json
                 payloads = [
                     CustomFieldValuePayload(
@@ -352,7 +354,12 @@ class OpportunityService(ActivityMixin):
 
         for field, value in update_data.items():
             old_values[field] = getattr(opp, field, None)
-            
+
+            if field == "custom_fields" and isinstance(value, dict):
+                # Merge Additional Information keys instead of replacing the
+                # whole dict, so partial updates don't wipe other keys.
+                value = {**(opp.custom_fields or {}), **value}
+
             # Handle conversion of ID fields
             if field.endswith("_id") and value and isinstance(value, str):
                 try:
@@ -389,9 +396,11 @@ class OpportunityService(ActivityMixin):
             if _stage and await self._should_auto_lock(opp, getattr(_stage, 'is_won', False)):
                 await opp.lock(user_id)
 
-        # Custom fields write (Phase 1 §A)
+        # Custom fields write (Phase 1 §A).
+        # Only a LIST of {id, value} pairs targets the registry — a plain
+        # dict was already merged onto the document above.
         custom_field_changes = 0
-        if custom_fields:
+        if custom_fields and isinstance(custom_fields, list):
             import json
             payloads = [
                 CustomFieldValuePayload(

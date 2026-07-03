@@ -426,8 +426,9 @@ export const getColumns = (
             id: "segment",
             header: "Segment",
             cell: ({ row }) => {
-                // Default to "B2C" — matches the Lead model default and ensures badge always shows
-                const segment = row.original.segment || (row.original.custom_fields as any)?.segment || "B2C";
+                // Segment lives in custom_fields (Additional Information); the
+                // top-level read is a legacy fallback. Default "B2C" keeps the badge visible.
+                const segment = (row.original.custom_fields as any)?.segment || (row.original as any).segment || "B2C";
                 return (
                     <Badge variant={segment === "B2C" ? "secondary" : "outline"} className={getSegmentBadgeClass(segment)}>
                         {getSegmentLabel(segment)}

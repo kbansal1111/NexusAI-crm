@@ -244,7 +244,7 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
             contact_id: opportunity.contact_id || "",
             inclusions: (opportunity.industry_data?.inclusions as string[]) || [],
             close_lost_reason: opportunity.close_lost_reason || "",
-            starting_city: opportunity.industry_data?.starting_city || "",
+            starting_city: (opportunity.custom_fields as any)?.starting_city || opportunity.industry_data?.starting_city || "",
             key_deal: opportunity.key_deal ?? false,
         } as OpportunityFormValues,
     });
@@ -351,7 +351,9 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                         } else {
                             travelIndustryData.destination_ids = [];
                         }
-                        travelIndustryData.starting_city = data.starting_city?.trim() || "";
+                        // Additional Information — stored in custom_fields, not industry_data.
+                        // Always sent so clearing the input clears the stored value (backend merges).
+                        payload.custom_fields = { starting_city: data.starting_city?.trim() || "" };
 
                         payload.industry_data = travelIndustryData;
                     } else if (data.industry_data) {
@@ -832,7 +834,7 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                                     </div>
                                 )}
 
-                                {/* Row: Amount & Close Date */}
+                                {/* Row: Amount & Expected Revenue */}
                                 <FormField
                                     control={form.control}
                                     name="amount"
@@ -855,6 +857,27 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                                         </FormItem>
                                     )}
                                 />
+
+                                {/* Expected Revenue — auto-calculated, read-only:
+                                    (probability × amount) / 100 */}
+                                <FormItem>
+                                    <FormLabel>Expected Revenue (₹)</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="text"
+                                            readOnly
+                                            tabIndex={-1}
+                                            className="bg-muted/40 text-muted-foreground"
+                                            value={(() => {
+                                                const amt = Number(form.watch("amount"));
+                                                const prob = Number(form.watch("probability"));
+                                                if (!amt || isNaN(amt) || isNaN(prob)) return "";
+                                                return ((prob * amt) / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+                                            })()}
+                                            placeholder="Auto-calculated"
+                                        />
+                                    </FormControl>
+                                </FormItem>
 
                                 <FormField
                                     control={form.control}

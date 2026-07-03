@@ -54,13 +54,14 @@ def test_every_preset_entity_supported_and_filterable():
 
 
 def test_lead_whatsapp_preset_is_campaign_name_equals():
+    # campaign_name lives in the lead's custom_fields dict (Additional Information).
     wa = next(d for d in preset_defs("lead") if d["preset_key"] == "whatsapp_enquiry")
     assert wa["filter_rules"] == [
-        {"field": "campaign_name", "operator": "equals", "value": "WhatsApp Enquiry"}
+        {"field": "custom_fields.campaign_name", "operator": "equals", "value": "WhatsApp Enquiry"}
     ]
     # The engine turns it into an anchored, case-insensitive match.
     clauses = build_filter_clauses("lead", wa["filter_rules"])
-    assert clauses == [{"campaign_name": {"$regex": r"^WhatsApp\ Enquiry$", "$options": "i"}}]
+    assert clauses == [{"custom_fields.campaign_name": {"$regex": r"^WhatsApp\ Enquiry$", "$options": "i"}}]
 
 
 def test_opportunity_stage_presets_are_closed_won_and_lost():

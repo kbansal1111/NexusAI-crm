@@ -117,14 +117,15 @@ _LEAD_FIELDS: Dict[str, str] = {
     "state": "string",
     "zip": "string",
     "country": "string",
-    "campaign_name": "string",
-    "segment": "string",        # stored as "B2C"/"B2B" — string match (UI: select)
+    # Additional Information — stored in the lead's custom_fields dict.
+    "custom_fields.campaign_name": "string",
+    "custom_fields.segment": "string",   # stored as "B2C"/"B2B" — string match (UI: select)
+    "custom_fields.experience_id": "strlookup",  # single id stored as a string
     "creation_type": "string",  # stored as "manual"/"auto" — string match (UI: select)
     # Travel industry_data fields (nested) — only meaningful for the travel industry.
     # Leads persist travel_date as an ISO string (TravelLeadData.travel_date: str).
     "industry_data.travel_date": "datestr",
     "industry_data.destination_ids": "strlookup",
-    "industry_data.experience_id": "strlookup",  # single id stored as a string
     "industry_data.no_of_pax": "number",
     "industry_data.no_of_nights": "number",
     "industry_data.no_of_adults": "number",
@@ -160,7 +161,8 @@ _OPPORTUNITY_FIELDS: Dict[str, str] = {
     "industry_data.travel_date": "datemixed",
     "industry_data.destination_ids": "strlookup",
     "industry_data.no_of_pax": "number",
-    "industry_data.starting_city": "string",
+    # Additional Information — stored in the opportunity's custom_fields dict.
+    "custom_fields.starting_city": "string",
     "created_at": "date",
     "updated_at": "date",
     "id": "lookup",

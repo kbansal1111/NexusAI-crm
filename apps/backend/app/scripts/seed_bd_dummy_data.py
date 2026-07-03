@@ -73,9 +73,9 @@ async def seed_bd_data():
                 "tenant_id": tenant_id, "owner_id": bd_user_id, "created_by": bd_user_id,
                 "bd_owner_id": bd_user_id, "reporting_manager_id": manager_id,
                 "created_at": now, "updated_at": now, "deleted_at": None,
-                "custom_fields": {}, "industry_data": {},
+                "custom_fields": {"segment": "B2C"}, "industry_data": {},
                 "is_converted": False, "view_count": 0, "is_favorite": False,
-                "segment": "B2C", "creation_type": "manual",
+                "creation_type": "manual",
             }
             for fn, ln, em, ph, co, ct, st, zp in [
                 ("Rahul",  "Sharma",  "rahul.sharma@example.com",  "+91-9876543210", "TechCorp Solutions",   "Mumbai",    "Maharashtra", "400001"),

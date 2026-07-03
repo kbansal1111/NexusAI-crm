@@ -123,7 +123,14 @@ class TravelOpportunityConversionStrategy:
             "destination_names": dest_names,
         }
 
-        experience_id = conv_industry.get("experience_id") or lead_industry.get("experience_id")
+        # Experience moved to the lead's custom_fields dict (Additional
+        # Information); industry_data is kept as a legacy fallback.
+        lead_custom = getattr(lead, "custom_fields", None) or {}
+        experience_id = (
+            conv_industry.get("experience_id")
+            or lead_custom.get("experience_id")
+            or lead_industry.get("experience_id")
+        )
         if experience_id:
             data["experience_id"] = str(experience_id)
 

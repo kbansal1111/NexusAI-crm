@@ -139,6 +139,12 @@ class LeadService(ActivityMixin):
             created_by=user_id
         )
 
+        # Additional Information lives in custom_fields — default the segment
+        # (previously a top-level model default).
+        if lead.custom_fields is None:
+            lead.custom_fields = {}
+        lead.custom_fields.setdefault("segment", "B2C")
+
         from app.services.industry_service import get_tenant_industry
         from app.core.entity_required_fields import validate_lead_record
         industry = await get_tenant_industry(tenant_id)
@@ -177,8 +183,11 @@ class LeadService(ActivityMixin):
                 )
                 await pivot.insert()
         
-        # Save custom fields via unified registry (Phase 1 §A)
-        if custom_fields:
+        # Save custom fields via unified registry (Phase 1 §A).
+        # Only a LIST of {id, value} pairs targets the registry — the plain
+        # dict (segment/campaign_name/experience_id) is already stored on the
+        # lead document itself via model_dump above.
+        if custom_fields and isinstance(custom_fields, list):
             import json
             payloads = [
                 CustomFieldValuePayload(
@@ -298,6 +307,10 @@ class LeadService(ActivityMixin):
             original_values[field] = str(original_value) if original_value else None
             if field in ADDRESS_FIELDS and value != original_value:
                 address_changed = True
+            if field == "custom_fields" and isinstance(value, dict):
+                # Merge Additional Information keys instead of replacing the
+                # whole dict, so partial updates don't wipe other keys.
+                value = {**(lead.custom_fields or {}), **value}
             setattr(lead, field, value)
             updated_fields[field] = str(value) if value else None
 
@@ -338,9 +351,11 @@ class LeadService(ActivityMixin):
             except Exception:
                 logger.warning("BD re-assignment failed for lead %s", lead.id, exc_info=True)
 
-        # Write custom field values via unified registry (Phase 1 §A)
+        # Write custom field values via unified registry (Phase 1 §A).
+        # Only a LIST of {id, value} pairs targets the registry — the plain
+        # dict was already merged onto the lead document above.
         custom_field_changes = 0
-        if custom_fields:
+        if custom_fields and isinstance(custom_fields, list):
             payloads = [
                 CustomFieldValuePayload(
                     additional_field_id=ObjectId(f["id"]),
@@ -663,7 +678,7 @@ class LeadService(ActivityMixin):
                     industry_id=lead.industry_id,
                     account_source_id=lead.source_id,
                     is_person_account=is_person_account,
-                    segment=lead.segment,
+                    segment=(lead.custom_fields or {}).get("segment", "B2C"),
                     salutation=p_salutation,
                     first_name=p_first_name,
                     last_name=p_last_name,
@@ -959,7 +974,7 @@ class LeadService(ActivityMixin):
                 opportunitable_type="Account" if not is_person_account else "PersonalAccount",
                 opportunitable_id=account_id,
                 lead_id=lead.id,
-                segment=lead.segment,
+                segment=(lead.custom_fields or {}).get("segment", "B2C"),
                 source_id=lead.source_id,
                 industry_data=opp_industry_data,
                 tenant_id=tenant_id,
@@ -1490,7 +1505,10 @@ class LeadService(ActivityMixin):
             try:
                 _cf = await bulk_read_custom_field_values("lead", [l.id for l in leads], tenant_id)
                 for l in leads:
-                    l.custom_fields = _cf.get(str(l.id), {})
+                    # Merge registry values over the document's own dict —
+                    # segment/campaign_name/experience_id live in the doc dict
+                    # and must survive the join.
+                    l.custom_fields = {**(l.custom_fields or {}), **_cf.get(str(l.id), {})}
             except Exception:
                 pass
 

@@ -230,14 +230,18 @@ async def get_lead(
     
     lead_response = LeadResponse.model_validate(lead)
 
-    # Sprint D — populate custom_fields via bulk read helper
+    # Sprint D — populate custom_fields via bulk read helper.
+    # Merge registry values over the document's own dict — the Additional
+    # Information keys (segment/campaign_name/experience_id) live in the doc
+    # dict and must survive the join.
     try:
         from app.services import field_registry_service
-        lead_response.custom_fields = await field_registry_service.read_custom_field_values(
+        _registry_cf = await field_registry_service.read_custom_field_values(
             "lead", lead.id, current_user.tenant_id,
         )
+        lead_response.custom_fields = {**(lead.custom_fields or {}), **(_registry_cf or {})}
     except Exception:
-        lead_response.custom_fields = {}
+        lead_response.custom_fields = dict(lead.custom_fields or {})
 
     # Resolve destinations if in travel industry (scoped to tenant)
     if lead_response.industry_data and "destination_ids" in lead_response.industry_data:

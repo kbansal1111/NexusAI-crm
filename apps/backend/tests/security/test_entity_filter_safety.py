@@ -125,9 +125,12 @@ def test_contact_rejects_lead_only_field():
 def test_lead_picklist_and_select_fields():
     oid = ObjectId()
     assert build_filter_clauses("lead", [{"field": "lead_status_id", "operator": "equals", "value": str(oid)}]) == [{"lead_status_id": oid}]
-    # segment is a string match (UI shows a select of B2C/B2B), not a lookup.
-    seg = build_filter_clauses("lead", [{"field": "segment", "operator": "equals", "value": "B2C"}])
-    assert len(seg) == 1 and "segment" in seg[0]
+    # segment lives in the custom_fields dict (Additional Information) and is a
+    # string match (UI shows a select of B2C/B2B), not a lookup.
+    seg = build_filter_clauses("lead", [{"field": "custom_fields.segment", "operator": "equals", "value": "B2C"}])
+    assert len(seg) == 1 and "custom_fields.segment" in seg[0]
+    # The old top-level key is no longer whitelisted.
+    assert build_filter_clauses("lead", [{"field": "segment", "operator": "equals", "value": "B2C"}]) == []
 
 
 def test_lead_has_no_account_field():

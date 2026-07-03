@@ -81,9 +81,10 @@
     <p class="eyebrow">Tutterfly CRM · Integration Spec</p>
     <h1>Web-to-Lead JSON Payload</h1>
     <p class="lede">Contract for sending website enquiries into Tutterfly CRM as leads. <b>The structure
-    mirrors the Tutterfly Lead schema</b> — contact and address fields at the top level, travel details
-    inside <code>industry_data</code>. Every field here maps to a field on the CRM's lead form. The
-    endpoint URL and token will be shared before go-live.</p>
+    mirrors the Tutterfly lead form</b> — contact and address fields at the top level, travel details
+    inside <code>industry_data</code>, and the form's Additional Information fields (segment, campaign,
+    experience) inside <code>custom_fields</code>. The endpoint URL and token will be shared before
+    go-live.</p>
     <div class="meta">
       <span class="chip status">v4 · final for team</span>
       <span class="chip">July 2026</span>
@@ -97,7 +98,7 @@
     <div class="rules">
       <div class="rule"><b>Required fields</b><span><code>last_name</code>, <code>city</code>, <code>state</code>, <code>country</code>, <code>source</code> + inside <code>industry_data</code>: <code>travel_date</code>, <code>destinations</code>. The CRM rejects the lead if any is missing.</span></div>
       <div class="rule"><b>Send names, not IDs</b><span><code>source</code>, <code>experience</code>, <code>destinations</code> are plain names ("Web", "Honeymoon", ["Bali"]). ID resolution happens on the Tutterfly side.</span></div>
-      <div class="rule"><b>Always send <code>ref_id</code></b><span>Unique per enquiry. It is the dedupe key — retries and double-submits will not create duplicate leads. (Integration-only field; it doesn't appear on the CRM lead form.)</span></div>
+      <div class="rule"><b>Duplicate handling</b><span>The CRM checks email/mobile against existing leads — a double-submit with the same contact details will not create a second lead.</span></div>
       <div class="rule"><b>Phone format</b><span><code>+91 9876543210</code> — country code, space, 10 digits. Bare 10-digit numbers are accepted and treated as +91. Send at least one of email / mobile.</span></div>
       <div class="rule"><b>Numbers as numbers</b><span>Nights, pax, adults, children, infants go as JSON integers — <code>5</code>, not <code>"5"</code>.</span></div>
       <div class="rule"><b class="no">Do not send <code>source_medium</code> or <code>ip</code></b><span>Both fields are removed from the CRM. Source tracking is <code>source</code> only.</span></div>
@@ -129,8 +130,6 @@
     <span class="k">"zip"</span>: <span class="s">"110001"</span>,
     <span class="k">"country"</span>: <span class="s">"India"</span>,
     <span class="k">"source"</span>: <span class="s">"Web"</span>,
-    <span class="k">"campaign_name"</span>: <span class="s">"bali-summer-2026"</span>,
-    <span class="k">"segment"</span>: <span class="s">"B2C"</span>,
     <span class="k">"industry_data"</span>: {
       <span class="k">"travel_date"</span>: <span class="s">"2026-09-15"</span>,
       <span class="k">"no_of_nights"</span>: <span class="l">5</span>,
@@ -139,10 +138,13 @@
       <span class="k">"no_of_childs"</span>: <span class="l">1</span>,
       <span class="k">"no_of_infants"</span>: <span class="l">1</span>,
       <span class="k">"destinations"</span>: [<span class="s">"Bali"</span>, <span class="s">"Singapore"</span>],
-      <span class="k">"experience"</span>: <span class="s">"Honeymoon"</span>,
       <span class="k">"is_fixed"</span>: <span class="l">false</span>
     },
-    <span class="k">"ref_id"</span>: <span class="s">"WEB-2026-000123"</span>
+    <span class="k">"custom_fields"</span>: {
+      <span class="k">"segment"</span>: <span class="s">"B2C"</span>,
+      <span class="k">"campaign_name"</span>: <span class="s">"bali-summer-2026"</span>,
+      <span class="k">"experience"</span>: <span class="s">"Honeymoon"</span>
+    }
   }
 }</pre>
     </div>
@@ -162,16 +164,15 @@
           <tr><td class="field">industry_data.travel_date</td><td><span class="req">REQUIRED</span></td><td class="notes"><code>YYYY-MM-DD</code>. Keep the date field required on the form.</td></tr>
           <tr><td class="field">industry_data.destinations</td><td><span class="req">REQUIRED</span></td><td class="notes">Array of destination <b>names</b>, at least one — <code>["Bali"]</code>. Replaces <span class="field-inline">destinations_name</span> / <span class="field-inline">destination_json</span> / <span class="field-inline">min_country_data</span>.</td></tr>
           <tr><td class="field">email · mobile</td><td><span class="rec">ONE OF</span></td><td class="notes">Send at least one. Mobile: <code>+91 9876543210</code>; bare 10 digits → treated as +91.</td></tr>
-          <tr><td class="field">ref_id</td><td><span class="rec">RECOMMENDED</span></td><td class="notes">Unique per enquiry — <b>dedupe key</b>, safe to retry on network errors. Integration-only: stored internally, not a lead-form field.</td></tr>
           <tr><td class="field">salutation</td><td><span class="opt">OPTIONAL</span></td><td class="notes"><code>Mr.</code> <code>Mrs.</code> <code>Ms.</code> <code>Dr.</code> <code>Prof.</code></td></tr>
           <tr><td class="field">phone</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Alternate / landline, same format.</td></tr>
           <tr><td class="field">company · title · no_employees · website</td><td><span class="opt">OPTIONAL</span></td><td class="notes">B2B info. <span class="field-inline">website</span> = customer's company site, not your landing page. <span class="field-inline">no_employees</span> integer ≥ 1.</td></tr>
           <tr><td class="field">street · zip</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Address extras.</td></tr>
-          <tr><td class="field">campaign_name</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Campaign identifier (the old <span class="field-inline">campaign_id</span> value).</td></tr>
-          <tr><td class="field">segment</td><td><span class="opt">OPTIONAL</span></td><td class="notes"><code>B2C</code> (default) / <code>B2B</code> / <code>CORPORATE</code>.</td></tr>
           <tr><td class="field">industry_data.no_of_nights · no_of_pax · no_of_adults · no_of_childs · no_of_infants</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Integers ≥ 0, as JSON numbers.</td></tr>
-          <tr><td class="field">industry_data.experience</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Name: <code>Budget</code> / <code>Standard</code> / <code>Luxury</code> / <code>Ultra-Luxury</code> / <code>Adventure</code> / <code>Honeymoon</code> / <code>Family</code>.</td></tr>
           <tr><td class="field">industry_data.is_fixed</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Boolean — fixed-departure enquiry (the old <span class="field-inline">fixed_departure</span>).</td></tr>
+          <tr><td class="field">custom_fields.segment</td><td><span class="opt">OPTIONAL</span></td><td class="notes"><code>B2C</code> (default) / <code>B2B</code> / <code>CORPORATE</code>. Lead form → Additional Information.</td></tr>
+          <tr><td class="field">custom_fields.campaign_name</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Campaign identifier — lead form's Campaign field.</td></tr>
+          <tr><td class="field">custom_fields.experience</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Name: <code>Budget</code> / <code>Standard</code> / <code>Luxury</code> / <code>Ultra-Luxury</code> / <code>Adventure</code> / <code>Honeymoon</code> / <code>Family</code>.</td></tr>
         </tbody>
       </table>
     </div>
@@ -184,14 +185,15 @@
         <thead><tr><th>Old field</th><th>Status</th><th>Now</th></tr></thead>
         <tbody>
           <tr><td class="field">region</td><td><span class="dead">RENAMED</span></td><td class="notes"><span class="field-inline">state</span></td></tr>
-          <tr><td class="field">ref_id</td><td><span class="dead">KEPT</span></td><td class="notes">Same name, top level — dedupe only, not a CRM lead field.</td></tr>
           <tr><td class="field">travel_date · no_of_nights · no_of_pax · experience · fixed_departure (top level)</td><td><span class="dead">MOVED</span></td><td class="notes">All travel fields now live inside <span class="field-inline">industry_data</span> (<span class="field-inline">fixed_departure</span> → <span class="field-inline">is_fixed</span>, boolean).</td></tr>
           <tr><td class="field">destinations_name · destination_json · min_country_data</td><td><span class="dead">REPLACED</span></td><td class="notes"><span class="field-inline">industry_data.destinations</span> — array of names</td></tr>
           <tr><td class="field">no_of_traveler · no_of_passengers</td><td><span class="dead">RENAMED</span></td><td class="notes"><span class="field-inline">industry_data.no_of_pax</span> (integer)</td></tr>
           <tr><td class="field">source_medium</td><td><span class="dead">REMOVED</span></td><td class="notes">Do not send — field no longer exists in the CRM.</td></tr>
           <tr><td class="field">ip</td><td><span class="dead">REMOVED</span></td><td class="notes">Do not send — field no longer exists in the CRM.</td></tr>
-          <tr><td class="field">url · dook_enquiry_id · departure_id · form_type · bnpl</td><td><span class="dead">DROPPED</span></td><td class="notes">No equivalent field on the CRM lead.</td></tr>
-          <tr><td class="field">custom_fields block (segment · destination · description · date_of_travel · no_of_passengers · experience)</td><td><span class="dead">DROPPED</span></td><td class="notes">The CRM's custom-fields system is not in use. Send <span class="field-inline">segment</span> at the top level; the rest have canonical fields above.</td></tr>
+          <tr><td class="field">campaign_name (top level)</td><td><span class="dead">MOVED</span></td><td class="notes"><span class="field-inline">custom_fields.campaign_name</span></td></tr>
+          <tr><td class="field">experience (top level) · custom_fields.segment · custom_fields.experience</td><td><span class="dead">MOVED</span></td><td class="notes">Both now live in <span class="field-inline">custom_fields</span> — <span class="field-inline">segment</span>, <span class="field-inline">experience</span>.</td></tr>
+          <tr><td class="field">ref_id · url · dook_enquiry_id · departure_id · form_type · bnpl</td><td><span class="dead">DROPPED</span></td><td class="notes">No equivalent field on the CRM lead.</td></tr>
+          <tr><td class="field">custom_fields.destination · description · date_of_travel · no_of_passengers</td><td><span class="dead">DROPPED</span></td><td class="notes">Covered by <span class="field-inline">industry_data.destinations</span> / <span class="field-inline">travel_date</span> / <span class="field-inline">no_of_pax</span>; description has no lead field.</td></tr>
         </tbody>
       </table>
     </div>
@@ -215,8 +217,7 @@
     <span class="k">"industry_data"</span>: {
       <span class="k">"travel_date"</span>: <span class="s">"2026-10-05"</span>,
       <span class="k">"destinations"</span>: [<span class="s">"Maldives"</span>]
-    },
-    <span class="k">"ref_id"</span>: <span class="s">"WEB-2026-000124"</span>
+    }
   }
 }</pre>
     </div>

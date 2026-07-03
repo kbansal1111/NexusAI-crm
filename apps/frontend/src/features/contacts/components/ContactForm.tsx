@@ -33,6 +33,8 @@ import { contactsService } from "@/lib/api/services/contacts.service";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useUploadFile } from "@/features/files/api/use-files";
+import { Paperclip, X } from "lucide-react";
 
 const contactFormSchema = z.object({
     salutation: z.string().optional(),
@@ -144,6 +146,12 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
         return false;
     };
 
+    // Attachment (single file) — uploaded after the contact is saved, then
+    // linked via fileable_type="Contact" (shows in the details Files tab).
+    const uploadFile = useUploadFile();
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     async function onSubmit(data: ContactFormValues) {
         setIsLoading(true);
         const startTime = Date.now();
@@ -151,12 +159,30 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
         try {
             await ErrorHandler.withErrorHandling(async () => {
                 try {
+                    let savedContact;
                     if (id) {
-                        await contactsService.updateContact(id, data);
+                        savedContact = await contactsService.updateContact(id, data);
                         toast.success("Contact updated successfully");
                     } else {
-                        await contactsService.createContact(data as any);
+                        savedContact = await contactsService.createContact(data as any);
                         toast.success("Contact created successfully");
+                    }
+
+                    // Upload the attached file (if any) and link it to the contact.
+                    const savedContactId = savedContact?.id || id;
+                    if (selectedFile && savedContactId) {
+                        try {
+                            await uploadFile.mutateAsync({
+                                file: selectedFile,
+                                fileable_type: "Contact",
+                                fileable_id: savedContactId,
+                            });
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                        } catch (uploadErr) {
+                            console.error("Attachment upload failed", uploadErr);
+                            toast.error("Contact saved, but the attachment failed to upload.");
+                        }
                     }
                     isSuccess = true;
                     
@@ -417,6 +443,48 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                             )}
                         />
                     </div>
+                </div>
+
+                {/* ── Section: Attachment Information ─────────────── */}
+                <div>
+                    <h3 className="text-lg font-medium mb-4">Attachment Information</h3>
+                    {selectedFile ? (
+                        <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                            <span className="flex min-w-0 items-center gap-2">
+                                <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                <span className="truncate text-foreground">{selectedFile.name}</span>
+                            </span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-1"
+                                onClick={() => {
+                                    setSelectedFile(null);
+                                    if (fileInputRef.current) fileInputRef.current.value = "";
+                                }}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-fit"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Paperclip className="mr-2 h-4 w-4" />
+                            Add Attachment
+                        </Button>
+                    )}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                    />
                 </div>
                 <div className={cn("flex justify-end gap-4 pt-4 border-t", isDrawer && "sticky bottom-0 z-10 -mx-5 -mb-5 bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85")}>
                     <Button type="button" variant="outline" onClick={() => onCancel ? onCancel() : router.back()}>

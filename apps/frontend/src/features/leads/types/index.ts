@@ -29,10 +29,11 @@ export interface Lead {
     industry_id?: string;
     source_id?: string;
 
-    segment?: string;
     creation_type?: string;
 
-    // Campaign
+    /** @deprecated segment/campaign_name live in custom_fields now; kept for unmigrated data */
+    segment?: string;
+    /** @deprecated see custom_fields.campaign_name */
     campaign_name?: string;
 
     // Conversion Status
@@ -105,10 +106,9 @@ export interface LeadCreateData {
     lead_status_id?: string;
     industry_id?: string;
     source_id?: string;
-    campaign_name?: string;
-    segment?: string;
     creation_type?: string;
 
+    // Additional Information (segment / campaign_name / experience_id) rides here
     custom_fields?: Record<string, unknown>;
 
     // All industry-specific fields go here

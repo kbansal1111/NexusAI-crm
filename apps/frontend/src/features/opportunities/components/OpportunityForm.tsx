@@ -388,7 +388,8 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                             const destIds = data.destinations.split(",").map((d: string) => d.trim()).filter(Boolean);
                             if (destIds.length > 0) travelIndustryData.destination_ids = destIds;
                         }
-                        if (data.starting_city?.trim()) travelIndustryData.starting_city = data.starting_city.trim();
+                        // Additional Information — stored in custom_fields, not industry_data
+                        if (data.starting_city?.trim()) payload.custom_fields = { starting_city: data.starting_city.trim() };
 
                         payload.industry_data = travelIndustryData;
                     } else if (data.industry_data) {
@@ -863,7 +864,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                 </div>
                             )}
 
-                            {/* Row: Amount & Close Date */}
+                            {/* Row: Amount & Expected Revenue */}
                             <FormField
                                 control={form.control}
                                 name="amount"
@@ -886,6 +887,27 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                     </FormItem>
                                 )}
                             />
+
+                            {/* Expected Revenue — auto-calculated, read-only:
+                                (probability × amount) / 100 */}
+                            <FormItem>
+                                <FormLabel>Expected Revenue (₹)</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="text"
+                                        readOnly
+                                        tabIndex={-1}
+                                        className="bg-muted/40 text-muted-foreground"
+                                        value={(() => {
+                                            const amt = Number(form.watch("amount"));
+                                            const prob = Number(form.watch("probability"));
+                                            if (!amt || isNaN(amt) || isNaN(prob)) return "";
+                                            return ((prob * amt) / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+                                        })()}
+                                        placeholder="Auto-calculated"
+                                    />
+                                </FormControl>
+                            </FormItem>
 
                             <FormField
                                 control={form.control}

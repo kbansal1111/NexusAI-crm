@@ -660,7 +660,10 @@ async def get_opportunity(
             opp_response.source_name = source.name
         if experience:
             opp_response.experience_name = experience.name
-        opp_response.custom_fields = custom_fields or {}
+        # Merge registry values over the document's own dict — Additional
+        # Information keys (e.g. starting_city) live in the doc dict and must
+        # survive the join.
+        opp_response.custom_fields = {**(opportunity.custom_fields or {}), **(custom_fields or {})}
 
         return opp_response
 

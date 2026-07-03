@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +47,8 @@ import axios from "axios";
 import { Supplier } from "@/features/suppliers/types";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, X, Loader2, Paperclip } from "lucide-react";
+import { useUploadFile } from "@/features/files/api/use-files";
 import { useToast } from "@/hooks/use-toast";
 import { useIndustry } from "@/lib/industry-labels";
 
@@ -382,6 +383,12 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
         return false;
     };
 
+    // Attachment (single file) — uploaded after the supplier is saved, then
+    // linked via fileable_type="Supplier" (shows in the details Files tab).
+    const uploadFile = useUploadFile();
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const onSubmit = async (data: SupplierFormValues) => {
         setIsLoading(true);
         const startTime = Date.now();
@@ -393,12 +400,30 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                     // Ensure service_cities is correctly named for backend if needed
                     // (But I updated the backend to use service_cities)
 
+                    let savedSupplier: Supplier | undefined;
                     if (initialData) {
-                        await updateSupplier.mutateAsync({ id: initialData.id, data: payload as any });
+                        savedSupplier = await updateSupplier.mutateAsync({ id: initialData.id, data: payload as any });
                         toast({ title: "Success", description: "Supplier updated successfully" });
                     } else {
-                        await createSupplier.mutateAsync(payload as any);
+                        savedSupplier = await createSupplier.mutateAsync(payload as any);
                         toast({ title: "Success", description: "Supplier created successfully" });
+                    }
+
+                    // Upload the attached file (if any) and link it to the supplier.
+                    const savedSupplierId = savedSupplier?.id || initialData?.id;
+                    if (selectedFile && savedSupplierId) {
+                        try {
+                            await uploadFile.mutateAsync({
+                                file: selectedFile,
+                                fileable_type: "Supplier",
+                                fileable_id: savedSupplierId,
+                            });
+                            setSelectedFile(null);
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                        } catch (uploadErr) {
+                            console.error("Attachment upload failed", uploadErr);
+                            toast({ title: "Warning", description: "Supplier saved, but the attachment failed to upload." });
+                        }
                     }
                     isSuccess = true;
                     
@@ -942,6 +967,50 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                             />
                         </div>
                     </div>
+                </div>
+
+                {/* ── Section: Attachment Information ─────────────── */}
+                <div>
+                    <h3 className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
+                        Attachment Information
+                    </h3>
+                    {selectedFile ? (
+                        <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                            <span className="flex min-w-0 items-center gap-2">
+                                <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                <span className="truncate text-foreground">{selectedFile.name}</span>
+                            </span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-1"
+                                onClick={() => {
+                                    setSelectedFile(null);
+                                    if (fileInputRef.current) fileInputRef.current.value = "";
+                                }}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-fit"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Paperclip className="mr-2 h-4 w-4" />
+                            Add Attachment
+                        </Button>
+                    )}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                    />
                 </div>
 
                 <div className={cn("flex justify-end gap-2 border-t pt-4", isDrawer && "sticky bottom-0 z-10 -mx-5 -mb-5 bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85")}>

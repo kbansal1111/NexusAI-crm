@@ -55,6 +55,9 @@ export interface Opportunity {
     // All industry-specific data (travel_date, no_of_pax, destinations, inclusions, etc.)
     industry_data?: Record<string, any>;
 
+    // Additional Information (starting_city) + registry custom-field values
+    custom_fields?: Record<string, unknown>;
+
     // BD multi-owner triple (auto-resolved from account billing address / lead conversion)
     territory_id?: string;
     region_id?: string;

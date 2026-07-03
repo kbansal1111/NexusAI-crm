@@ -63,7 +63,7 @@ _EXTRA_PRESETS: Dict[str, List[Dict[str, Any]]] = {
             "preset_key": "whatsapp_enquiry",
             "name": "WhatsApp Enquiry Leads",
             "filter_rules": [
-                {"field": "campaign_name", "operator": "equals", "value": "WhatsApp Enquiry"},
+                {"field": "custom_fields.campaign_name", "operator": "equals", "value": "WhatsApp Enquiry"},
             ],
             "is_default": False,
         },

@@ -49,8 +49,8 @@ class LeadBase(BaseModel):
     source_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
 
     # Universal CRM fields
-    campaign_name: Optional[str] = None
-    segment: Optional[str] = "B2C"
+    # segment / campaign_name / experience_id ride in the custom_fields dict
+    # (Additional Information section) — not top-level.
     creation_type: Optional[str] = "manual"
 
     # Industry-specific data (validated per-industry via validate_industry_data)
@@ -91,12 +91,10 @@ class LeadUpdate(BaseModel):
     industry_id: Optional[str] = None
     source_id: Optional[str] = None
 
-    # Universal CRM fields
-    campaign_name: Optional[str] = None
-    segment: Optional[str] = None  # B2C / B2B / CORPORATE — persisted on update
-
     # Industry-specific data
     industry_data: Optional[Dict[str, Any]] = None
+    # Additional Information (segment / campaign_name / experience_id) — merged
+    # into the stored dict on update, not replaced.
     custom_fields: Optional[Dict[str, Any]] = None
 
     # BD fields (optional; usually re-resolved server-side when address changes)
@@ -160,8 +158,6 @@ class LeadResponse(BaseModel):
     source_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
 
     # Universal CRM fields
-    campaign_name: Optional[str] = None
-    segment: Optional[str] = "B2C"
     creation_type: Optional[str] = "manual"
 
     full_name: str

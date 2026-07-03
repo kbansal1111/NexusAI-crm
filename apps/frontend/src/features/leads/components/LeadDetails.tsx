@@ -69,6 +69,9 @@ interface LeadDetailsProps {
 // ---------------------------------------------------------------------------
 function IndustryDetailSection({ industry, lead, experiences = [] }: { industry: string; lead: Lead; experiences?: { id: string; name: string }[] }) {
     const data = lead.industry_data || {};
+    // Experience lives in custom_fields (Additional Information); industry_data
+    // is the legacy fallback for not-yet-migrated leads.
+    const experienceId = (lead.custom_fields as any)?.experience_id || data.experience_id;
     const [resolvedDestinations, setResolvedDestinations] = useState<string[]>([]);
 
     const destinationIdsStr = Array.isArray(data.destination_ids) ? data.destination_ids.join(",") : "";
@@ -120,7 +123,7 @@ function IndustryDetailSection({ industry, lead, experiences = [] }: { industry:
                 { label: "Children", value: data.no_of_childs },
                 { label: "Infants", value: data.no_of_infants },
                 { label: "Fixed Departure?", value: data.is_fixed ? "Yes" : "No" },
-                { label: "Experience", value: experiences.find(e => e.id === data.experience_id)?.name || data.experience_id },
+                { label: "Experience", value: experiences.find(e => e.id === experienceId)?.name || experienceId },
             ],
         },
         healthcare: {
@@ -205,8 +208,10 @@ export function LeadDetails({
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
-    // Track segment locally so the header badge updates immediately after editing
-    const [currentSegment, setCurrentSegment] = useState<string>(lead.segment || "B2C");
+    // Track segment locally so the header badge updates immediately after editing.
+    // Segment lives in custom_fields; top-level read is a legacy fallback.
+    const leadSegment = (lead.custom_fields as any)?.segment || (lead as any).segment;
+    const [currentSegment, setCurrentSegment] = useState<string>(leadSegment || "B2C");
 
     const changeOwnerMutation = useMutation({
         mutationFn: (newOwnerId: string) => leadsService.changeOwner(lead.id, newOwnerId),
@@ -222,8 +227,8 @@ export function LeadDetails({
 
     // Sync whenever the server re-renders and passes a new lead prop (after router.refresh())
     useEffect(() => {
-        setCurrentSegment(lead.segment || "B2C");
-    }, [lead.segment, lead.id]);
+        setCurrentSegment(leadSegment || "B2C");
+    }, [leadSegment, lead.id]);
 
     const handleDelete = async () => {
         setIsDeleting(true);
@@ -376,7 +381,7 @@ export function LeadDetails({
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaign Name</p>
-                                            <p className="text-sm font-medium text-foreground">{lead.campaign_name || "-"}</p>
+                                            <p className="text-sm font-medium text-foreground">{(lead.custom_fields as any)?.campaign_name || (lead as any).campaign_name || "-"}</p>
                                         </div>
                                     </div>
                                 </CollapsibleDetailSection>
@@ -511,8 +516,9 @@ export function LeadDetails({
                 }}
                 onLeadUpdated={(updatedLead) => {
                     // Immediately update the segment badge without waiting for server re-render
-                    if (updatedLead?.segment) {
-                        setCurrentSegment(updatedLead.segment);
+                    const updatedSegment = (updatedLead?.custom_fields as any)?.segment || (updatedLead as any)?.segment;
+                    if (updatedSegment) {
+                        setCurrentSegment(updatedSegment);
                     }
                 }}
             />

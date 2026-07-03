@@ -110,6 +110,29 @@ function makeColumn(key: string, labels: Map<string, string>, ctx: ColumnFactory
     };
   }
 
+  // Additional Information fields — plain values under row.custom_fields
+  // (segment / campaign_name / experience_id). Distinct from "additional:"
+  // registry fields, whose values are {value} objects keyed by field id.
+  if (key.startsWith("custom_fields.")) {
+    const sub = key.slice("custom_fields.".length);
+    return {
+      id: key,
+      header,
+      cell: ({ row }) => {
+        const cf = (row.original as any).custom_fields || {};
+        if (sub === "experience_id") {
+          const id = cf.experience_id || (row.original as any).industry_data?.experience_id;
+          const name = (id && ctx.lookups?.experiences?.get(id)) || "-";
+          return <div className="text-muted-foreground">{name}</div>;
+        }
+        // Legacy fallbacks: unmigrated rows carry the value top-level (lead
+        // segment/campaign_name) or in industry_data (opportunity starting_city).
+        const v = cf[sub] ?? (row.original as any)[sub] ?? (row.original as any).industry_data?.[sub];
+        return <div className="text-muted-foreground">{v ?? "-"}</div>;
+      },
+    };
+  }
+
   // Industry-data (nested) fields — e.g. travel_date, destination_ids, no_of_pax.
   if (key.startsWith("industry_data.")) {
     const sub = key.slice("industry_data.".length);

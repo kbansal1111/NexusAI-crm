@@ -46,8 +46,9 @@ class Lead(BaseDocument):
     source_id: Annotated[Optional[PydanticObjectId], Indexed()] = None
 
     # Universal CRM fields
-    campaign_name: Optional[str] = None
-    segment: Optional[str] = "B2C"  # Default to B2C
+    # NOTE: segment / campaign_name / experience_id live in the `custom_fields`
+    # dict (the form's "Additional Information" section), NOT as top-level
+    # fields. See scripts/migrate_lead_additional_to_custom_fields.py.
     creation_type: str = "manual"  # manual or auto
     
     # Conversion

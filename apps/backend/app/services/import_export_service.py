@@ -787,8 +787,8 @@ class ImportExportService:
                 "Lead Status": status_names.get(lead.lead_status_id, ""),
                 "Source": source_names.get(lead.source_id, ""),
                 "Industry": industry_names.get(lead.industry_id, ""),
-                "Segment": lead.segment or "",
-                "Campaign Name": lead.campaign_name or "",
+                "Segment": (lead.custom_fields or {}).get("segment") or "",
+                "Campaign Name": (lead.custom_fields or {}).get("campaign_name") or "",
             }
             if tenant_industry == "travel":
                 destinations = ind.get("destinations") or []
@@ -903,8 +903,10 @@ class ImportExportService:
                     "lead_status_id": str(status_id) if status_id else None,
                     "source_id": str(source_id) if source_id else None,
                     "industry_id": str(ind_id) if ind_id else None,
-                    "segment": _normalize_segment(_get_val(row, "Segment"), "B2C"),
-                    "campaign_name": _get_val(row, "Campaign Name"),
+                    "custom_fields": {
+                        "segment": _normalize_segment(_get_val(row, "Segment"), "B2C"),
+                        "campaign_name": _get_val(row, "Campaign Name"),
+                    },
                     "creation_type": "import",
                 }
 

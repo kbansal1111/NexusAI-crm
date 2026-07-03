@@ -193,7 +193,7 @@ export function ConvertLeadDialog({
             destination_ids: industry === "travel" ? (lead.industry_data?.destination_ids || []) : [],
             opportunity_close_date: new Date(),
             sales_stage_id: sales_stages?.find(s => s.name.toLowerCase() === 'received')?.id || sales_stages?.find(s => s.is_default)?.id || (sales_stages && sales_stages.length > 0 ? sales_stages[0].id : undefined),
-            experience_id: industry === "travel" ? (lead.industry_data?.experience_id || undefined) : undefined,
+            experience_id: industry === "travel" ? ((lead.custom_fields as any)?.experience_id || lead.industry_data?.experience_id || undefined) : undefined,
             opportunity_owner_id: "",
         },
     });
@@ -219,7 +219,7 @@ export function ConvertLeadDialog({
                     no_of_pax: industry === "travel" ? (freshLead.industry_data?.no_of_pax?.toString() || "1") : form.getValues().no_of_pax,
                     no_of_nights: industry === "travel" ? (freshLead.industry_data?.no_of_nights?.toString() || "0") : form.getValues().no_of_nights,
                     destination_ids: industry === "travel" ? (freshLead.industry_data?.destination_ids || []) : form.getValues().destination_ids,
-                    experience_id: industry === "travel" ? (freshLead.industry_data?.experience_id || undefined) : form.getValues().experience_id,
+                    experience_id: industry === "travel" ? ((freshLead.custom_fields as any)?.experience_id || freshLead.industry_data?.experience_id || undefined) : form.getValues().experience_id,
                 });
             }).catch(() => {
                 // Fallback to prop data if fetch fails
@@ -240,7 +240,7 @@ export function ConvertLeadDialog({
                     no_of_pax: industry === "travel" ? (lead.industry_data?.no_of_pax?.toString() || "1") : form.getValues().no_of_pax,
                     no_of_nights: industry === "travel" ? (lead.industry_data?.no_of_nights?.toString() || "0") : form.getValues().no_of_nights,
                     destination_ids: industry === "travel" ? (lead.industry_data?.destination_ids || []) : form.getValues().destination_ids,
-                    experience_id: industry === "travel" ? (lead.industry_data?.experience_id || undefined) : form.getValues().experience_id,
+                    experience_id: industry === "travel" ? ((lead.custom_fields as any)?.experience_id || lead.industry_data?.experience_id || undefined) : form.getValues().experience_id,
                 });
             });
         }
