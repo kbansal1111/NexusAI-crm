@@ -151,3 +151,9 @@ class TransactionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TransactionQueueItem(TransactionResponse):
+    """A transaction plus its opportunity context, for the accounts approval queue."""
+    opportunity_name: Optional[str] = None
+    owner_name: Optional[str] = None

@@ -55,6 +55,10 @@ function coreNavItems(labels: IndustryLabelMap): NavItem[] {
             href: "/opportunities",
             icon: Target,
             requiredPermission: "view_opportunity",
+            submenu: [
+                { title: `All ${labels.opportunities}`, href: "/opportunities", requiredPermission: "view_opportunity" },
+                { title: "Transaction Approvals", href: "/opportunities/approvals", requiredPermission: "verify_opportunity_transaction" },
+            ],
         },
         {
             title: labels.accounts,

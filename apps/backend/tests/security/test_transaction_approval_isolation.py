@@ -198,6 +198,19 @@ async def run() -> bool:
         results.ok(f"B cross-tenant reject blocked ({r.status_code})") if r.status_code in blocked else \
             results.fail("B reject", f"expected 404/403, got {r.status_code} -- {r.text[:200]}")
 
+        # --- 7. B's approval queue must not leak A's transactions ---
+        r = await client.get(
+            f"{BASE_URL}/opportunities/transactions/approval-queue", headers=b["headers"]
+        )
+        if r.status_code == 200:
+            leaked = [t for t in r.json() if t.get("id") in (txn_id, txn2_id)]
+            results.fail("B queue leak", f"B's queue returned A's transactions: {[t['id'] for t in leaked]}") if leaked else \
+                results.ok("B approval queue does not leak A's transactions")
+        elif r.status_code in blocked:
+            results.ok(f"B approval queue permission-gated ({r.status_code})")
+        else:
+            results.skip("B queue", f"unexpected status {r.status_code}")
+
         # --- Sanity: A's second transaction remains untouched by B's attempts ---
         check = await client.get(f"{BASE_URL}/opportunities/{opp_id}/transactions", headers=a["headers"])
         if check.status_code == 200:

@@ -16,6 +16,7 @@ const ROUTE_RULES: { prefix: string; permission: string }[] = [
     { prefix: "/contacts", permission: "view_contact" },
     { prefix: "/leads", permission: "view_lead" },
     { prefix: "/suppliers", permission: "view_supplier" },
+    { prefix: "/opportunities/approvals", permission: "verify_opportunity_transaction" },
     { prefix: "/opportunities", permission: "view_opportunity" },
     { prefix: "/tasks", permission: "view_task" },
     { prefix: "/files", permission: "view_file" },

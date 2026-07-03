@@ -88,6 +88,12 @@ export interface Transaction {
     updated_at?: string;
 }
 
+/** A queue row: a transaction plus its opportunity context (accounts approval queue). */
+export interface TransactionQueueItem extends Transaction {
+    opportunity_name?: string;
+    owner_name?: string;
+}
+
 export interface TransactionCreate {
     transaction_type: "Receive" | "Pay" | "Refund";
     amount: number;
@@ -235,6 +241,14 @@ export const financialService = {
     },
 
     // ── Approval workflow (accounts team) ─────────────────────────────────────
+    getApprovalQueue: async (status?: string): Promise<TransactionQueueItem[]> => {
+        const res = await apiClient.get<TransactionQueueItem[]>(
+            `${BASE}/transactions/approval-queue`,
+            { params: status ? { status } : undefined }
+        );
+        return res.data;
+    },
+
     verifyTransaction: async (
         opportunityId: string,
         txnId: string

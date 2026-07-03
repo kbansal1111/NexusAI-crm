@@ -3,8 +3,8 @@ Opportunity Financial API endpoints - Costing, Payment Schedule, Transactions
 Routes are mounted under /api/v1/opportunities/{opportunity_id}/...
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
 from bson import ObjectId
 
 from app.models.user import User
@@ -20,7 +20,8 @@ from app.models.supplier import Supplier
 from app.schemas.opportunity_financial import (
     CostingCreateUpdate, CostingResponse,
     PaymentScheduleItemCreate, PaymentScheduleItemUpdate, PaymentScheduleItemResponse,
-    TransactionCreate, TransactionUpdate, TransactionResponse, TransactionReject
+    TransactionCreate, TransactionUpdate, TransactionResponse, TransactionReject,
+    TransactionQueueItem
 )
 from app.models.role import Role
 from app.services.notification_service import NotificationService
@@ -720,6 +721,57 @@ async def update_transaction(
 
 
 # ─────────────────── TRANSACTION APPROVAL WORKFLOW (accounts team) ─────────────
+
+_QUEUE_STATUSES = {"pending_verification", "verified", "approved", "rejected"}
+
+
+@router.get("/transactions/approval-queue", response_model=List[TransactionQueueItem])
+async def transaction_approval_queue(
+    status: Optional[str] = Query(
+        None,
+        description="Comma-separated approval_status values; defaults to the open queue "
+                    "(pending_verification,verified).",
+    ),
+    current_user: User = Depends(check_any_permission(
+        ["verify_opportunity_transaction", "approve_opportunity_transaction"]
+    )),
+):
+    """Accounts team: tenant-wide queue of transactions awaiting verify/approve.
+
+    Tenant-scoped and permission-gated (this is a finance oversight function, so
+    it spans the whole tenant rather than only the caller's own opportunities).
+    Transactions whose opportunity is soft-deleted or missing are omitted.
+    """
+    requested = [s.strip() for s in (status or "pending_verification,verified").split(",") if s.strip()]
+    statuses = [s for s in requested if s in _QUEUE_STATUSES] or ["pending_verification", "verified"]
+
+    txns = await OpportunityTransaction.find(
+        {"tenant_id": current_user.tenant_id, "approval_status": {"$in": statuses}}
+    ).sort("-created_at").to_list()
+    if not txns:
+        return []
+
+    # Enrich with opportunity name/owner — tenant-scoped lookup (also drops any
+    # transaction whose opportunity is deleted or not in this tenant).
+    opp_ids = list({t.opportunity_id for t in txns})
+    opps = await Opportunity.find(
+        {"_id": {"$in": opp_ids}, "tenant_id": current_user.tenant_id, "deleted_at": None}
+    ).to_list()
+    opp_map = {o.id: o for o in opps}
+
+    items: List[TransactionQueueItem] = []
+    for t in txns:
+        opp = opp_map.get(t.opportunity_id)
+        if not opp:
+            continue
+        base = _txn_to_response(t)
+        items.append(TransactionQueueItem(
+            **base.model_dump(),
+            opportunity_name=getattr(opp, "name", None),
+            owner_name=getattr(opp, "owner_name", None),
+        ))
+    return items
+
 
 async def _get_txn_or_404(opportunity_id: str, txn_id: str, tenant_id) -> OpportunityTransaction:
     try:
