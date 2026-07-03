@@ -215,8 +215,17 @@ class AssistantService:
                 turn.append({"role": "assistant", "content": note})
                 yield _sse("token", {"text": note})
 
-            convo.messages = (history + turn)[-(MAX_HISTORY_MESSAGES * 2):]
-            await convo.save()
+            # Atomic append of this turn ($push + $slice truncation in one op).
+            # A full-document save here would clobber outcome notes $pushed by
+            # the confirm endpoint while this stream was running (the user can
+            # click Approve as soon as the card appears, mid-stream).
+            await AssistantConversation.get_motor_collection().update_one(
+                {"_id": convo.id},
+                {
+                    "$push": {"messages": {"$each": turn, "$slice": -(MAX_HISTORY_MESSAGES * 2)}},
+                    "$set": {"updated_at": datetime.utcnow()},
+                },
+            )
             yield _sse("done", {})
         except Exception:
             logger.exception(

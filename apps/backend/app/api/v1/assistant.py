@@ -110,23 +110,40 @@ async def delete_conversation(
 # The assistant only QUEUES writes; these endpoints are the sole execution path,
 # driven by an explicit user click on the confirmation card.
 
-async def _get_owned_pending_action(action_id: str, current_user: User) -> AssistantAction:
+async def _claim_pending_action(action_id: str, current_user: User) -> AssistantAction:
+    """Atomically claim a pending action (pending → executing).
+
+    The status filter + $set happen in ONE find_one_and_update, so of two
+    concurrent Approve clicks (double-click, second tab) exactly one wins;
+    the other sees "already ..." instead of double-executing the write.
+    """
     from datetime import datetime
+    from pymongo import ReturnDocument
 
     try:
         aid = ObjectId(action_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid action ID")
-    action = await AssistantAction.find_one({
+
+    owned = {
         "_id": aid,
         "tenant_id": current_user.tenant_id,
         "user_id": current_user.id,   # only the proposing user may decide
         "deleted_at": None,
-    })
-    if not action:
-        raise HTTPException(status_code=404, detail="Action not found")
-    if action.status != "pending":
-        raise HTTPException(status_code=400, detail=f"Action is already {action.status}.")
+    }
+    raw = await AssistantAction.get_motor_collection().find_one_and_update(
+        {**owned, "status": "pending"},
+        {"$set": {"status": "executing", "updated_at": datetime.utcnow()}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if raw is None:
+        # Distinguish "not yours/doesn't exist" from "already decided".
+        existing = await AssistantAction.find_one(owned)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Action not found")
+        raise HTTPException(status_code=400, detail=f"Action is already {existing.status}.")
+
+    action = await AssistantAction.get(raw["_id"])
     if action.expires_at and action.expires_at < datetime.utcnow():
         action.status = "expired"
         await action.save()
@@ -136,16 +153,20 @@ async def _get_owned_pending_action(action_id: str, current_user: User) -> Assis
 
 async def _append_action_outcome(action: AssistantAction, outcome_text: str):
     """Record the outcome in the conversation as an internal system note so the
-    model knows what happened on the next turn (never rendered in the UI)."""
-    convo = await AssistantConversation.find_one({
-        "_id": action.conversation_id,
-        "tenant_id": action.tenant_id,
-        "user_id": action.user_id,
-        "deleted_at": None,
-    })
-    if convo:
-        convo.messages = convo.messages + [{"role": "system", "content": outcome_text}]
-        await convo.save()
+    model knows what happened on the next turn (never rendered in the UI).
+
+    Atomic $push — a full-document save here could race with stream_chat's
+    end-of-turn save (approve clicked while the next message streams) and drop
+    messages via last-writer-wins."""
+    await AssistantConversation.get_motor_collection().update_one(
+        {
+            "_id": action.conversation_id,
+            "tenant_id": action.tenant_id,
+            "user_id": action.user_id,
+            "deleted_at": None,
+        },
+        {"$push": {"messages": {"role": "system", "content": outcome_text}}},
+    )
 
 
 @router.post("/actions/{action_id}/confirm")
@@ -156,7 +177,7 @@ async def confirm_action(
     """Execute a pending action the user explicitly approved."""
     from app.services.assistant_actions import execute_action
 
-    action = await _get_owned_pending_action(action_id, current_user)
+    action = await _claim_pending_action(action_id, current_user)
     try:
         result = await execute_action(action, current_user)
     except ValueError as exc:
@@ -180,7 +201,7 @@ async def reject_action(
     current_user: User = Depends(check_any_permission(["view_opportunity", "view_lead", "view_account"])),
 ):
     """Cancel a pending action."""
-    action = await _get_owned_pending_action(action_id, current_user)
+    action = await _claim_pending_action(action_id, current_user)
     action.status = "rejected"
     await action.save()
     await _append_action_outcome(

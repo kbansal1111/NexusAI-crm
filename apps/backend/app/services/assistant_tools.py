@@ -419,10 +419,20 @@ async def _get_opportunity(args: Dict[str, Any], current_user: User) -> Any:
     detail["created_at"] = opp.created_at.date().isoformat() if opp.created_at else None
 
     ind = dict(opp.industry_data or {})
-    # Resolve destination ids → names for readability (tenant-visible picklists).
+    # Resolve destination ids → names for readability. destination_ids are
+    # DestinationPicklist ids ('picklists' collection, picklist_type='destination').
     if ind.get("destination_ids"):
-        from app.api.v1.opportunities import _resolve_destinations
-        ind = await _resolve_destinations(ind)
+        from app.models.consolidated_picklists import DestinationPicklist
+        valid_ids = []
+        for d_id in ind["destination_ids"]:
+            try:
+                valid_ids.append(ObjectId(str(d_id)))
+            except Exception:
+                pass
+        dests = await DestinationPicklist.find(
+            {"_id": {"$in": valid_ids}, "picklist_type": "destination"}
+        ).to_list() if valid_ids else []
+        ind["destination_names"] = [d.name for d in dests]
         ind.pop("destination_ids", None)
     detail["industry_data"] = ind
     return detail
