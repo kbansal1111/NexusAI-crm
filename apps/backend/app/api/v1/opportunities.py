@@ -156,6 +156,28 @@ async def _resolve_destinations(industry_data: dict) -> dict:
     return industry_data
 
 
+async def _destination_ids_matching(tenant_id, term: str) -> list:
+    """Destination picklist ids whose name matches `term`, visible to the tenant.
+
+    Returns both string and ObjectId forms so the resulting $in matches
+    opportunities regardless of how their destination_ids were persisted.
+    """
+    import re as _re
+    from bson import ObjectId as _OID
+    from app.models.consolidated_picklists import DestinationPicklist
+    from app.core.picklist_query import build_picklist_query
+
+    q = build_picklist_query(tenant_id, picklist_type="destination", active_only=True)
+    q["name"] = {"$regex": _re.escape(term), "$options": "i"}
+    dests = await DestinationPicklist.find(q).to_list()
+
+    vals: list = []
+    for d in dests:
+        vals.append(str(d.id))
+        vals.append(d.id if isinstance(d.id, _OID) else _OID(str(d.id)))
+    return vals
+
+
 async def _build_destination_name_map(industry_datas: List[dict]) -> Dict[str, str]:
     """PERF: resolve destination names for a whole PAGE of opportunities in ONE
     DestinationPicklist query (was an N+1: one query per opportunity)."""
@@ -338,10 +360,19 @@ async def get_opportunities(
         # sales_stage_id equals) applied via `active_view` below — see
         # app/core/system_views.py. They replaced the old set-based ?view=closed.
 
-        # Free-text search on the opportunity name
+        # Free-text search: opportunity name, linked account name, or destination.
+        # account_name is denormalized on the opportunity; destination terms are
+        # resolved to matching destination picklist ids and matched against the
+        # opportunity's industry_data.destination_ids array.
         if search and str(search).strip():
             import re as _re
-            filters["name"] = {"$regex": _re.escape(str(search).strip()), "$options": "i"}
+            term = str(search).strip()
+            rx = {"$regex": _re.escape(term), "$options": "i"}
+            or_clauses = [{"name": rx}, {"account_name": rx}]
+            dest_vals = await _destination_ids_matching(current_user.tenant_id, term)
+            if dest_vals:
+                or_clauses.append({"industry_data.destination_ids": {"$in": dest_vals}})
+            filters["$or"] = or_clauses
 
         # Structured "Edit List Filters" rows (+ custom-field rules) from the view.
         # apply_entity_view_filters adds a "$and" key which the repository merges
