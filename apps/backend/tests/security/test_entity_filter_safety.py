@@ -254,6 +254,38 @@ def test_bad_relative_token_is_dropped():
     ) == []
 
 
+def test_account_prefixed_fields_dropped_from_opportunity_whitelist():
+    # "account.<field>" rules are account-attribute filters resolved via a
+    # separate account-id join (apply_entity_view_filters), NOT translated as
+    # direct opportunity clauses. The opportunity whitelist must drop them so
+    # they can never be injected as a bogus opportunity field.
+    for field in (
+        "account.acc_type_id",
+        "account.billing_city",
+        "account.billing_state",
+        "account.billing_street",
+        "account.billing_zip",
+    ):
+        assert build_filter_clauses(
+            "opportunity",
+            [{"field": field, "operator": "equals", "value": "Agra"}],
+        ) == [], f"{field} must not translate as a direct opportunity clause"
+
+
+def test_stripped_account_fields_translate_on_account_whitelist():
+    # The account-join resolver strips the "account." prefix and translates the
+    # remainder on the ACCOUNT whitelist. Verify those keys are filterable there.
+    oid = ObjectId()
+    assert build_filter_clauses(
+        "account", [{"field": "acc_type_id", "operator": "equals", "value": str(oid)}]
+    ) == [{"acc_type_id": oid}]
+    for f in ("billing_city", "billing_state", "billing_street", "billing_zip"):
+        clauses = build_filter_clauses(
+            "account", [{"field": f, "operator": "contains", "value": "Agra"}]
+        )
+        assert len(clauses) == 1 and f in clauses[0], f"{f} must filter on accounts"
+
+
 def _run():
     failures = []
     for name, fn in sorted(globals().items()):
