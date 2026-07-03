@@ -169,3 +169,50 @@ export const useUpdateTransaction = (opportunityId: string) => {
         onError: () => toast.error("Failed to update transaction"),
     });
 };
+
+// ── Approval workflow hooks (accounts team) ────────────────────────────────────
+
+export const useVerifyTransaction = (opportunityId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (txnId: string) =>
+            financialService.verifyTransaction(opportunityId, txnId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            toast.success("Transaction verified");
+        },
+        onError: () => toast.error("Failed to verify transaction"),
+    });
+};
+
+export const useApproveTransaction = (opportunityId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (txnId: string) =>
+            financialService.approveTransaction(opportunityId, txnId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            toast.success("Transaction approved");
+        },
+        onError: () => toast.error("Failed to approve transaction"),
+    });
+};
+
+export const useRejectTransaction = (opportunityId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ txnId, reason }: { txnId: string; reason?: string }) =>
+            financialService.rejectTransaction(opportunityId, txnId, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            toast.success("Transaction rejected");
+        },
+        onError: () => toast.error("Failed to reject transaction"),
+    });
+};

@@ -1,13 +1,59 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
     useTransactions,
     useCreateTransaction,
+    useVerifyTransaction,
+    useApproveTransaction,
+    useRejectTransaction,
 } from "../../api/useOpportunityFinancial";
-import { Loader2, Receipt, ChevronDown } from "lucide-react";
+import { Loader2, Receipt, ChevronDown, Check, CheckCheck, X } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { hasPermission } from "@/lib/rbac";
+import type { TransactionApprovalStatus } from "@/lib/api/services/financial.service";
 import { TransactionModal } from "./TransactionModal";
+
+// ── Approval-status badge ──────────────────────────────────────────────────────
+
+const APPROVAL_BADGE: Record<
+    TransactionApprovalStatus,
+    { label: string; className: string }
+> = {
+    pending_verification: {
+        label: "Pending verification",
+        className:
+            "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+    },
+    verified: {
+        label: "Verified",
+        className:
+            "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
+    },
+    approved: {
+        label: "Approved",
+        className:
+            "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+    },
+    rejected: {
+        label: "Rejected",
+        className:
+            "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30",
+    },
+};
+
+function ApprovalBadge({ status }: { status: TransactionApprovalStatus }) {
+    const cfg = APPROVAL_BADGE[status] ?? APPROVAL_BADGE.approved;
+    return (
+        <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${cfg.className}`}
+            title={cfg.label}
+        >
+            {cfg.label}
+        </span>
+    );
+}
 
 interface Props {
     opportunityId: string;
@@ -22,6 +68,21 @@ interface Props {
 export function TransactionTab({ opportunityId, opportunityAmount, suppliers, destinationOptions, isLocked = false }: Props) {
     const { data: transactions = [], isLoading } = useTransactions(opportunityId);
     const createMutation = useCreateTransaction(opportunityId);
+    const verifyMutation = useVerifyTransaction(opportunityId);
+    const approveMutation = useApproveTransaction(opportunityId);
+    const rejectMutation = useRejectTransaction(opportunityId);
+
+    // Accounts-team permissions gate the verify/approve/reject actions.
+    const { data: session } = useSession();
+    const perms = (session?.user as any)?.permissions as string[] | undefined;
+    const canVerify = hasPermission(perms, "verify_opportunity_transaction");
+    const canApprove = hasPermission(perms, "approve_opportunity_transaction");
+    const showApprovalActions = canVerify || canApprove;
+
+    const handleReject = (txnId: string) => {
+        const reason = window.prompt("Reason for rejection (optional):") ?? undefined;
+        rejectMutation.mutate({ txnId, reason });
+    };
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<"Receive" | "Pay" | "Refund">("Pay");
@@ -168,6 +229,14 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
                                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                                         Note
                                     </th>
+                                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                                        Status
+                                    </th>
+                                    {showApprovalActions && (
+                                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                                            Actions
+                                        </th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
@@ -233,6 +302,60 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
                                         <td className="px-4 py-3 text-muted-foreground whitespace-nowrap max-w-[150px] truncate">
                                             {txn.note || ""}
                                         </td>
+
+                                        {/* Approval status */}
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <ApprovalBadge
+                                                status={txn.approval_status ?? "approved"}
+                                            />
+                                        </td>
+
+                                        {/* Approval actions (accounts team) */}
+                                        {showApprovalActions && (
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <div className="flex items-center gap-1.5">
+                                                    {canVerify &&
+                                                        txn.approval_status === "pending_verification" && (
+                                                            <button
+                                                                onClick={() => verifyMutation.mutate(txn.id)}
+                                                                disabled={verifyMutation.isPending}
+                                                                title="Verify"
+                                                                className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                                                            >
+                                                                <Check className="h-3 w-3" />
+                                                                Verify
+                                                            </button>
+                                                        )}
+                                                    {canApprove &&
+                                                        txn.approval_status === "verified" && (
+                                                            <button
+                                                                onClick={() => approveMutation.mutate(txn.id)}
+                                                                disabled={approveMutation.isPending}
+                                                                title="Approve"
+                                                                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                                                            >
+                                                                <CheckCheck className="h-3 w-3" />
+                                                                Approve
+                                                            </button>
+                                                        )}
+                                                    {(txn.approval_status === "pending_verification" ||
+                                                        txn.approval_status === "verified") && (
+                                                        <button
+                                                            onClick={() => handleReject(txn.id)}
+                                                            disabled={rejectMutation.isPending}
+                                                            title="Reject"
+                                                            className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                            Reject
+                                                        </button>
+                                                    )}
+                                                    {txn.approval_status === "approved" && (
+                                                        <span className="text-xs text-muted-foreground">—</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
@@ -265,7 +388,7 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
                                         className={`px-4 py-3 font-bold ${
                                             totalBalance > 0 ? "text-amber-400" : "text-emerald-400"
                                         }`}
-                                        colSpan={3}
+                                        colSpan={showApprovalActions ? 5 : 4}
                                     >
                                         {formatCurrency(totalBalance)}
                                     </td>

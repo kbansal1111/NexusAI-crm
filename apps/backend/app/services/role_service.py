@@ -31,6 +31,9 @@ CORE_PERMISSIONS = [
     # Opportunity permissions
     "view_opportunity", "create_opportunity", "edit_opportunity", "delete_opportunity",
     "lock_opportunity", "unlock_opportunity",
+    # Opportunity finance (accounts team) — verify then give final approval on
+    # ledger transactions (amounts) entered by sales.
+    "verify_opportunity_transaction", "approve_opportunity_transaction",
 
     # Task permissions
     "view_task", "create_task", "edit_task", "delete_task",

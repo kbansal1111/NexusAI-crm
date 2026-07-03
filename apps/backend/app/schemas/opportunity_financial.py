@@ -117,6 +117,11 @@ class TransactionUpdate(BaseModel):
     note: Optional[str] = None
 
 
+class TransactionReject(BaseModel):
+    """Schema for rejecting a transaction (accounts team)"""
+    reason: Optional[str] = None
+
+
 class TransactionResponse(BaseModel):
     """Schema for transaction response"""
     id: str
@@ -132,6 +137,15 @@ class TransactionResponse(BaseModel):
     destination: Optional[str] = None
     note: Optional[str] = None
     payment_schedule_item_id: Optional[str] = None
+    # Sales → Accounts approval workflow
+    approval_status: str = "pending_verification"
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    rejected_by: Optional[str] = None
+    rejected_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

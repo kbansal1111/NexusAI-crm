@@ -118,6 +118,21 @@ class OpportunityTransaction(BaseDocument):
     # Link back to payment schedule item (if created from schedule)
     payment_schedule_item_id: Optional[PydanticObjectId] = None
 
+    # ── Sales → Accounts approval workflow ────────────────────────────────────
+    # Sales enters an amount (pending_verification); the accounts team verifies
+    # it, then gives final approval. Rejected transactions are terminal until
+    # edited. Legacy rows (created before this field existed) are treated as
+    # "approved" in responses so historical ledgers are not retroactively frozen.
+    #   pending_verification → verified → approved   (+ rejected)
+    approval_status: str = "pending_verification"
+    verified_by: Optional[PydanticObjectId] = None
+    verified_at: Optional[datetime] = None
+    approved_by: Optional[PydanticObjectId] = None
+    approved_at: Optional[datetime] = None
+    rejected_by: Optional[PydanticObjectId] = None
+    rejected_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+
     # Audit
     created_by: Optional[PydanticObjectId] = None
     last_modified_by_id: Optional[PydanticObjectId] = None
