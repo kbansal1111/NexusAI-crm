@@ -118,7 +118,11 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
     const updateOpportunity = useUpdateOpportunity();
     const { items: sources } = usePicklist("source");
     const { data: experiences } = useExperiences();
-    const normalizedStages = normalizeSalesStages(stages);
+    // Memoized: a fresh array identity every render would re-fire every effect
+    // that depends on it (the auto-probability effect below), and each of those
+    // setValue calls re-renders via the Expected Revenue watch — an infinite
+    // render loop (React #185) that crashed the drawer in prod.
+    const normalizedStages = useMemo(() => normalizeSalesStages(stages), [stages]);
 
     const [availableDestinations, setAvailableDestinations] = useState<Destination[]>([]);
     const [destinationOpen, setDestinationOpen] = useState(false);
@@ -254,16 +258,21 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
     const selectedStageObj = normalizedStages.find(s => s.id === selectedStageId) as any;
     const isCloseLostStage = !!(selectedStageObj?.is_lost);
 
-    // Auto-set probability when sales stage changes
+    // Auto-set probability when sales stage changes. Write only on real change:
+    // probability/amount are watched (Expected Revenue), so an unconditional
+    // setValue here re-renders and loops if the deps ever churn.
     useEffect(() => {
         if (!selectedStageId) return;
         const stageProbability = getProbabilityForStageId(selectedStageId, normalizedStages);
         if (typeof stageProbability === "number") {
-            form.setValue("probability", stageProbability.toString());
+            const next = stageProbability.toString();
+            if (form.getValues("probability") !== next) {
+                form.setValue("probability", next);
+            }
         }
         // Clear close_lost_reason when switching away from Close Lost
         const stageObj = normalizedStages.find(s => s.id === selectedStageId) as any;
-        if (!stageObj?.is_lost) {
+        if (!stageObj?.is_lost && form.getValues("close_lost_reason")) {
             form.setValue("close_lost_reason", "");
         }
     }, [selectedStageId, normalizedStages, form]);

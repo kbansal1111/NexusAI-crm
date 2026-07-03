@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CalendarIcon, Check, ChevronsUpDown, X, Paperclip } from "lucide-react";
 import { useUploadFile } from "@/features/files/api/use-files";
@@ -122,7 +122,11 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
     const industry = useIndustry();
     const isTravel = industry === "travel";
 
-    const normalizedStages = normalizeSalesStages(stages);
+    // Memoized: a fresh array identity every render would re-fire every effect
+    // that depends on it (the auto-probability effect below), and each of those
+    // setValue calls re-renders via the Expected Revenue watch — an infinite
+    // render loop (React #185) that crashed the drawer in prod.
+    const normalizedStages = useMemo(() => normalizeSalesStages(stages), [stages]);
 
     const [availableDestinations, setAvailableDestinations] = useState<Destination[]>([]);
     const [destinationOpen, setDestinationOpen] = useState(false);
@@ -262,12 +266,17 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
     const selectedStageObj = normalizedStages.find(s => s.id === selectedStageId) as any;
     const isCloseLostStage = !!(selectedStageObj?.is_lost);
 
-    // Auto-set probability when sales stage changes
+    // Auto-set probability when sales stage changes. Write only on real change:
+    // probability/amount are watched (Expected Revenue), so an unconditional
+    // setValue here re-renders and loops if the deps ever churn.
     useEffect(() => {
         if (!selectedStageId) return;
         const stageProbability = getProbabilityForStageId(selectedStageId, normalizedStages);
         if (typeof stageProbability === "number") {
-            form.setValue("probability", stageProbability.toString());
+            const next = stageProbability.toString();
+            if (form.getValues("probability") !== next) {
+                form.setValue("probability", next);
+            }
         }
     }, [selectedStageId, normalizedStages, form]);
 

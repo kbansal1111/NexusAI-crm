@@ -127,7 +127,9 @@ export default function OpportunitiesPageClient() {
     // Flatten the loaded pages; total comes from the first (offset) page.
     const opportunities = infinite ? infinite.pages.flatMap((p) => p.opportunities) : [];
     const totalCount = infinite?.pages[0]?.total ?? null;
-    const normalizedStages = normalizeSalesStages(stages || []);
+    // Memoized: keeps a stable identity so the memos below (oppViewLookups etc.)
+    // that list it as a dependency don't recompute every render.
+    const normalizedStages = React.useMemo(() => normalizeSalesStages(stages || []), [stages]);
 
     // ── Saved views + owners (for the toolbar) ────────────────────────────────
     const { data: savedViews = [] } = useQuery({

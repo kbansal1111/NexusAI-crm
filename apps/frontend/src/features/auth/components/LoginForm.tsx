@@ -28,6 +28,10 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
+// Industry selection is frozen to Travel for now (single-industry rollout).
+// To re-enable the dropdown, flip this to false — nothing else to change.
+const INDUSTRY_SELECTION_LOCKED = true;
+
 const INDUSTRIES = [
     { value: "travel", label: "Travel", icon: Plane, color: "text-blue-600", email: "admin@tutterfly.com" },
     { value: "healthcare", label: "Healthcare", icon: Stethoscope, color: "text-emerald-600", email: "admin-health@tutterfly.com" },
@@ -121,7 +125,7 @@ function LoginFormContent() {
                                 <Select
                                     onValueChange={field.onChange}
                                     value={field.value || undefined}
-                                    disabled={isLoading}
+                                    disabled={isLoading || INDUSTRY_SELECTION_LOCKED}
                                 >
                                     <FormControl>
                                         <SelectTrigger className="w-full">

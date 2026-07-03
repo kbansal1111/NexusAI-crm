@@ -1,8 +1,60 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
+import { AlertTriangle, RotateCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/**
+ * Catches render errors thrown by the form inside the drawer so a crashing
+ * form never bubbles up to the page-level error boundary and blanks the whole
+ * page — the list stays alive and the user can retry or just close the drawer.
+ * Closing the drawer unmounts this boundary (`if (!open) return null` below),
+ * so reopening always starts clean.
+ */
+class DrawerErrorBoundary extends React.Component<
+    { children: React.ReactNode },
+    { error: Error | null }
+> {
+    state: { error: Error | null } = { error: null };
+
+    static getDerivedStateFromError(error: Error) {
+        return { error };
+    }
+
+    componentDidCatch(error: Error) {
+        console.error("Drawer form render error:", error);
+    }
+
+    render() {
+        if (this.state.error) {
+            return (
+                <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                        <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">
+                        This form ran into an error
+                    </p>
+                    <p className="max-w-sm text-xs text-muted-foreground">
+                        Your other work on this page is unaffected. You can retry,
+                        or close the drawer and try again.
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                        Ref: {this.state.error.name}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => this.setState({ error: null })}
+                        className="mt-1 inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+                    >
+                        <RotateCw className="h-3.5 w-3.5" /> Try again
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 interface FormDrawerProps {
     open: boolean;
@@ -101,7 +153,7 @@ export function FormDrawer({
 
                 {/* Scrollable body */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                    {children}
+                    <DrawerErrorBoundary>{children}</DrawerErrorBoundary>
                 </div>
             </div>
         </>
