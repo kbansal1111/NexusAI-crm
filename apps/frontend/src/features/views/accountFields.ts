@@ -149,8 +149,6 @@ export const OPPORTUNITY_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
   { key: "industry_data.no_of_pax", label: "No. of Pax", type: "number" },
   { key: "custom_fields.starting_city", label: "Starting City", type: "string" },
-  { key: "custom_fields.ip_address", label: "IP Address", type: "string" },
-  { key: "custom_fields.campaign_name", label: "Campaign Name", type: "string" },
   ...AUDIT_FIELDS,
   { key: "id", label: "Opportunity ID", type: "string" },
 ];
@@ -312,7 +310,7 @@ const LOOKUP_OPTIONS_KEY_BY_ENTITY: Record<string, Record<string, string>> = {
 const STATIC_OPTIONS_BY_ENTITY: Record<string, Record<string, { id: string; name: string }[]>> = {
   lead: {
     "custom_fields.segment": SEGMENT_FILTER_OPTIONS,
-    creation_type: [{ id: "manual", name: "Manual" }, { id: "auto", name: "Auto" }],
+    creation_type: [{ id: "manual", name: "Manual" }, { id: "auto", name: "Auto" }, { id: "import", name: "Import" }],
   },
   opportunity: {
     segment: SEGMENT_FILTER_OPTIONS,

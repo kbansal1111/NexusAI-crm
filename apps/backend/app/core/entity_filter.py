@@ -164,9 +164,6 @@ _OPPORTUNITY_FIELDS: Dict[str, str] = {
     "industry_data.no_of_pax": "number",
     # Additional Information — stored in the opportunity's custom_fields dict.
     "custom_fields.starting_city": "string",
-    # Carried from the source lead at conversion (web-to-lead traceability).
-    "custom_fields.ip_address": "string",
-    "custom_fields.campaign_name": "string",
     "created_at": "date",
     "updated_at": "date",
     "id": "lookup",
