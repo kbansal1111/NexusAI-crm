@@ -383,6 +383,10 @@ export function LeadDetails({
                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaign Name</p>
                                             <p className="text-sm font-medium text-foreground">{(lead.custom_fields as any)?.campaign_name || (lead as any).campaign_name || "-"}</p>
                                         </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">IP Address</p>
+                                            <p className="text-sm font-medium text-foreground">{(lead.custom_fields as any)?.ip_address || "-"}</p>
+                                        </div>
                                     </div>
                                 </CollapsibleDetailSection>
 

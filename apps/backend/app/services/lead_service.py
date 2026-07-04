@@ -962,6 +962,17 @@ class LeadService(ActivityMixin):
                 system_user = await get_or_create_system_user(tenant_id)
                 resolved_owner_id = system_user.id
 
+            # Carry lead traceability (visitor IP, campaign) onto the
+            # opportunity — the lead is soft-deleted after conversion, so
+            # these must live here to stay visible (sales derives the
+            # enquirer's country from the IP).
+            _lead_cf = lead.custom_fields or {}
+            opp_custom_fields = {
+                k: _lead_cf[k]
+                for k in ("ip_address", "campaign_name")
+                if _lead_cf.get(k)
+            }
+
             opportunity = Opportunity(
                 name=opportunity_name,
                 amount=conversion_data.opportunity_amount,
@@ -974,9 +985,10 @@ class LeadService(ActivityMixin):
                 opportunitable_type="Account" if not is_person_account else "PersonalAccount",
                 opportunitable_id=account_id,
                 lead_id=lead.id,
-                segment=(lead.custom_fields or {}).get("segment", "B2C"),
+                segment=_lead_cf.get("segment", "B2C"),
                 source_id=lead.source_id,
                 industry_data=opp_industry_data,
+                custom_fields=opp_custom_fields,
                 tenant_id=tenant_id,
                 owner_id=resolved_owner_id,
                 created_by=user_id

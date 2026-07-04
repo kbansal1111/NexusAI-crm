@@ -101,7 +101,7 @@
       <div class="rule"><b>API key goes in the header</b><span>Every request carries <code>X-API-Key: &lt;key&gt;</code> — never a token in the body, never in browser-side code. Server-to-server only.</span></div>
       <div class="rule"><b>Phone format</b><span><code>+91 9876543210</code> — country code, space, 10 digits. Bare 10-digit numbers are accepted and treated as +91. Send at least one of email / mobile.</span></div>
       <div class="rule"><b>Numbers as numbers</b><span>Nights, pax, adults, children, infants go as JSON integers — <code>5</code>, not <code>"5"</code>.</span></div>
-      <div class="rule"><b class="no">Do not send <code>source</code>, <code>source_medium</code>, <code>ip</code></b><span>Every web lead is stamped <code>source = "Website"</code> automatically. <code>source_medium</code>/<code>ip</code> no longer exist in the CRM.</span></div>
+      <div class="rule"><b class="no">Do not send <code>source</code> / <code>source_medium</code></b><span>Every web lead is stamped <code>source = "Website"</code> automatically; <code>source_medium</code> no longer exists. DO send <code>ip</code> — the team derives the enquirer's country from it.</span></div>
     </div>
   </section>
 
@@ -132,6 +132,7 @@ Content-Type: application/json
     <span class="k">"state"</span>: <span class="s">"Delhi"</span>,
     <span class="k">"zip"</span>: <span class="s">"110001"</span>,
     <span class="k">"country"</span>: <span class="s">"India"</span>,
+    <span class="k">"ip"</span>: <span class="s">"203.0.113.7"</span>,
     <span class="k">"industry_data"</span>: {
       <span class="k">"travel_date"</span>: <span class="s">"2026-09-15"</span>,
       <span class="k">"no_of_nights"</span>: <span class="l">5</span>,
@@ -170,6 +171,7 @@ Content-Type: application/json
           <tr><td class="field">phone</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Alternate / landline, same format.</td></tr>
           <tr><td class="field">company · title · no_employees · website</td><td><span class="opt">OPTIONAL</span></td><td class="notes">B2B info. <span class="field-inline">website</span> = customer's company site, not your landing page. <span class="field-inline">no_employees</span> integer ≥ 1.</td></tr>
           <tr><td class="field">street · zip</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Address extras.</td></tr>
+          <tr><td class="field">ip</td><td><span class="rec">RECOMMENDED</span></td><td class="notes">Visitor's IP address — shown on the CRM lead; the sales team derives the enquirer's country from it.</td></tr>
           <tr><td class="field">industry_data.no_of_nights · no_of_pax · no_of_adults · no_of_childs · no_of_infants</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Integers ≥ 0, as JSON numbers.</td></tr>
           <tr><td class="field">industry_data.is_fixed</td><td><span class="opt">OPTIONAL</span></td><td class="notes">Boolean — fixed-departure enquiry (the old <span class="field-inline">fixed_departure</span>).</td></tr>
           <tr><td class="field">custom_fields.segment</td><td><span class="opt">OPTIONAL</span></td><td class="notes"><code>B2C</code> (default) / <code>B2B</code> / <code>CORPORATE</code>. Lead form → Additional Information.</td></tr>
@@ -191,7 +193,7 @@ Content-Type: application/json
           <tr><td class="field">destinations_name · destination_json · min_country_data</td><td><span class="dead">REPLACED</span></td><td class="notes"><span class="field-inline">industry_data.destinations</span> — array of names</td></tr>
           <tr><td class="field">no_of_traveler · no_of_passengers</td><td><span class="dead">RENAMED</span></td><td class="notes"><span class="field-inline">industry_data.no_of_pax</span> (integer)</td></tr>
           <tr><td class="field">source_medium</td><td><span class="dead">REMOVED</span></td><td class="notes">Do not send — field no longer exists in the CRM.</td></tr>
-          <tr><td class="field">ip</td><td><span class="dead">REMOVED</span></td><td class="notes">Do not send — field no longer exists in the CRM.</td></tr>
+          <tr><td class="field">ip</td><td><span class="dead">KEPT</span></td><td class="notes">Same name — send it; stored on the lead as its IP Address.</td></tr>
           <tr><td class="field">campaign_name (top level)</td><td><span class="dead">MOVED</span></td><td class="notes"><span class="field-inline">custom_fields.campaign_name</span></td></tr>
           <tr><td class="field">experience (top level) · custom_fields.segment · custom_fields.experience</td><td><span class="dead">MOVED</span></td><td class="notes">Both now live in <span class="field-inline">custom_fields</span> — <span class="field-inline">segment</span>, <span class="field-inline">experience</span>.</td></tr>
           <tr><td class="field">token (in body)</td><td><span class="dead">MOVED</span></td><td class="notes">API key now travels in the <span class="field-inline">X-API-Key</span> header — no token key in the JSON body.</td></tr>

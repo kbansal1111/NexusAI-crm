@@ -233,6 +233,10 @@ def _build_custom_fields(payload: WebLeadPayload, experience_id: Optional[str]) 
         custom_fields["campaign_name"] = campaign
     if experience_id:
         custom_fields["experience_id"] = experience_id
+    # Visitor IP (top-level `ip` in the old contract) — sales derives the
+    # enquirer's country from it.
+    if payload.ip:
+        custom_fields["ip_address"] = payload.ip
     return custom_fields
 
 

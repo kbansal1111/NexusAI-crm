@@ -383,6 +383,7 @@ const leadFormSchema = z.object({
     segment: z.string().optional(),
     creation_type: z.enum(["manual", "auto"]).optional(),
     experience_id: z.string().optional(),
+    ip_address: z.string().optional(),
 });
 
 // Shared base fields for generic (non-travel) schemas
@@ -421,6 +422,7 @@ const genericBaseFields = {
     campaign_name: z.string().optional(),
     segment: z.string().optional(),
     creation_type: z.enum(["manual", "auto"]).optional(),
+    ip_address: z.string().optional(),
 };
 
 // Healthcare Lead Form Schema — explicit industry_data shape
@@ -601,6 +603,7 @@ export function LeadForm({
             // Additional Information lives in custom_fields; top-level reads are
             // a legacy fallback for not-yet-migrated leads.
             campaign_name: (initialData?.custom_fields as any)?.campaign_name || (initialData as any)?.campaign_name || "",
+            ip_address: (initialData?.custom_fields as any)?.ip_address || "",
             // Normalise the legacy "B2B_DIRECT" value to CORPORATE so edits of
             // not-yet-migrated leads show the right option.
             segment: (() => {
@@ -750,6 +753,7 @@ export function LeadForm({
                 custom_fields: {
                     segment: data.segment,
                     campaign_name: data.campaign_name,
+                    ...(data.ip_address ? { ip_address: data.ip_address } : {}),
                     ...(isTravel && data.experience_id ? { experience_id: data.experience_id } : {}),
                 },
                 creation_type: isTravel
@@ -1111,6 +1115,15 @@ export function LeadForm({
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Campaign</FormLabel>
                                         <FormControl><Input placeholder="Summer Sale" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                {/* IP Address — web-to-lead auto-fills this; sales derives the
+                                    enquirer's country from it. Editable for manual corrections. */}
+                                <FormField control={form.control as any} name="ip_address" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">IP Address</FormLabel>
+                                        <FormControl><Input placeholder="203.0.113.7" className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />

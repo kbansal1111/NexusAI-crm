@@ -83,6 +83,9 @@ class WebLeadPayload(BaseModel):
     state: CleanStr = None
     zip: CleanStr = None
     country: CleanStr = None
+    # Visitor IP — the website sends it so the sales team can derive the
+    # enquirer's country. Stored in the lead's custom_fields.ip_address.
+    ip: CleanStr = None
     industry_data: Annotated[Dict[str, Any], BeforeValidator(_as_dict)] = Field(default_factory=dict)
     custom_fields: Annotated[Dict[str, Any], BeforeValidator(_as_dict)] = Field(default_factory=dict)
     # NOTE: payload's `source` is intentionally NOT modeled — web leads are

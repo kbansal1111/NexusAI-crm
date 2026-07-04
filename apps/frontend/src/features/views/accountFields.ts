@@ -119,6 +119,7 @@ export const LEAD_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "custom_fields.campaign_name", label: "Campaign Name", type: "string" },
   { key: "custom_fields.segment", label: "Segment", type: "lookup" },
   { key: "custom_fields.experience_id", label: "Experience", type: "lookup" },
+  { key: "custom_fields.ip_address", label: "IP Address", type: "string" },
   { key: "creation_type", label: "Creation Type", type: "lookup" },
   { key: "industry_data.travel_date", label: "Travel Date", type: "date" },
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
@@ -148,6 +149,8 @@ export const OPPORTUNITY_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
   { key: "industry_data.no_of_pax", label: "No. of Pax", type: "number" },
   { key: "custom_fields.starting_city", label: "Starting City", type: "string" },
+  { key: "custom_fields.ip_address", label: "IP Address", type: "string" },
+  { key: "custom_fields.campaign_name", label: "Campaign Name", type: "string" },
   ...AUDIT_FIELDS,
   { key: "id", label: "Opportunity ID", type: "string" },
 ];
@@ -225,9 +228,9 @@ export function standardFieldByKey(entity: EntityType): Map<string, ViewFieldDef
 // Standard Fields") so the picker mirrors the form. Extend per module as a
 // form's "Additional Information" section gains fields.
 export const ADDITIONAL_FIELD_KEYS_BY_ENTITY: Record<string, string[]> = {
-  // Mirrors the Lead form's "Additional Information" section (Segment / Campaign / Experience).
-  // These live in the lead's custom_fields dict.
-  lead: ["custom_fields.segment", "custom_fields.campaign_name", "custom_fields.experience_id"],
+  // Mirrors the Lead form's "Additional Information" section (Segment / Campaign /
+  // IP Address / Experience). These live in the lead's custom_fields dict.
+  lead: ["custom_fields.segment", "custom_fields.campaign_name", "custom_fields.ip_address", "custom_fields.experience_id"],
   opportunity: ["custom_fields.starting_city", "close_lost_reason"],
 };
 

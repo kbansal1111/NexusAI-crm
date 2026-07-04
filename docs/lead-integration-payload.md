@@ -51,6 +51,7 @@ X-API-Key: <API_KEY>          # key SIRF is header mein — body mein token nahi
     "state": "Delhi",
     "zip": "110001",
     "country": "India",
+    "ip": "203.0.113.7",
     "industry_data": {
       "travel_date": "2026-09-15",
       "no_of_nights": 5,
@@ -95,6 +96,7 @@ X-API-Key: <API_KEY>          # key SIRF is header mein — body mein token nahi
 | `salutation` | `Mr.` / `Mrs.` / `Ms.` / `Dr.` / `Prof.` |
 | `company`, `title`, `no_employees`, `website` | B2B info. `no_employees` integer ≥ 1. |
 | `street`, `zip` | Address extras. |
+| `ip` | Visitor ka IP address — CRM mein lead ke "IP Address" field mein dikhega (isi se team enquirer ka country nikalti hai). Zaroor bhejo. |
 | `industry_data.no_of_nights/pax/adults/childs/infants` | Integers ≥ 0 — number bhejo, string nahi. |
 | `industry_data.is_fixed` | Boolean — fixed departure. |
 | `custom_fields.segment` | `B2C` (default) / `B2B` / `CORPORATE` — form ke Additional Information ka Segment. |
@@ -115,7 +117,7 @@ X-API-Key: <API_KEY>          # key SIRF is header mein — body mein token nahi
 | `source` | ❌ bhejne ki zaroorat nahi — har web lead automatically "Website" |
 | `token` (body mein) | ❌ removed — key ab sirf `X-API-Key` header mein |
 | `source_medium` | ❌ mat bhejo — CRM se removed |
-| `ip` | ❌ mat bhejo — CRM se removed |
+| `ip` | ✅ wapas aa gaya (2026-07-04) — `ip` bhejo, CRM mein `custom_fields.ip_address` mein store hota hai |
 | `ref_id`, `url`, `dook_enquiry_id`, `departure_id`, `form_type`, `bnpl` | ❌ drop — CRM lead mein koi field nahi |
 | `custom_fields.destination` / `description` / `date_of_travel` / `no_of_passengers` | ❌ drop — canonical fields upar cover karte hain |
 

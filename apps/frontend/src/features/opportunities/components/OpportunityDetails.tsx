@@ -885,6 +885,16 @@ export function OpportunityDetails({
                                                     {record.source_name || "-"}
                                                 </span>
                                             </div>
+                                            {/* IP Address — carried from the source lead (web-to-lead);
+                                                sales derives the enquirer's country from it. */}
+                                            {(record.custom_fields as any)?.ip_address && (
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">IP Address</p>
+                                                    <span className="text-sm font-medium pt-1 block">
+                                                        {(record.custom_fields as any).ip_address}
+                                                    </span>
+                                                </div>
+                                            )}
 
                                             {/* ── Industry-Specific Fields ── */}
                                             {industry === "travel" && (

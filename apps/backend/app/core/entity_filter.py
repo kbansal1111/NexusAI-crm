@@ -121,6 +121,7 @@ _LEAD_FIELDS: Dict[str, str] = {
     "custom_fields.campaign_name": "string",
     "custom_fields.segment": "string",   # stored as "B2C"/"B2B" — string match (UI: select)
     "custom_fields.experience_id": "strlookup",  # single id stored as a string
+    "custom_fields.ip_address": "string",  # visitor IP (web-to-lead) — country lookup
     "creation_type": "string",  # stored as "manual"/"auto" — string match (UI: select)
     # Travel industry_data fields (nested) — only meaningful for the travel industry.
     # Leads persist travel_date as an ISO string (TravelLeadData.travel_date: str).
@@ -163,6 +164,9 @@ _OPPORTUNITY_FIELDS: Dict[str, str] = {
     "industry_data.no_of_pax": "number",
     # Additional Information — stored in the opportunity's custom_fields dict.
     "custom_fields.starting_city": "string",
+    # Carried from the source lead at conversion (web-to-lead traceability).
+    "custom_fields.ip_address": "string",
+    "custom_fields.campaign_name": "string",
     "created_at": "date",
     "updated_at": "date",
     "id": "lookup",

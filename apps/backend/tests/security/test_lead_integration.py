@@ -360,6 +360,20 @@ def test_custom_fields_whitelist_and_segment_normalization(pipeline):
     assert "evil_key" not in cf
 
 
+def test_visitor_ip_captured_in_custom_fields(pipeline):
+    """Old contract's top-level `ip` lands in custom_fields.ip_address —
+    sales derives the enquirer's country from it."""
+    lead = dict(TRAVEL_LEAD)
+    lead["ip"] = "203.0.113.7"
+    _post(lead)
+    assert pipeline["lead_data"].custom_fields["ip_address"] == "203.0.113.7"
+
+
+def test_no_ip_means_no_ip_key(pipeline):
+    _post(dict(TRAVEL_LEAD))
+    assert "ip_address" not in pipeline["lead_data"].custom_fields
+
+
 def test_bad_segment_defaults_b2c(pipeline):
     lead = dict(TRAVEL_LEAD)
     lead["custom_fields"] = {"segment": "WHATEVER"}
