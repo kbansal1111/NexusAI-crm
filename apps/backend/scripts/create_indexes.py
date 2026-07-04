@@ -82,6 +82,10 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     ("opportunities", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
     ("leads", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
 
+    # --- integration_tokens: API-key auth lookup on every web-to-lead request ---
+    ("integration_tokens", [("token_hash", ASCENDING)]),
+    ("integration_tokens", [("tenant_id", ASCENDING), ("is_active", ASCENDING)]),
+
     # --- geographic reference data (global, no tenant_id). cities ~188k rows,
     #     so these matter: dropdowns filter by country_id/state_id and sort by
     #     name; lookups hit code; "popular cities" filters is_popular. ---

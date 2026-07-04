@@ -248,6 +248,8 @@ from app.api.v1 import files_extra
 from app.api.v1 import mobile
 # Phase 17 — Misc / utility
 from app.api.v1 import misc
+# Public integrations — web-to-lead (token-authenticated, no JWT)
+from app.api.v1 import integrations
 # Industry verticals — healthcare APIs (gated by per-tenant module flags)
 from app.api.v1 import patients, providers, appointments, care_plans, referrals
 # Industry verticals — education APIs
@@ -333,6 +335,9 @@ app.include_router(imports_exports.router, prefix="/api/v1/imports", tags=["Impo
 app.include_router(mobile.router, prefix="/api/v1/mobile", tags=["Mobile"])
 # Phase 17 — Misc / utility (s3 url, lat-long, country, FB stubs, public verify)
 app.include_router(misc.router, prefix="/api/v1/misc", tags=["Misc"])
+# Public integrations — web-to-lead. PUBLIC endpoint: auth is the per-tenant
+# API key (X-API-Key header / body token), NOT JWT. Rate-limited per route.
+app.include_router(integrations.router, prefix="/api/v1/integrations", tags=["Integrations"])
 
 # Industry verticals — Healthcare CRUD routers, gated by the corresponding
 # `modules.{patients,providers,appointments,care_plans,referrals}` flag on the

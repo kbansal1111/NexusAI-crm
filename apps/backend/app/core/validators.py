@@ -26,6 +26,44 @@ def format_phone_value(value: str) -> Optional[str]:
     return f"{code} {digits}"
 
 
+def normalize_loose_phone(value: Any, default_country_code: str = "+91") -> Optional[str]:
+    """Best-effort normalization of website-form phone input to '+CC XXXXXXXXXX'.
+
+    Web-to-lead forms send phones in many shapes ('9876543210', '+919876543210',
+    '09876543210', '91-9876543210'). This never raises — unparseable input
+    returns None so the caller can drop the field (phone/mobile are optional
+    on a lead). Must run BEFORE LeadCreate: its safe_phone_validator silently
+    nulls anything not already matching PHONE_REGEX.
+    """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+
+    # Already canonical ("+91 9876543210")?
+    formatted = format_phone_value(s)
+    if formatted:
+        return formatted
+
+    # Strip separators commonly sent by forms: spaces, dashes, dots, slashes, parens.
+    compact = re.sub(r"[\s\-\.\/\(\)]", "", s)
+
+    m = re.match(r"^\+(\d{1,4})(\d{10})$", compact)  # "+919876543210"
+    if m:
+        return f"+{m.group(1)} {m.group(2)}"
+
+    m = re.match(r"^0?(\d{10})$", compact)  # "9876543210" / "09876543210"
+    if m:
+        return f"{default_country_code} {m.group(1)}"
+
+    m = re.match(r"^91(\d{10})$", compact)  # "919876543210" (12-digit, PHP-common)
+    if m:
+        return f"+91 {m.group(1)}"
+
+    return None
+
+
 def strict_phone_validator(v: Any) -> Optional[str]:
     """Reject invalid phone numbers instead of silently coercing to None."""
     if v is None:

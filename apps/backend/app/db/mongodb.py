@@ -46,6 +46,7 @@ from app.models.territory import Region, Territory
 from app.models.incentive import Incentive, IncentiveTarget, IncentiveAchievement
 from app.models.billing import SubscriptionPlan, TenantSubscription, BillingInvoice
 from app.models.webhook import WebhookEndpoint, WebhookEvent, WebhookDelivery
+from app.models.integration_token import IntegrationToken
 from app.models.consolidated_picklists import (
     BasePicklist, SalesStage, OpportunityType, Experience, OpportunityTag,
     LeadStatus, Source,
@@ -313,6 +314,8 @@ async def init_db():
             WebhookEndpoint,
             WebhookEvent,
             WebhookDelivery,
+            # Integration API keys (web-to-lead etc.)
+            IntegrationToken,
             # Consolidated picklists (single collection)
             BasePicklist,
             SalesStage,
