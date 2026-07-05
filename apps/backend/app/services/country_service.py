@@ -5,7 +5,7 @@ from typing import List, Optional
 from bson import ObjectId
 from app.models.country import Country, State, City
 from app.schemas.country import CountryCreate, StateCreate, CityCreate
-from app.core.text_search import safe_regex
+from app.core.text_search import word_prefix_regex
 
 
 class CountryService:
@@ -35,17 +35,17 @@ class CountryService:
             query["is_popular"] = is_popular
         return await Country.find(query).sort("+name").to_list()
     
-    async def search_countries(self, query: str) -> List[Country]:
+    async def search_countries(self, query: str, limit: int = 50) -> List[Country]:
         """Search countries"""
         return await Country.find({
             "deleted_at": None,
             "is_active": True,
             "$or": [
-                {"name": safe_regex(query)},
-                {"code": safe_regex(query)},
-                {"capital": safe_regex(query)}
+                {"name": word_prefix_regex(query)},
+                {"code": word_prefix_regex(query)},
+                {"capital": word_prefix_regex(query)}
             ]
-        }).sort("+name").to_list()
+        }).sort("+name").limit(limit).to_list()
     
     # State methods
     async def create_state(self, data: StateCreate) -> State:
@@ -60,16 +60,16 @@ class CountryService:
             {"country_id": ObjectId(country_id), "deleted_at": None, "is_active": True}
         ).sort("+name").to_list()
     
-    async def search_states(self, query: str, country_id: Optional[str] = None) -> List[State]:
+    async def search_states(self, query: str, country_id: Optional[str] = None, limit: int = 50) -> List[State]:
         """Search states"""
         search = {
             "deleted_at": None,
             "is_active": True,
-            "name": safe_regex(query)
+            "name": word_prefix_regex(query)
         }
         if country_id:
             search["country_id"] = ObjectId(country_id)
-        return await State.find(search).sort("+name").to_list()
+        return await State.find(search).sort("+name").limit(limit).to_list()
     
     # City methods
     async def create_city(self, data: CityCreate) -> City:
@@ -93,14 +93,15 @@ class CountryService:
             {"state_id": ObjectId(state_id), "deleted_at": None, "is_active": True}
         ).sort("+name").to_list()
     
-    async def search_cities(self, query: str, country_id: Optional[str] = None, state_id: Optional[str] = None) -> List[City]:
-        """Search cities"""
-        search = {"deleted_at": None, "is_active": True, "name": safe_regex(query)}
+    async def search_cities(self, query: str, country_id: Optional[str] = None, state_id: Optional[str] = None, limit: int = 50) -> List[City]:
+        """Search cities. Capped: an unbounded 1-char search against the world
+        cities table returns thousands of rows and crashes dropdown renderers."""
+        search = {"deleted_at": None, "is_active": True, "name": word_prefix_regex(query)}
         if country_id:
             search["country_id"] = ObjectId(country_id)
         if state_id:
             search["state_id"] = ObjectId(state_id)
-        return await City.find(search).sort("+name").to_list()
+        return await City.find(search).sort("+name").limit(limit).to_list()
     
     async def get_popular_cities(self, limit: int = 20) -> List[City]:
         """Get popular cities"""

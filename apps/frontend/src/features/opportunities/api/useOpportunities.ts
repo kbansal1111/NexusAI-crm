@@ -17,7 +17,7 @@ export const useOpportunities = (filters: OpportunityFilters = { page: 1, per_pa
  * each subsequent page uses the cursor (O(1) deep paging, COUNT skipped). Feeds
  * both the flat list and the kanban (which groups the accumulated rows).
  */
-export const useInfiniteOpportunities = (filters: OpportunityFilters = {}) => {
+export const useInfiniteOpportunities = (filters: OpportunityFilters = {}, options?: { enabled?: boolean }) => {
     return useInfiniteQuery({
         queryKey: ["opportunities", "infinite", filters],
         queryFn: ({ pageParam }) =>
@@ -26,6 +26,7 @@ export const useInfiniteOpportunities = (filters: OpportunityFilters = {}) => {
         getNextPageParam: (lastPage: any) =>
             lastPage?.has_more ? (lastPage.next_cursor ?? undefined) : undefined,
         staleTime: 30_000,
+        enabled: options?.enabled ?? true,
     });
 };
 

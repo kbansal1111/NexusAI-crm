@@ -17,7 +17,7 @@ export const useLeads = (filters: LeadFilters = { page: 1, per_page: 10 }) => {
  * subsequent page uses the cursor (O(1), COUNT skipped). next_cursor/has_more
  * travel inside `pagination`.
  */
-export const useInfiniteLeads = (filters: LeadFilters = {}) => {
+export const useInfiniteLeads = (filters: LeadFilters = {}, options?: { enabled?: boolean }) => {
     return useInfiniteQuery({
         queryKey: ["leads", "infinite", filters],
         queryFn: ({ pageParam }) =>
@@ -26,6 +26,7 @@ export const useInfiniteLeads = (filters: LeadFilters = {}) => {
         getNextPageParam: (lastPage: any) =>
             lastPage?.pagination?.has_more ? (lastPage.pagination.next_cursor ?? undefined) : undefined,
         staleTime: 30_000,
+        enabled: options?.enabled ?? true,
     });
 };
 

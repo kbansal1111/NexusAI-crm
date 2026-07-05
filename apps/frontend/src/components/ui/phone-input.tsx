@@ -155,9 +155,9 @@ export function PhoneInput({ className, value = "", onChange, ...props }: PhoneI
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-[85px] justify-between h-9 px-2 shrink-0"
+            className="w-[85px] justify-between h-8 px-2 shrink-0"
           >
-            <span className="truncate flex-1 text-left text-sm">{countryCode}</span>
+            <span className="truncate flex-1 text-left text-xs">{countryCode}</span>
             <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -193,11 +193,10 @@ export function PhoneInput({ className, value = "", onChange, ...props }: PhoneI
       </Popover>
       <Input
         type="tel"
-        placeholder="10 digits"
         {...props}
         value={phoneNumber}
         onChange={handlePhoneChange}
-        className="flex-1 min-w-0 h-9 px-2 text-sm placeholder:text-xs"
+        className="flex-1 min-w-0 h-8 px-2 text-xs placeholder:text-xs"
         maxLength={10}
       />
     </div>

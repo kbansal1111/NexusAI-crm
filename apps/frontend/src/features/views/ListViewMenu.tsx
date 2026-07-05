@@ -31,7 +31,7 @@ import {
   type EntityView,
 } from "@/lib/api/services/entity-views.service";
 import type { EntityType } from "@/lib/api/services/field-registry.service";
-import { useEntityViews } from "./useEntityViews";
+import { useEntityViews, useDefaultViewBoot } from "./useEntityViews";
 import { SaveViewDialog, type SaveViewMode } from "./SaveViewDialog";
 import { EditListFiltersDialog } from "./EditListFiltersDialog";
 import { SelectFieldsDialog } from "./SelectFieldsDialog";
@@ -65,10 +65,6 @@ const SPECIAL_PRESETS_BY_ENTITY: Record<string, ViewPreset[]> = {
     { label: "Recently Viewed", value: "recent" },
   ],
 };
-
-// Modules that land on the "Today" preset by default (parity with prior
-// behavior). Other modules default to the cleared "all records" state.
-const DEFAULT_TODAY_ENTITIES = new Set<string>(["lead", "opportunity"]);
 
 // Select a saved view (view_id) and clear any active preset (view).
 function useSelectView() {
@@ -124,10 +120,6 @@ export function ListViewSelector({
   );
   const savedViews = React.useMemo(() => views.filter((v) => !v.is_system), [views]);
   const specialPresets = SPECIAL_PRESETS_BY_ENTITY[entity] || [];
-  const defaultSystemView = React.useMemo(
-    () => systemViews.find((v) => v.is_default) || null,
-    [systemViews],
-  );
 
   const currentPreset = searchParams.get("view");
   const hasExplicit = !!(activeViewId || currentPreset);
@@ -153,25 +145,11 @@ export function ListViewSelector({
   const activeIsPinned = !!(activeView && pinnedView && activeView.id === pinnedView.id);
 
   // One-time on fresh load: with nothing explicitly chosen, open the pinned
-  // default; failing that, modules that historically land on "Today" open their
-  // default system preset. A ref guards re-applying after the user clears (×).
-  const applied = React.useRef(false);
-  React.useEffect(() => {
-    if (applied.current) return;
-    if (hasExplicit) {
-      applied.current = true;
-      return;
-    }
-    if (pinnedView) {
-      applied.current = true;
-      selectView(pinnedView.id);
-      return;
-    }
-    if (DEFAULT_TODAY_ENTITIES.has(entity) && defaultSystemView) {
-      applied.current = true;
-      selectView(defaultSystemView.id);
-    }
-  }, [hasExplicit, pinnedView, defaultSystemView, entity, selectView]);
+  // default (or the default system preset for Today-first modules). The shared
+  // boot hook uses router.replace and never re-applies after the user clears (×);
+  // pages that gate rendering on it keep the redirect working even before this
+  // selector mounts.
+  useDefaultViewBoot(entity);
 
   const togglePin = async () => {
     if (!activeView) {

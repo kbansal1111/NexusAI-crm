@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { LoadingTable } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -285,13 +286,16 @@ export function ContactTable({
 
     // ── Saved views (contact-scoped EntityViews) ─────────────────────────────
     const queryClient = useQueryClient();
-    const { data: savedViews = [] } = useQuery({
+    const { data: savedViews = [], isLoading: savedViewsLoading } = useQuery({
         queryKey: ["entity-views", "contact"],
         queryFn: () => entityViewsService.listViews("contact"),
         staleTime: 60_000,
     });
     const viewId = searchParams.get("view_id") ?? "";
     const activeView = savedViews.find((v) => v.id === viewId) || null;
+    // While a saved view's definition is loading its display_columns are
+    // unknown — show a skeleton instead of flashing the default columns.
+    const columnsPending = !!viewId && savedViewsLoading;
 
     const setParams = React.useCallback((mut: (p: URLSearchParams) => void) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -500,6 +504,9 @@ export function ContactTable({
                 </div>
             </div>
             <div className={`rounded-md border transition-opacity duration-200 ${isPending ? "opacity-50 pointer-events-none" : ""}`}>
+                {columnsPending ? (
+                    <div className="p-4"><LoadingTable rows={8} columns={6} /></div>
+                ) : (
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -543,6 +550,7 @@ export function ContactTable({
                         )}
                     </TableBody>
                 </Table>
+                )}
             </div>
             <div className="flex items-center justify-end space-x-2 py-4">
                 <div className="flex-1 text-sm text-muted-foreground">

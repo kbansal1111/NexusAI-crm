@@ -651,10 +651,12 @@ class AccountService(ActivityMixin):
         
         # Text search
         if search_params.query:
+            from app.core.text_search import word_prefix_regex
+            _pat = word_prefix_regex(search_params.query)
             query["$or"] = [
-                {"name": {"$regex": search_params.query, "$options": "i"}},
-                {"email": {"$regex": search_params.query, "$options": "i"}},
-                {"phone": {"$regex": search_params.query, "$options": "i"}}
+                {"name": _pat},
+                {"email": _pat},
+                {"phone": _pat}
             ]
         
         # Filters (moved outside of text search block to prevent UnboundLocalError)

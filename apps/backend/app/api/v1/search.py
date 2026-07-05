@@ -45,7 +45,10 @@ async def _get_owner_map(owner_ids: List[ObjectId], tenant_id) -> Dict[str, str]
 
 
 def _make_pattern(q: str) -> re.Pattern:
-    return re.compile(f".*{re.escape(q)}.*", re.IGNORECASE)
+    # Word-prefix matching (typeahead standard): the query must start the
+    # value or a word inside it. Anchoring beats ".*q.*" on both relevance
+    # and speed — contains-matches most of the collection on short queries.
+    return re.compile(f"(^|[^a-zA-Z0-9]){re.escape(q.strip())}", re.IGNORECASE)
 
 
 def _relevance_sort(docs: list, q: str, name_fields: List[str]) -> list:

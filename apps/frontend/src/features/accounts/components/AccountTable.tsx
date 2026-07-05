@@ -30,6 +30,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { LoadingTable } from "@/components/ui/loading";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -330,7 +331,10 @@ export function AccountTable({
     // and field set. View management (New/Rename/Share/Edit Filters/Select
     // Fields/Delete) lives in ListViewSelector + ListViewSettings.
     const entity: EntityType = isPersonAccount ? "personal_account" : "account";
-    const { activeView } = useEntityViews(entity);
+    const { activeView, activeViewId: viewParamId, isLoading: viewsLoading } = useEntityViews(entity);
+    // While a saved view's definition is loading its display_columns are
+    // unknown — show a skeleton instead of flashing the default columns.
+    const columnsPending = !!viewParamId && viewsLoading;
 
     // Field labels for dynamic display columns (standard + additional/custom).
     const { data: stdFields = [] } = useQuery({
@@ -708,6 +712,9 @@ export function AccountTable({
             </div>
 
             <div className={`w-full overflow-x-auto transition-opacity duration-200 ${isPending ? "opacity-50 pointer-events-none" : ""}`}>
+                {columnsPending ? (
+                    <div className="p-4"><LoadingTable rows={8} columns={6} /></div>
+                ) : (
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -749,6 +756,7 @@ export function AccountTable({
                         )}
                     </TableBody>
                 </Table>
+                )}
             </div>
 
             <div className="flex items-center justify-between space-x-2 border-t bg-card px-4 py-4">

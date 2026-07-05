@@ -68,12 +68,14 @@ async def list_patients(
     if is_active is not None:
         query["is_active"] = is_active
     if search:
+        from app.core.text_search import word_prefix_regex
+        _pat = word_prefix_regex(search)
         query["$or"] = [
-            {"first_name": {"$regex": search, "$options": "i"}},
-            {"last_name": {"$regex": search, "$options": "i"}},
-            {"patient_id": {"$regex": search, "$options": "i"}},
-            {"email": {"$regex": search, "$options": "i"}},
-            {"phone": {"$regex": search, "$options": "i"}},
+            {"first_name": _pat},
+            {"last_name": _pat},
+            {"patient_id": _pat},
+            {"email": _pat},
+            {"phone": _pat},
         ]
     total = await Patient.find(query).count()
     rows = (

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePicklist } from "@/hooks/use-picklist";
 import { useSession } from "next-auth/react";
-import { Paperclip, X } from "lucide-react";
+import { Building2, MapPin, Paperclip, User, X } from "lucide-react";
 import { locationService, Country, State, City } from "@/lib/api/services/locations.service";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Separator } from "@/components/ui/separator";
+import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { accountService } from "@/features/accounts/services/accountService";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
@@ -618,12 +618,15 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
         <Form {...form}>
             <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-8"
+                className={cn("space-y-5", FORM_SHELL_CLASS)}
             >
                 {/* Account Information */}
                 <div>
-                    <h3 className="text-lg font-medium mb-4">{isPersonAccount ? "Person Account Information" : "Account Information"}</h3>
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <FormSectionHeader
+                        icon={isPersonAccount ? User : Building2}
+                        title={isPersonAccount ? "Person Account Information" : "Account Information"}
+                    />
+                    <div className="grid gap-3 md:grid-cols-2">
                         {!isPersonAccount ? (
                             <FormField
                                 control={form.control}
@@ -632,7 +635,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                     <FormItem>
                                         <FormLabel>Account Name *</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Acme Corp" {...field} />
+                                            <Input {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -666,7 +669,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                         {/* Account Owner — read-only; reassignment uses Change Owner action */}
                         <div className="flex flex-col space-y-2">
                             <FormLabel>Account Owner</FormLabel>
-                            <p className="min-h-[40px] rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground flex items-center">
+                            <p className="h-8 rounded-md border border-border bg-muted/40 px-2 text-xs text-foreground flex items-center truncate">
                                 {initialData?.owner_name
                                     || initialData?.owner?.name
                                     || session?.user?.name
@@ -683,7 +686,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                         <FormItem>
                                             <FormLabel>First Name</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="John" {...field} />
+                                                <Input {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -696,7 +699,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                         <FormItem>
                                             <FormLabel>Last Name *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Doe" {...field} />
+                                                <Input {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -737,7 +740,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                         <FormItem>
                                             <FormLabel>Website</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="https://example.com" {...field} />
+                                                <Input {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -753,7 +756,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                 <FormItem>
                                     <FormLabel>Phone *</FormLabel>
                                     <FormControl>
-                                        <PhoneInput {...field} placeholder="Phone number" />
+                                        <PhoneInput {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -768,7 +771,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                     <FormItem>
                                         <FormLabel>Mobile</FormLabel>
                                         <FormControl>
-                                            <PhoneInput {...field} placeholder="Mobile number" />
+                                            <PhoneInput {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -825,7 +828,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                 <FormItem>
                                     <FormLabel>Email *</FormLabel>
                                     <FormControl>
-                                        <Input type="email" placeholder="contact@example.com" {...field} />
+                                        <Input type="email" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -840,7 +843,6 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                     <FormLabel>Description</FormLabel>
                                     <FormControl>
                                         <Textarea
-                                            placeholder="Add a description..."
                                             className="min-h-24"
                                             {...field}
                                         />
@@ -891,12 +893,10 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                     </div>
                 </div>
 
-                <Separator />
-
                 {/* Address Information */}
                 <div>
-                    <h3 className="text-lg font-medium mb-4">Address Information</h3>
-                    <div className="space-y-4">
+                    <FormSectionHeader icon={MapPin} title="Address Information" />
+                    <div className="space-y-3">
                         <FormField
                             control={form.control}
                             name="billing_street"
@@ -904,7 +904,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                 <FormItem>
                                     <FormLabel>Street</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="123 Main St" {...field} />
+                                        <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -920,7 +920,7 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                                         <FormControl>
                                             {/* text + numeric keypad — type="number" allowed negatives
                                                 and stripped leading zeros; zod enforces the format */}
-                                            <Input type="text" inputMode="numeric" placeholder="12345" {...field} />
+                                            <Input type="text" inputMode="numeric" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

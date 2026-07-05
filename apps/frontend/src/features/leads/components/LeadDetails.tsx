@@ -46,7 +46,7 @@ import { Lead, LeadStatus, Source, User, Industry } from "../types";
 import { ConvertLeadDialog } from "./ConvertLeadDialog";
 import { LeadFormDrawer } from "./LeadFormDrawer";
 import { leadsService } from "@/lib/api/services/leads.service";
-import { destinationsService } from "@/lib/api/services/destinations.service";
+import { useAllDestinations } from "@/hooks/use-destinations";
 import { toast } from "sonner";
 import { formatDateTime } from "@/lib/format";
 import { useIndustry, useIndustryLabels } from "@/lib/industry-labels";
@@ -72,33 +72,25 @@ function IndustryDetailSection({ industry, lead, experiences = [] }: { industry:
     // Experience lives in custom_fields (Additional Information); industry_data
     // is the legacy fallback for not-yet-migrated leads.
     const experienceId = (lead.custom_fields as any)?.experience_id || data.experience_id;
-    const [resolvedDestinations, setResolvedDestinations] = useState<string[]>([]);
 
-    const destinationIdsStr = Array.isArray(data.destination_ids) ? data.destination_ids.join(",") : "";
-    const destinationNamesStr = Array.isArray(data.destination_names) ? data.destination_names.join(",") : "";
-
-    useEffect(() => {
-        if (industry === "travel" && Array.isArray(data.destination_ids) && data.destination_ids.length > 0) {
-            if (Array.isArray(data.destination_names) && data.destination_names.length === data.destination_ids.length) {
-                setResolvedDestinations(data.destination_names);
-                return;
-            }
-            let active = true;
-            destinationsService.getDestinations({ limit: 1000 })
-                .then(res => {
-                    if (!active) return;
-                    const destinationMap = new Map(res.destinations.map(d => [d.id, d.name]));
-                    const resolved = data.destination_ids.map((id: string) => destinationMap.get(id) || id);
-                    setResolvedDestinations(resolved);
-                })
-                .catch(err => {
-                    console.error("Failed to resolve destination names", err);
-                });
-            return () => {
-                active = false;
-            };
+    // Resolve destination names: prefer the server-provided parallel names
+    // array; fall back to the shared cached destination list (only fetched when
+    // actually needed) for legacy rows that stored ids without names.
+    const hasIds = Array.isArray(data.destination_ids) && data.destination_ids.length > 0;
+    const hasAlignedNames =
+        hasIds &&
+        Array.isArray(data.destination_names) &&
+        data.destination_names.length === data.destination_ids.length;
+    const { data: destData } = useAllDestinations(industry === "travel" && hasIds && !hasAlignedNames);
+    let resolvedDestinations: string[] = [];
+    if (industry === "travel" && hasIds) {
+        if (hasAlignedNames) {
+            resolvedDestinations = data.destination_names;
+        } else if (destData) {
+            const destinationMap = new Map(destData.destinations.map(d => [d.id, d.name]));
+            resolvedDestinations = data.destination_ids.map((id: string) => destinationMap.get(id) || id);
         }
-    }, [industry, destinationIdsStr, destinationNamesStr]);
+    }
 
     const sectionConfig: Record<string, { title: string; icon: React.ReactNode; borderColor: string; fields: { label: string; value: any }[] }> = {
         travel: {

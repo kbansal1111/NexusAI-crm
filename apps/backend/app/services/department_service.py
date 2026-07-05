@@ -197,12 +197,14 @@ class DepartmentService:
     ) -> List[Department]:
         """Search departments"""
         
+        from app.core.text_search import word_prefix_regex
+        _pat = word_prefix_regex(query)
         search_query = {
             "tenant_id": tenant_id,
             "deleted_at": None,
             "$or": [
-                {"name": {"$regex": query, "$options": "i"}},
-                {"description": {"$regex": query, "$options": "i"}}
+                {"name": _pat},
+                {"description": _pat}
             ]
         }
         

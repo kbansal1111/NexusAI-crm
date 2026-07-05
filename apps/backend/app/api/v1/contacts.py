@@ -203,8 +203,8 @@ async def get_contacts(
 
         # Free-text search across the contact's identity fields
         if search and str(search).strip():
-            import re as _re
-            _pat = {"$regex": _re.compile(f".*{_re.escape(str(search).strip())}.*", _re.IGNORECASE)}
+            from app.core.text_search import word_prefix_regex
+            _pat = word_prefix_regex(str(search))
             query["$or"] = [
                 {"first_name": _pat},
                 {"last_name": _pat},

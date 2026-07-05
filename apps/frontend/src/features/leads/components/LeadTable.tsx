@@ -44,7 +44,7 @@ import { ConvertLeadDialog } from "./ConvertLeadDialog";
 import { ImportLeadsDialog } from "./ImportLeadsDialog";
 import { useIndustry, type IndustryType } from "@/lib/industry-labels";
 import { getSegmentBadgeClass, getSegmentLabel } from "@/lib/segments";
-import { destinationsService } from "@/lib/api/services/destinations.service";
+import { useAllDestinations } from "@/hooks/use-destinations";
 import {
     Popover,
     PopoverContent,
@@ -535,18 +535,15 @@ export function LeadTable({
     const industry = useIndustry();
     const isTravel = industry === "travel";
 
-    // Build a destination id→name map for client-side resolution (same approach as experiences)
-    const [destinationMap, setDestinationMap] = React.useState<Map<string, string>>(new Map());
-    React.useEffect(() => {
-        if (!isTravel) return;
-        destinationsService.getDestinations({ limit: 500 })
-            .then(res => {
-                const map = new Map<string, string>();
-                res.destinations.forEach(d => map.set(d.id, d.name));
-                setDestinationMap(map);
-            })
-            .catch(() => { /* non-critical — fall back to server names */ });
-    }, [isTravel]);
+    // Destination id→name map for client-side resolution. Cached + deduped via
+    // the shared query instead of refetching on every table mount; on error we
+    // fall back to server-resolved names.
+    const { data: destinationsData } = useAllDestinations(isTravel);
+    const destinationMap = React.useMemo(() => {
+        const map = new Map<string, string>();
+        destinationsData?.destinations?.forEach((d) => map.set(d.id, d.name));
+        return map;
+    }, [destinationsData]);
 
     const rowSelection = React.useMemo(() => {
         const selection: Record<string, boolean> = {};
@@ -567,7 +564,7 @@ export function LeadTable({
     const searchParams = useSearchParams();
     const queryClient = useQueryClient();
     const entity: EntityType = "lead";
-    const { data: savedViews = [] } = useQuery({
+    const { data: savedViews = [], isLoading: savedViewsLoading } = useQuery({
         queryKey: ["entity-views", "lead"],
         queryFn: () => entityViewsService.listViews("lead"),
         staleTime: 60_000,
@@ -770,8 +767,12 @@ export function LeadTable({
         }
     };
 
+    // While a saved view's definition is still loading, its display_columns are
+    // unknown — keep the skeleton up instead of flashing the default columns.
+    const columnsPending = !!viewId && savedViewsLoading;
+
     return (
-        <LoadingState isLoading={isLoading} fallback={<LoadingTable rows={10} columns={12} />}>
+        <LoadingState isLoading={isLoading || columnsPending} fallback={<LoadingTable rows={10} columns={12} />}>
             <div className="w-full">
                 <div className="mb-4 rounded-lg border bg-card text-card-foreground shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b px-4 py-3">

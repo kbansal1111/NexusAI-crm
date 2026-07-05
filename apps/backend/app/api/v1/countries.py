@@ -109,11 +109,12 @@ async def search_cities(
     query: str,
     country_id: Optional[str] = Query(None, description="Filter by country ID"),
     state_id: Optional[str] = Query(None, description="Filter by state ID"),
+    limit: int = Query(50, ge=1, le=200, description="Max results"),
     current_user: User = Depends(get_current_user)
 ):
     """Search cities"""
     service = CountryService()
-    cities = await service.search_cities(query, country_id=country_id, state_id=state_id)
+    cities = await service.search_cities(query, country_id=country_id, state_id=state_id, limit=limit)
     return {"cities": [CityResponse.from_orm(c) for c in cities], "total": len(cities)}
 
 

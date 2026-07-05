@@ -65,7 +65,7 @@ import { leadsService } from "@/lib/api/services/leads.service";
 import { accountsService } from "@/lib/api/services/accounts.service";
 import { contactsService } from "@/lib/api/services/contacts.service";
 import { apiClient } from "@/lib/api/client";
-import { destinationsService, Destination } from "@/lib/api/services/destinations.service";
+import { useAllDestinations } from "@/hooks/use-destinations";
 import { cn } from "@/lib/utils";
 import { useIndustry } from "@/lib/industry-labels";
 import { User } from "../types";
@@ -384,16 +384,15 @@ export function ConvertLeadDialog({
 
 
 
-    // Destination handling
-    const [availableDestinations, setAvailableDestinations] = useState<Destination[]>([]);
+    // Destination handling — shared cached list (deduped with tables/forms).
+    // Memoized fallback keeps a stable identity so the matching effect below
+    // doesn't re-fire every render while the query loads.
+    const { data: destinationsData } = useAllDestinations(industry === "travel" && open);
+    const availableDestinations = React.useMemo(
+        () => destinationsData?.destinations ?? [],
+        [destinationsData],
+    );
     const [leadProcessedDestinations, setLeadProcessedDestinations] = useState<{ id: string, name: string }[]>([]);
-
-    useEffect(() => {
-        if (industry !== "travel" || !open) return;
-        destinationsService.getDestinations({ limit: 1000 }).then(res => {
-            setAvailableDestinations(res.destinations);
-        }).catch(err => console.error("Failed to fetch destinations", err));
-    }, [open, industry]);
 
     // Match destinations from industry_data
     useEffect(() => {

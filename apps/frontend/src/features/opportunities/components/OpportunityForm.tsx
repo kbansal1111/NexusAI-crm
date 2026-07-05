@@ -7,7 +7,8 @@ import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { CalendarIcon, Check, ChevronsUpDown, X, Paperclip } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, X, Paperclip, Briefcase, Info } from "lucide-react";
+import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { format } from "date-fns";
 
@@ -52,13 +53,13 @@ import { useCreateOpportunity, useSalesStages, useExperiences } from "../api/use
 import { usePicklist } from "@/hooks/use-picklist";
 import { useGetUsers } from "@/features/admin/api/use-users";
 import { normalizeSalesStages, getProbabilityForStageId, getCloseLostReasons } from "@/features/opportunities/utils/stageConfig";
-import { destinationsService, Destination } from "@/lib/api/services/destinations.service";
 import { accountsService } from "@/lib/api/services/accounts.service";
 import { contactsService } from "@/lib/api/services/contacts.service";
 import { Contact } from "@/features/contacts/types";
 import { toast } from "sonner";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { IndustryOpportunityFields, DestinationMultiSelect } from "@/components/industry/IndustryOpportunityFields";
+import { StartingCitySelect } from "./StartingCitySelect";
 import { useIndustry } from "@/lib/industry-labels";
 
 // Travel inclusion options
@@ -128,9 +129,6 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
     // render loop (React #185) that crashed the drawer in prod.
     const normalizedStages = useMemo(() => normalizeSalesStages(stages), [stages]);
 
-    const [availableDestinations, setAvailableDestinations] = useState<Destination[]>([]);
-    const [destinationOpen, setDestinationOpen] = useState(false);
-    const [destSearch, setDestSearch] = useState("");
     const [inclusionOpen, setInclusionOpen] = useState(false);
     const [inclusionSearch, setInclusionSearch] = useState("");
 
@@ -142,12 +140,8 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
     const [selectedAccountId, setSelectedAccountId] = useState(initialAccountId || "");
     const [isPersonAccount, setIsPersonAccount] = useState(false);
 
-    useEffect(() => {
-        if (!isTravel) return;
-        destinationsService.getDestinations({ limit: 1000 }).then(res => {
-            setAvailableDestinations(res.destinations);
-        }).catch(err => console.error("Failed to fetch destinations", err));
-    }, [isTravel]);
+    // Destinations are fetched inside DestinationMultiSelect / IndustryOpportunityFields;
+    // no separate fetch needed here.
 
     // Attachment upload (linked to the opportunity after it is created)
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -453,17 +447,12 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
         }
     }    return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-5", FORM_SHELL_CLASS)}>
                 {/* ── Section: Opportunity Information ─────────────────── */}
-                <div className="border border-border rounded-lg overflow-hidden bg-card">
-                    <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-2.5">
-                        <p className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-                            Opportunity Information
-                        </p>
-                    </div>
-
-                    <div className="p-5 space-y-6">
-                        <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                    <FormSectionHeader icon={Briefcase} title="Opportunity Information" />
+                    <div className="space-y-5">
+                        <div className="grid gap-3 md:grid-cols-2">
                             {/* Row 1: Account Type Toggles — first, the rest of the form
                                 (account/contact pickers) depends on this choice */}
                             <div className="md:col-span-2 flex items-center gap-4 py-2 border-b border-border/50">
@@ -527,7 +516,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                     <FormItem>
                                         <FormLabel>Opportunity Name *</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter opportunity name" {...field} />
+                                            <Input {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -673,7 +662,6 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                         <FormControl>
                                             <Input
                                                 type="number"
-                                                placeholder="50"
                                                 {...field}
                                                 readOnly
                                                 disabled
@@ -827,7 +815,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                     <FormField control={form.control} name="no_of_nights" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Number of Nights</FormLabel>
-                                            <FormControl><Input type="number" min={1} placeholder="7" {...field} /></FormControl>
+                                            <FormControl><Input type="number" min={1} {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -835,7 +823,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                     <FormField control={form.control} name="no_of_adults" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Adults</FormLabel>
-                                            <FormControl><Input type="number" min={1} placeholder="2" {...field} /></FormControl>
+                                            <FormControl><Input type="number" min={1} {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -843,7 +831,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                     <FormField control={form.control} name="no_of_childs" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Children</FormLabel>
-                                            <FormControl><Input type="number" min={0} placeholder="0" {...field} /></FormControl>
+                                            <FormControl><Input type="number" min={0} {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -851,7 +839,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                     <FormField control={form.control} name="no_of_infants" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Infants</FormLabel>
-                                            <FormControl><Input type="number" min={0} placeholder="0" {...field} /></FormControl>
+                                            <FormControl><Input type="number" min={0} {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -884,7 +872,6 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                             <Input
                                                 type="text"
                                                 inputMode="decimal"
-                                                placeholder="5000"
                                                 {...field}
                                                 onChange={(e) => {
                                                     const val = e.target.value.replace(/[^0-9.]/g, "");
@@ -939,7 +926,6 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                         <FormLabel>Description</FormLabel>
                                         <FormControl>
                                             <Textarea
-                                                placeholder="Enter opportunity description..."
                                                 className="min-h-[100px]"
                                                 {...field}
                                             />
@@ -972,13 +958,9 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                 </div>
 
                 {/* ── Section: Attachment Information ─────────────────── */}
-                <div className="border border-border rounded-lg overflow-hidden bg-card">
-                    <div className="bg-muted/40 border-b border-border px-5 py-2.5">
-                        <p className="text-xs font-bold uppercase tracking-wider text-foreground/80">
-                            Attachment Information
-                        </p>
-                    </div>
-                    <div className="p-5">
+                <div>
+                    <FormSectionHeader icon={Paperclip} title="Attachment Information" />
+                    <div>
                         {selectedFile ? (
                             <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                                 <span className="flex min-w-0 items-center gap-2">
@@ -1014,13 +996,9 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
 
                 {/* ── Section: Additional Information ─────────────────── */}
                 {(isTravel || isCloseLostStage) && (
-                    <div className="border border-border rounded-lg overflow-hidden bg-card">
-                        <div className="bg-muted/40 border-b border-border px-5 py-2.5">
-                            <p className="text-xs font-bold uppercase tracking-wider text-foreground/80">
-                                Additional Information
-                            </p>
-                        </div>
-                        <div className="grid gap-4 p-5 md:grid-cols-2">
+                    <div>
+                        <FormSectionHeader icon={Info} title="Additional Information" />
+                        <div className="grid gap-3 md:grid-cols-2">
                             {isTravel && (
                                 <FormField
                                     control={form.control}
@@ -1029,7 +1007,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                         <FormItem>
                                             <FormLabel>Starting City</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="e.g. New Delhi" {...field} />
+                                                <StartingCitySelect value={field.value} onChange={field.onChange} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -1067,7 +1045,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                 )}
 
                 <div className="flex gap-4">
-                    <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+                    <Button type="submit" disabled={isLoading}>
                         {isLoading ? "Creating..." : "Save"}
                     </Button>
                     <Button

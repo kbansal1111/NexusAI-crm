@@ -1,20 +1,19 @@
 import { LoadingTable } from "@/components/ui/loading";
 
+// Mirrors the loaded page's crm-page/crm-surface layout so the
+// skeleton → content transition causes no layout shift.
 export default function OpportunitiesLoading() {
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Opportunities</h1>
-                    <p className="text-muted-foreground">
-                        Manage your sales pipeline and deals.
-                    </p>
+        <div className="crm-page">
+            <div className="crm-surface space-y-4 rounded-b-none border-b-0 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="h-9 w-56 animate-pulse rounded-md bg-muted" />
+                    <div className="h-9 w-72 animate-pulse rounded-md bg-muted" />
                 </div>
-                <div className="h-10 w-40 bg-muted rounded-md animate-pulse" />
             </div>
 
-            <div className="border rounded-lg">
-                <LoadingTable rows={10} columns={5} />
+            <div className="crm-surface overflow-hidden rounded-t-none border-t-0 p-4">
+                <LoadingTable rows={10} columns={7} />
             </div>
         </div>
     );

@@ -86,6 +86,12 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     ("integration_tokens", [("token_hash", ASCENDING)]),
     ("integration_tokens", [("tenant_id", ASCENDING), ("is_active", ASCENDING)]),
 
+    # --- owner-scoped list paging: non-admin users always filter by
+    #     owner_id $in (visibility scope) + sort created_at; these keep that
+    #     path index-covered as row counts grow ---
+    ("leads", [("tenant_id", ASCENDING), ("owner_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
+    ("opportunities", [("tenant_id", ASCENDING), ("owner_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
+
     # --- geographic reference data (global, no tenant_id). cities ~188k rows,
     #     so these matter: dropdowns filter by country_id/state_id and sort by
     #     name; lookups hit code; "popular cities" filters is_popular. ---
@@ -94,6 +100,9 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     ("states", [("country_id", ASCENDING), ("name", ASCENDING)]),
     ("cities", [("state_id", ASCENDING), ("name", ASCENDING)]),
     ("cities", [("country_id", ASCENDING), ("name", ASCENDING)]),
+    # global city typeahead (Starting City): regex-on-name + sort name — an
+    # index on name lets Mongo walk index keys instead of fetching documents
+    ("cities", [("name", ASCENDING)]),
     ("cities", [("is_popular", ASCENDING)]),
 ]
 

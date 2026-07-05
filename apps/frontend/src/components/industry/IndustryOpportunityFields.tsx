@@ -262,28 +262,28 @@ function TravelOpportunityFields({ form, destinationSeedNames }: IndustryOppFiel
                 <FormField control={form.control} name="no_of_nights" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Number of Nights</FormLabel>
-                        <FormControl><Input type="number" min={0} placeholder="7" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="no_of_adults" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Adults</FormLabel>
-                        <FormControl><Input type="number" min={0} placeholder="2" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="no_of_childs" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Children</FormLabel>
-                        <FormControl><Input type="number" min={0} placeholder="0" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="no_of_infants" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Infants</FormLabel>
-                        <FormControl><Input type="number" min={0} placeholder="0" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -335,28 +335,28 @@ function HealthcareOpportunityFields({ form }: IndustryOppFieldsProps) {
                 <FormField control={form.control} name="industry_data.treatment_type" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Treatment Type</FormLabel>
-                        <FormControl><Input placeholder="e.g. Surgery, Physiotherapy" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="industry_data.estimated_treatment_cost" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Estimated Treatment Cost</FormLabel>
-                        <FormControl><Input type="number" min={0} step="0.01" placeholder="5000" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input type="number" min={0} step="0.01" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="industry_data.insurance_authorization" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Insurance Pre-Auth #</FormLabel>
-                        <FormControl><Input placeholder="Authorization number" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="industry_data.diagnosis_codes" render={({ field }) => (
                     <FormItem className="md:col-span-2">
                         <FormLabel>Diagnosis Codes (ICD-10)</FormLabel>
-                        <FormControl><Input placeholder="Comma separated, e.g. J45.0, E11.9" {...field} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
+                        <FormControl><Input {...field} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -379,7 +379,7 @@ function EducationOpportunityFields({ form }: IndustryOppFieldsProps) {
                 <FormField control={form.control} name="industry_data.application_number" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Application Number</FormLabel>
-                        <FormControl><Input placeholder="Auto-generated" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -415,21 +415,21 @@ function EducationOpportunityFields({ form }: IndustryOppFieldsProps) {
                 <FormField control={form.control} name="industry_data.tuition_fee" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Tuition Fee</FormLabel>
-                        <FormControl><Input type="number" min={0} step="0.01" placeholder="15000" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input type="number" min={0} step="0.01" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="industry_data.scholarship_amount" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Scholarship Amount</FormLabel>
-                        <FormControl><Input type="number" min={0} step="0.01" placeholder="0" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input type="number" min={0} step="0.01" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="industry_data.documents_submitted" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Documents Submitted</FormLabel>
-                        <FormControl><Input placeholder="Comma separated" {...field} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
+                        <FormControl><Input {...field} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -452,7 +452,7 @@ function ManufacturingOpportunityFields({ form }: IndustryOppFieldsProps) {
                 <FormField control={form.control} name="industry_data.quantity_ordered" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Quantity Ordered</FormLabel>
-                        <FormControl><Input type="number" min={1} placeholder="1000" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input type="number" min={1} {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -486,21 +486,21 @@ function ManufacturingOpportunityFields({ form }: IndustryOppFieldsProps) {
                 <FormField control={form.control} name="industry_data.quality_standard" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Quality Standard</FormLabel>
-                        <FormControl><Input placeholder="e.g. ISO 9001, CE" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="industry_data.plant_location" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Plant Location</FormLabel>
-                        <FormControl><Input placeholder="Factory / Plant" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="industry_data.special_requirements" render={({ field }) => (
                     <FormItem className="md:col-span-2">
                         <FormLabel>Special Requirements</FormLabel>
-                        <FormControl><Textarea placeholder="Any special manufacturing requirements..." className="min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Textarea className="min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />

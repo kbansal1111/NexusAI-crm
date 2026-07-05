@@ -213,7 +213,10 @@ export function TaskList() {
     const totalPages = pagination?.pages || 1;
 
     // ── Saved-view manager (saved views + Edit List Filters + Select Fields) ──
-    const { activeView } = useEntityViews(entity);
+    const { activeView, isLoading: viewsLoading } = useEntityViews(entity);
+    // While the active view's display_columns are unknown, keep the loading row
+    // up instead of flashing the default columns.
+    const columnsPending = !!view_id && viewsLoading;
     const taskUsers: { id: string; name: string }[] = (data as any)?.users || [];
     const { data: taskCustomFields = [] } = useQuery({
         queryKey: ["custom-fields", entity],
@@ -326,7 +329,9 @@ export function TaskList() {
 
             {/* Table */}
             <div className="crm-surface overflow-hidden">
-                {dynamicColumns ? (
+                {columnsPending ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground">Loading tasks...</div>
+                ) : dynamicColumns ? (
                     <DynamicListTable
                         data={tasks}
                         columns={dynamicColumns as any}

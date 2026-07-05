@@ -34,7 +34,8 @@ import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useUploadFile } from "@/features/files/api/use-files";
-import { Paperclip, X } from "lucide-react";
+import { MapPin, Paperclip, User, X } from "lucide-react";
+import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 
 const contactFormSchema = z.object({
     salutation: z.string().optional(),
@@ -219,11 +220,11 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
         <Form {...form}>
             <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-8"
+                className={cn("space-y-5", FORM_SHELL_CLASS)}
             >
                 <div>
-                    <h3 className="text-lg font-medium mb-4">Contact Information</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <FormSectionHeader icon={User} title="Contact Information" />
+                    <div className="grid gap-3 md:grid-cols-2">
                         <FormField
                             control={form.control}
                             name="salutation"
@@ -250,7 +251,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                         {/* Account Owner — read-only; reassignment uses Change Owner action */}
                         <div className="flex flex-col space-y-2">
                             <FormLabel>Account Owner</FormLabel>
-                            <p className="min-h-[40px] rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground flex items-center">
+                            <p className="h-8 rounded-md border border-border bg-muted/40 px-2 text-xs text-foreground flex items-center truncate">
                                 {initialData?.owner_name
                                     || initialData?.owner?.name
                                     || session?.user?.name
@@ -265,7 +266,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>First Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="John" {...field} value={field.value ?? ""} />
+                                        <Input {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -278,7 +279,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>Last Name *</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Doe" {...field} />
+                                        <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -298,8 +299,8 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                             placeholder="Search Account"
                                         />
                                     </FormControl>
-                                    <FormDescription>
-                                        {accountChanged && (
+                                    {accountChanged && (
+                                        <FormDescription>
                                             <span className="flex items-start gap-1.5 mt-1.5 text-amber-600 dark:text-amber-400 text-xs leading-snug">
                                                 <span>ℹ️</span>
                                                 <span>
@@ -309,8 +310,8 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                                     {newAccountName ? ` "${newAccountName}"` : " the new account"}.
                                                 </span>
                                             </span>
-                                        )}
-                                    </FormDescription>
+                                        </FormDescription>
+                                    )}
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -322,13 +323,12 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>Title</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Manager" {...field} value={field.value ?? ""} />
+                                        <Input {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <div aria-hidden className="hidden md:block" />
                         <FormField
                             control={form.control}
                             name="phone"
@@ -336,7 +336,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>Phone</FormLabel>
                                     <FormControl>
-                                        <PhoneInput {...field} placeholder="Phone number" />
+                                        <PhoneInput {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -349,7 +349,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>Mobile *</FormLabel>
                                     <FormControl>
-                                        <PhoneInput {...field} placeholder="Mobile number" />
+                                        <PhoneInput {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -363,7 +363,6 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                     <FormLabel>Email *</FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="john@example.com"
                                             {...field}
                                         />
                                     </FormControl>
@@ -375,8 +374,8 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                 </div>
 
                 <div>
-                    <h3 className="text-lg font-medium mb-4">Address Information</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <FormSectionHeader icon={MapPin} title="Address Information" />
+                    <div className="grid gap-3 md:grid-cols-2">
                         <FormField
                             control={form.control}
                             name="mailing_street"
@@ -384,7 +383,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem className="md:col-span-2">
                                     <FormLabel>Mailing Street</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="123 Main St" {...field} value={field.value ?? ""} />
+                                        <Input {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -397,7 +396,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>City</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Mumbai" {...field} value={field.value ?? ""} />
+                                        <Input {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -410,7 +409,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>State</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Maharashtra" {...field} value={field.value ?? ""} />
+                                        <Input {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -423,7 +422,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>Zip / Postal Code</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="400001" {...field} value={field.value ?? ""} />
+                                        <Input {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -436,7 +435,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                                 <FormItem>
                                     <FormLabel>Country</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="India" {...field} value={field.value ?? ""} />
+                                        <Input {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -447,7 +446,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
 
                 {/* ── Section: Attachment Information ─────────────── */}
                 <div>
-                    <h3 className="text-lg font-medium mb-4">Attachment Information</h3>
+                    <FormSectionHeader icon={Paperclip} title="Attachment Information" />
                     {selectedFile ? (
                         <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
                             <span className="flex min-w-0 items-center gap-2">

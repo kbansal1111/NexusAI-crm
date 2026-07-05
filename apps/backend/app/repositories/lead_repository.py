@@ -89,12 +89,14 @@ class LeadRepository(BaseRepository[Lead]):
             search_query["owner_id"] = {"$in": visible_owner_ids}
         
         if query_text:
+            from app.core.text_search import word_prefix_regex
+            _pat = word_prefix_regex(query_text)
             search_query["$or"] = [
-                {"first_name": {"$regex": query_text, "$options": "i"}},
-                {"last_name": {"$regex": query_text, "$options": "i"}},
-                {"email": {"$regex": query_text, "$options": "i"}},
-                {"company": {"$regex": query_text, "$options": "i"}},
-                {"phone": {"$regex": query_text, "$options": "i"}}
+                {"first_name": _pat},
+                {"last_name": _pat},
+                {"email": _pat},
+                {"company": _pat},
+                {"phone": _pat}
             ]
             
         if lead_status_id:

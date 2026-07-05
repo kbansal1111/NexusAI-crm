@@ -56,10 +56,13 @@ class OpportunityRepository(BaseRepository[Opportunity]):
             )
             return pr["items"], None, pr["next_cursor"], pr["has_more"]
 
-        total = await self.model.find(query).count()
-        opportunities = await self.model.find(query).sort(
-            [("created_at", -1), ("_id", -1)]
-        ).skip(skip).limit(limit).to_list()
+        import asyncio as _asyncio
+        total, opportunities = await _asyncio.gather(
+            self.model.find(query).count(),
+            self.model.find(query).sort(
+                [("created_at", -1), ("_id", -1)]
+            ).skip(skip).limit(limit).to_list(),
+        )
         next_cursor = encode_cursor(
             opportunities[-1].created_at, opportunities[-1].id
         ) if opportunities else None

@@ -1416,8 +1416,8 @@ class LeadService(ActivityMixin):
 
         # Free-text search (mirrors the lead /search fields)
         if search and str(search).strip():
-            import re as _re
-            _pat = {"$regex": _re.compile(f".*{_re.escape(str(search).strip())}.*", _re.IGNORECASE)}
+            from app.core.text_search import word_prefix_regex
+            _pat = word_prefix_regex(str(search))
             base_filter["$or"] = [
                 {"first_name": _pat},
                 {"last_name": _pat},
@@ -1492,10 +1492,13 @@ class LeadService(ActivityMixin):
                 pages = None
             else:
                 skip = (page - 1) * per_page
-                total = await Lead.find(base_filter).count()
-                leads = await Lead.find(base_filter).sort(
-                    [("created_at", -1), ("_id", -1)]
-                ).skip(skip).limit(per_page).to_list()
+                import asyncio as _asyncio
+                total, leads = await _asyncio.gather(
+                    Lead.find(base_filter).count(),
+                    Lead.find(base_filter).sort(
+                        [("created_at", -1), ("_id", -1)]
+                    ).skip(skip).limit(per_page).to_list(),
+                )
                 next_cursor = encode_cursor(leads[-1].created_at, leads[-1].id) if leads else None
                 has_more = len(leads) == per_page
                 pages = (total + per_page - 1) // per_page if per_page > 0 else 0

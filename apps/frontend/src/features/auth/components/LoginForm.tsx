@@ -156,7 +156,7 @@ function LoginFormContent() {
                             <FormItem>
                                 <FormLabel>Email</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="name@example.com" {...field} disabled={isLoading} />
+                                    <Input type="email" autoComplete="email" {...field} disabled={isLoading} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -169,7 +169,7 @@ function LoginFormContent() {
                             <FormItem>
                                 <FormLabel>Password</FormLabel>
                                 <FormControl>
-                                    <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
+                                    <Input type="password" autoComplete="current-password" {...field} disabled={isLoading} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

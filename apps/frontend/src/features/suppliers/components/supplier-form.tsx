@@ -42,12 +42,13 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useCreateSupplier, useUpdateSupplier } from "@/features/suppliers/api/use-suppliers";
 import { suppliersService } from "@/lib/api/services/suppliers.service";
 import { locationService, Country, State, City } from "@/lib/api/services/locations.service";
-import { destinationsService, Destination } from "@/lib/api/services/destinations.service";
+import { useAllDestinations } from "@/hooks/use-destinations";
 import axios from "axios";
 import { Supplier } from "@/features/suppliers/types";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, X, Loader2, Paperclip } from "lucide-react";
+import { Check, ChevronsUpDown, X, Loader2, Paperclip, Building2, Globe, MapPin } from "lucide-react";
+import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { useToast } from "@/hooks/use-toast";
 import { useIndustry } from "@/lib/industry-labels";
@@ -138,11 +139,12 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
     const [loadingSvcStates, setLoadingSvcStates] = useState(false);
     const [loadingSvcCities, setLoadingSvcCities] = useState(false);
 
-    // Destinations Multi-select state
-    const [availableDestinations, setAvailableDestinations] = useState<Destination[]>([]);
+    // Destinations Multi-select state — travel only; the list itself comes from
+    // the shared cached query (deduped with tables/other forms).
+    const { data: destinationsData, isLoading: loadingDestinations } = useAllDestinations(isTravel);
+    const availableDestinations = destinationsData?.destinations ?? [];
     const [destinationOpen, setDestinationOpen] = useState(false);
     const [destSearch, setDestSearch] = useState("");
-    const [loadingDestinations, setLoadingDestinations] = useState(false);
 
     const form = useForm<SupplierFormValues>({
         resolver: zodResolver(supplierFormSchema),
@@ -298,16 +300,6 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
         };
 
         loadInitialCountries();
-
-        // Load Destinations — travel industry only
-        if (isTravel) {
-            setLoadingDestinations(true);
-            destinationsService.getDestinations({ limit: 1000 })
-                .then(res => setAvailableDestinations(res.destinations))
-                .catch(err => console.error(err))
-                .finally(() => setLoadingDestinations(false));
-        }
-            
     }, [form]);
 
     // Search handlers
@@ -460,13 +452,11 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-5 pb-4", FORM_SHELL_CLASS)}>
                 {/* Supplier Information Section */}
                 <div>
-                    <h3 className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
-                        Supplier Information
-                    </h3>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                    <FormSectionHeader icon={Building2} title="Supplier Information" />
+                    <div className="grid grid-cols-2 gap-3">
                         <FormField
                             control={form.control}
                             name="name"
@@ -474,7 +464,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                 <FormItem>
                                     <FormLabel>Supplier Name <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Supplier Name" {...field} />
+                                        <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -484,7 +474,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                         {/* Supplier Owner — read-only; reassignment uses Change Owner action */}
                         <div className="flex flex-col space-y-2">
                             <FormLabel>Supplier Owner</FormLabel>
-                            <p className="min-h-[40px] rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground flex items-center">
+                            <p className="h-8 rounded-md border border-border bg-muted/40 px-2 text-xs text-foreground flex items-center truncate">
                                 {(initialData as { owner_name?: string })?.owner_name
                                     || metaData?.users?.find((u) => u.id === initialData?.owner_id)?.name
                                     || session?.user?.name
@@ -522,7 +512,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                 <FormItem>
                                     <FormLabel>Contact Person</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Contact Person" {...field} />
+                                        <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -536,7 +526,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                 <FormItem>
                                     <FormLabel>Phone <span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
-                                        <PhoneInput placeholder="Phone number" {...field} />
+                                        <PhoneInput {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -550,7 +540,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                 <FormItem>
                                     <FormLabel>Mobile</FormLabel>
                                     <FormControl>
-                                        <PhoneInput placeholder="Mobile number" {...field} />
+                                        <PhoneInput {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -564,7 +554,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                 <FormItem>
                                     <FormLabel>Email<span className="text-red-500">*</span></FormLabel>
                                     <FormControl>
-                                        <Input placeholder="e.g. hello@example.com" {...field} />
+                                        <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -584,7 +574,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                                     <Button
                                                         variant="outline"
                                                         role="combobox"
-                                                        className={cn("w-full justify-between h-auto min-h-[40px] px-3 py-2", !field.value?.length && "text-muted-foreground")}
+                                                        className={cn("w-full justify-between h-auto min-h-8 px-2 py-1 text-xs", !field.value?.length && "text-muted-foreground")}
                                                     >
                                                         <div className="flex flex-wrap gap-1">
                                                             {field.value?.length ? field.value.map(val => (
@@ -638,9 +628,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
 
                 {/* Supplier Service Area */}
                 <div>
-                     <h3 className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
-                        Supplier Service Area
-                    </h3>
+                    <FormSectionHeader icon={Globe} title="Supplier Service Area" />
                     <div className="flex flex-col gap-4">
                         <div className="grid grid-cols-2 gap-4">
                             <FormField
@@ -755,7 +743,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                                 <Button
                                                     variant="outline"
                                                     role="combobox"
-                                                    className={cn("w-full justify-between h-auto min-h-[40px] px-3 py-2", !field.value?.length && "text-muted-foreground")}
+                                                    className={cn("w-full justify-between h-auto min-h-8 px-2 py-1 text-xs", !field.value?.length && "text-muted-foreground")}
                                                 >
                                                     <div className="flex flex-wrap gap-1">
                                                         {field.value?.length ? field.value.map(val => (
@@ -825,9 +813,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
 
                 {/* Address Information */}
                 <div>
-                     <h3 className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
-                        Address Information
-                    </h3>
+                    <FormSectionHeader icon={MapPin} title="Address Information" />
                     <div className="space-y-4">
                         <FormField
                             control={form.control}
@@ -836,7 +822,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                 <FormItem>
                                     <FormLabel>Billing Street</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Street Address" {...field} />
+                                        <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -930,7 +916,6 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                                         <FormLabel>Billing Zip</FormLabel>
                                         <FormControl>
                                             <Input 
-                                                placeholder="Zip/Postal Code" 
                                                 {...field} 
                                                 onChange={(e) => {
                                                     const value = e.target.value;
@@ -971,9 +956,7 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
 
                 {/* ── Section: Attachment Information ─────────────── */}
                 <div>
-                    <h3 className="mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
-                        Attachment Information
-                    </h3>
+                    <FormSectionHeader icon={Paperclip} title="Attachment Information" />
                     {selectedFile ? (
                         <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
                             <span className="flex min-w-0 items-center gap-2">

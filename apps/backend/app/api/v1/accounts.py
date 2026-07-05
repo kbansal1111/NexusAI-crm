@@ -282,8 +282,8 @@ async def get_accounts(
 
         # --- Free-text search across the visible columns ---
         if search and search.strip():
-            import re as _re
-            pattern = {"$regex": _re.compile(f".*{_re.escape(search.strip())}.*", _re.IGNORECASE)}
+            from app.core.text_search import word_prefix_regex
+            pattern = word_prefix_regex(search)
             query["$or"] = [
                 {"name": pattern},
                 {"email": pattern},
@@ -673,9 +673,10 @@ async def search_account_by_email(
 ):
     """Search accounts by email for email selection (autocomplete)"""
     from app.services.visibility_scope import get_visible_owner_ids
+    from app.core.text_search import word_prefix_regex
     query = {
         "tenant_id": current_user.tenant_id,
-        "email": {"$regex": s, "$options": "i"},
+        "email": word_prefix_regex(s),
         "deleted_at": None
     }
     
@@ -702,9 +703,10 @@ async def search_account_autocomplete(
 ):
     """Search accounts by name (autocomplete)"""
     from app.services.visibility_scope import get_visible_owner_ids
+    from app.core.text_search import word_prefix_regex
     query: dict = {
         "tenant_id": current_user.tenant_id,
-        "name": {"$regex": s, "$options": "i"},
+        "name": word_prefix_regex(s),
         "deleted_at": None
     }
     if is_person_account is not None:

@@ -54,6 +54,7 @@ import { destinationsService, Destination } from "@/lib/api/services/destination
 import { Lead, LeadCreateData, LeadStatus, Source, Industry } from "../types";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { FormSectionHeader, FORM_SHELL_CLASS, FORM_BODY_CLASS } from "@/components/shared/form-section";
 import { ErrorHandler, showSuccessToast, cleanErrorMessage } from "@/lib/error-handler";
 import { logger } from "@/lib/logger";
 import { LoadingButton } from "@/components/ui/loading";
@@ -839,15 +840,12 @@ export function LeadForm({
             <Form {...(form as any)} className="w-full">
                 <form
                     onSubmit={form.handleSubmit(onSubmit as any)}
-                    className="w-full [&_[data-slot=form-label]]:!text-foreground/85 [&_input]:text-foreground [&_textarea]:text-foreground [&_[data-slot=select-trigger]]:text-foreground"
+                    className={FORM_SHELL_CLASS}
                 >
-                    <div className="px-5 py-4 space-y-5">
+                    <div className={FORM_BODY_CLASS}>
                         {/* ── Section: Leads Information ─────────────────── */}
                         <div>
-                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-                                <User className="h-4 w-4 text-primary" />
-                                <h3 className="text-sm font-semibold text-foreground">Leads Information</h3>
-                            </div>
+                            <FormSectionHeader icon={User} title="Leads Information" />
                             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                                 {/* Row 1: Salutation | Lead Owner (read-only) */}
                                 <FormField control={form.control as any} name="salutation" render={({ field }) => (
@@ -909,14 +907,14 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="first_name" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">First Name</FormLabel>
-                                        <FormControl><Input placeholder="John" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
                                 <FormField control={form.control as any} name="last_name" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Last Name <span className="text-red-500">*</span></FormLabel>
-                                        <FormControl><Input placeholder="Doe" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -925,14 +923,14 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="title" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Title</FormLabel>
-                                        <FormControl><Input placeholder="Manager" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
                                 <FormField control={form.control as any} name="company" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Company</FormLabel>
-                                        <FormControl><Input placeholder="Acme Inc." className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -941,7 +939,7 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="email" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Email</FormLabel>
-                                        <FormControl><Input type="email" placeholder="john@example.com" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input type="email" className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -957,14 +955,14 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="website" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Website</FormLabel>
-                                        <FormControl><Input placeholder="https://..." className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
                                 <FormField control={form.control as any} name="no_employees" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">No of Employees</FormLabel>
-                                        <FormControl><Input type="number" min="0" placeholder="10" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input type="number" min="0" className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -973,7 +971,7 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="phone" render={({ field }) => (
                                     <FormItem className="col-span-2">
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Phone</FormLabel>
-                                        <FormControl><PhoneInput {...field} placeholder="Phone" /></FormControl>
+                                        <FormControl><PhoneInput {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -982,7 +980,7 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="mobile" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Mobile <span className="text-red-500">*</span></FormLabel>
-                                        <FormControl><PhoneInput {...field} placeholder="Mobile" /></FormControl>
+                                        <FormControl><PhoneInput {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -1018,15 +1016,12 @@ export function LeadForm({
 
                         {/* ── Section: Address Information ────────────────── */}
                         <div>
-                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-                                <MapPin className="h-4 w-4 text-primary" />
-                                <h3 className="text-sm font-semibold text-foreground">Address Information</h3>
-                            </div>
+                            <FormSectionHeader icon={MapPin} title="Address Information" />
                             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                                 <FormField control={form.control as any} name="street" render={({ field }) => (
                                     <FormItem className="sm:col-span-2">
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Mailing Street</FormLabel>
-                                        <FormControl><Input placeholder="123 Main St" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -1036,7 +1031,7 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="zip" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Mailing Zip</FormLabel>
-                                        <FormControl><Input placeholder="110001" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -1045,10 +1040,7 @@ export function LeadForm({
 
                         {/* ── Section: Attachment Information ─────────────── */}
                         <div>
-                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-                                <Paperclip className="h-4 w-4 text-primary" />
-                                <h3 className="text-sm font-semibold text-foreground">Attachment Information</h3>
-                            </div>
+                            <FormSectionHeader icon={Paperclip} title="Attachment Information" />
                             {selectedFile ? (
                                 <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs">
                                     <span className="flex min-w-0 items-center gap-2">
@@ -1090,10 +1082,7 @@ export function LeadForm({
 
                         {/* ── Section: Additional Information ─────────────── */}
                         <div>
-                            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-                                <Info className="h-4 w-4 text-primary" />
-                                <h3 className="text-sm font-semibold text-foreground">Additional Information</h3>
-                            </div>
+                            <FormSectionHeader icon={Info} title="Additional Information" />
                             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
                                 {/* Segment — auto-detected from the email domain, editable */}
                                 <FormField control={form.control as any} name="segment" render={({ field }) => (
@@ -1114,7 +1103,7 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="campaign_name" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">Campaign</FormLabel>
-                                        <FormControl><Input placeholder="Summer Sale" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
@@ -1123,7 +1112,7 @@ export function LeadForm({
                                 <FormField control={form.control as any} name="ip_address" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="text-[10px] font-bold uppercase text-foreground/80">IP Address</FormLabel>
-                                        <FormControl><Input placeholder="203.0.113.7" className="h-8 bg-background text-xs" {...field} /></FormControl>
+                                        <FormControl><Input className="h-8 bg-background text-xs" {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />

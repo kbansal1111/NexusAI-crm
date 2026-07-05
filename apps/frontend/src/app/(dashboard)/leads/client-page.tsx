@@ -18,6 +18,8 @@ import { useInfiniteLeads } from "@/features/leads/api/useLeads";
 import { leadsService } from "@/lib/api/services/leads.service";
 import { LeadFormDrawer } from "@/features/leads/components/LeadFormDrawer";
 import { PermissionGate } from "@/components/permissions/PermissionGate";
+import { useDefaultViewBoot } from "@/features/views/useEntityViews";
+import { LoadingTable } from "@/components/ui/loading";
 
 export default function LeadsClientPage() {
     const searchParams = useSearchParams();
@@ -38,6 +40,10 @@ export default function LeadsClientPage() {
     const owner_id = searchParams.get("owner_id") || undefined;
     const lead_status_id = searchParams.get("lead_status_id") || undefined;
 
+    // Resolve the default view (pinned / "Today") BEFORE fetching, so the
+    // unfiltered "All Leads" result never flashes on a fresh load.
+    const { resolving: resolvingView } = useDefaultViewBoot("lead");
+
     const {
         data: infinite,
         isLoading,
@@ -52,7 +58,7 @@ export default function LeadsClientPage() {
         view_id,
         owner_id,
         lead_status_id,
-    });
+    }, { enabled: !resolvingView });
 
     // Flatten the loaded pages into the response shape the page/table expect:
     // accumulated leads, with metadata + total taken from the first page.
@@ -123,23 +129,27 @@ export default function LeadsClientPage() {
         );
     }
 
-    if (isLoading || !response) {
+    if (resolvingView || isLoading || !response) {
+        // Mirror the loaded layout (same header block + table surface) so the
+        // transition from skeleton to data causes no layout shift.
         return (
-            <div className="space-y-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="crm-page">
+                <div className="crm-surface flex flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Leads</h1>
-                        <p className="text-muted-foreground">
+                        <h1>Leads</h1>
+                        <p className="text-sm text-muted-foreground">
                             Track and manage your potential business opportunities.
                         </p>
                     </div>
-                    <Button disabled>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading...
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button disabled>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create {labels.lead}
+                        </Button>
+                    </div>
                 </div>
-                <div className="p-8 text-center text-muted-foreground">
-                    Loading...
+                <div className="crm-surface overflow-hidden p-4">
+                    <LoadingTable rows={10} columns={8} />
                 </div>
             </div>
         );

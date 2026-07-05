@@ -105,9 +105,10 @@ async def search_opportunity_autocomplete(
     Used by the Task form's Related To > Opportunity field.
     """
     from app.models.opportunity import Opportunity as OppDoc
+    from app.core.text_search import word_prefix_regex
     opps = await OppDoc.find({
         "tenant_id": current_user.tenant_id,
-        "name": {"$regex": s, "$options": "i"},
+        "name": word_prefix_regex(s),
         "deleted_at": None
     }).limit(15).to_list()
     return {
@@ -340,8 +341,8 @@ async def get_opportunities(
 
         # Free-text search on the opportunity name
         if search and str(search).strip():
-            import re as _re
-            filters["name"] = {"$regex": _re.escape(str(search).strip()), "$options": "i"}
+            from app.core.text_search import word_prefix_regex
+            filters["name"] = word_prefix_regex(str(search))
 
         # Structured "Edit List Filters" rows (+ custom-field rules) from the view.
         # apply_entity_view_filters adds a "$and" key which the repository merges
@@ -752,29 +753,29 @@ async def update_opportunity(
 
         opp_response = OpportunityResponse.from_orm(opportunity)
 
-        if opportunity.sales_stage_id:
-            stage = await SalesStageDoc.get(opportunity.sales_stage_id)
-            if stage:
-                opp_response.sales_stage_name = stage.name
+        # All related lookups in one parallel round trip instead of four
+        # sequential ones (each await = one Atlas network hop).
+        async def _none():
+            return None
 
-        if opportunity.owner_id:
-            owner = await UserDoc.get(opportunity.owner_id)
-            if owner:
-                opp_response.owner_name = owner.name
-
-        if opportunity.account_id:
-            account = await AccountDoc.get(opportunity.account_id)
-            if account:
-                opp_response.account_name = account.name
-                opp_response.is_person_account = getattr(account, 'is_person_account', False)
-
-        if opportunity.contact_id:
-            contact = await ContactDoc.get(opportunity.contact_id)
-            if contact:
-                name_parts = [p for p in [getattr(contact, 'salutation', None), getattr(contact, 'first_name', None), getattr(contact, 'last_name', None)] if p]
-                opp_response.contact_name = " ".join(name_parts) or None
-                opp_response.contact_email = getattr(contact, 'email', None)
-                opp_response.contact_phone = getattr(contact, 'phone', None) or getattr(contact, 'mobile', None)
+        stage, owner, account, contact = await asyncio.gather(
+            SalesStageDoc.get(opportunity.sales_stage_id) if opportunity.sales_stage_id else _none(),
+            UserDoc.get(opportunity.owner_id) if opportunity.owner_id else _none(),
+            AccountDoc.get(opportunity.account_id) if opportunity.account_id else _none(),
+            ContactDoc.get(opportunity.contact_id) if opportunity.contact_id else _none(),
+        )
+        if stage:
+            opp_response.sales_stage_name = stage.name
+        if owner:
+            opp_response.owner_name = owner.name
+        if account:
+            opp_response.account_name = account.name
+            opp_response.is_person_account = getattr(account, 'is_person_account', False)
+        if contact:
+            name_parts = [p for p in [getattr(contact, 'salutation', None), getattr(contact, 'first_name', None), getattr(contact, 'last_name', None)] if p]
+            opp_response.contact_name = " ".join(name_parts) or None
+            opp_response.contact_email = getattr(contact, 'email', None)
+            opp_response.contact_phone = getattr(contact, 'phone', None) or getattr(contact, 'mobile', None)
 
         opp_response.segment = getattr(opportunity, 'segment', None)
         if not opp_response.segment:
@@ -889,29 +890,29 @@ async def change_opportunity_stage(
 
         opp_response = OpportunityResponse.from_orm(opportunity)
 
-        if opportunity.sales_stage_id:
-            stage = await SalesStageDoc.get(opportunity.sales_stage_id)
-            if stage:
-                opp_response.sales_stage_name = stage.name
+        # All related lookups in one parallel round trip instead of four
+        # sequential ones (each await = one Atlas network hop).
+        async def _none():
+            return None
 
-        if opportunity.owner_id:
-            owner = await UserDoc.get(opportunity.owner_id)
-            if owner:
-                opp_response.owner_name = owner.name
-
-        if opportunity.account_id:
-            account = await AccountDoc.get(opportunity.account_id)
-            if account:
-                opp_response.account_name = account.name
-                opp_response.is_person_account = getattr(account, 'is_person_account', False)
-
-        if opportunity.contact_id:
-            contact = await ContactDoc.get(opportunity.contact_id)
-            if contact:
-                name_parts = [p for p in [getattr(contact, 'salutation', None), getattr(contact, 'first_name', None), getattr(contact, 'last_name', None)] if p]
-                opp_response.contact_name = " ".join(name_parts) or None
-                opp_response.contact_email = getattr(contact, 'email', None)
-                opp_response.contact_phone = getattr(contact, 'phone', None) or getattr(contact, 'mobile', None)
+        stage, owner, account, contact = await asyncio.gather(
+            SalesStageDoc.get(opportunity.sales_stage_id) if opportunity.sales_stage_id else _none(),
+            UserDoc.get(opportunity.owner_id) if opportunity.owner_id else _none(),
+            AccountDoc.get(opportunity.account_id) if opportunity.account_id else _none(),
+            ContactDoc.get(opportunity.contact_id) if opportunity.contact_id else _none(),
+        )
+        if stage:
+            opp_response.sales_stage_name = stage.name
+        if owner:
+            opp_response.owner_name = owner.name
+        if account:
+            opp_response.account_name = account.name
+            opp_response.is_person_account = getattr(account, 'is_person_account', False)
+        if contact:
+            name_parts = [p for p in [getattr(contact, 'salutation', None), getattr(contact, 'first_name', None), getattr(contact, 'last_name', None)] if p]
+            opp_response.contact_name = " ".join(name_parts) or None
+            opp_response.contact_email = getattr(contact, 'email', None)
+            opp_response.contact_phone = getattr(contact, 'phone', None) or getattr(contact, 'mobile', None)
 
         opp_response.segment = getattr(opportunity, 'segment', None)
         if not opp_response.segment:
@@ -1057,31 +1058,23 @@ async def change_opportunity_owner(
         if not opportunity:
             raise HTTPException(status_code=404, detail="Opportunity not found")
         
-        # --- FULL RESPONSE ENRICHMENT ---
-        sales_stage = await SalesStage.get(opportunity.sales_stage_id)
-        opportunity_type = await OpportunityType.get(opportunity.opportunity_type_id) if opportunity.opportunity_type_id else None
-        
-        owner_name = "Unknown"
-        owner = await UserDoc.get(opportunity.owner_id)
-        if owner:
-            owner_name = owner.name
-        
-        account_name = "-"
-        is_person_account = False
-        if opportunity.account_id:
-            account = await AccountDoc.get(opportunity.account_id)
-            if account:
-                account_name = account.name
-                is_person_account = getattr(account, 'is_person_account', False)
+        # --- FULL RESPONSE ENRICHMENT (one parallel round trip, not six) ---
+        async def _none():
+            return None
 
-        created_by_user = await UserDoc.get(opportunity.created_by)
+        sales_stage, opportunity_type, owner, account, created_by_user, last_modified_by_user = await asyncio.gather(
+            SalesStage.get(opportunity.sales_stage_id),
+            OpportunityType.get(opportunity.opportunity_type_id) if opportunity.opportunity_type_id else _none(),
+            UserDoc.get(opportunity.owner_id),
+            AccountDoc.get(opportunity.account_id) if opportunity.account_id else _none(),
+            UserDoc.get(opportunity.created_by),
+            UserDoc.get(opportunity.last_modified_by_id) if opportunity.last_modified_by_id else _none(),
+        )
+        owner_name = owner.name if owner else "Unknown"
+        account_name = account.name if account else "-"
+        is_person_account = getattr(account, 'is_person_account', False) if account else False
         created_by_name = created_by_user.name if created_by_user else "Unknown"
-        
-        last_modified_by_name = None
-        if opportunity.last_modified_by_id:
-            last_modified_by_user = await UserDoc.get(opportunity.last_modified_by_id)
-            if last_modified_by_user:
-                last_modified_by_name = last_modified_by_user.name
+        last_modified_by_name = last_modified_by_user.name if last_modified_by_user else None
             
         opp_response = OpportunityResponse.from_orm(opportunity)
         if sales_stage:

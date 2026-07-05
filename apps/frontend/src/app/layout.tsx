@@ -39,6 +39,19 @@ export default async function RootLayout({
     // https://nextjs.org/docs/messages/react-hydration-error
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        {process.env.NODE_ENV === "development" && (
+          // Dev-only: download-manager/form-filler extensions (FDM/IDM) stamp
+          // `fdprocessedid` onto buttons/inputs before React hydrates, which
+          // triggers a false-positive hydration-mismatch warning on every page.
+          // Strip the attribute at parse time and keep stripping until the page
+          // has settled. Production builds don't log hydration warnings, so
+          // this shim is not shipped there.
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){var A="fdprocessedid";var s=function(){document.querySelectorAll("["+A+"]").forEach(function(e){e.removeAttribute(A)})};s();var o=new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName===A)x.target.removeAttribute(A)})});o.observe(document.documentElement,{attributes:true,subtree:true,attributeFilter:[A]});window.addEventListener("load",function(){setTimeout(function(){o.disconnect()},5000)})})();`,
+            }}
+          />
+        )}
         <PageErrorBoundary>
           <Providers session={session}>
             {children}

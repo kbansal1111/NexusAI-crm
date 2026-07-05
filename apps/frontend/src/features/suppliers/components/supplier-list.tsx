@@ -21,6 +21,7 @@ import { Supplier } from "@/features/suppliers/types";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LoadingTable } from "@/components/ui/loading";
 import { useIndustryLabels } from "@/lib/industry-labels";
 import { customFieldsService, type EntityType } from "@/lib/api/services/field-registry.service";
 import { useEntityViews } from "@/features/views/useEntityViews";
@@ -124,7 +125,10 @@ export function SupplierList() {
     const { data: response, isLoading, isError } = useSuppliers({ page, per_page, view_id });
 
     // Saved-view state (active view comes from the ?view_id URL param).
-    const { activeView } = useEntityViews(entity);
+    const { activeView, isLoading: viewsLoading } = useEntityViews(entity);
+    // While the active view's display_columns are unknown, keep the loading
+    // placeholder up instead of flashing the default columns.
+    const columnsPending = !!view_id && viewsLoading;
 
     // Metadata for lookup columns / filter value dropdowns (owner, created-by).
     const { data: formData } = useQuery({
@@ -204,11 +208,11 @@ export function SupplierList() {
         </div>
     );
 
-    if (isLoading) {
+    if (isLoading || columnsPending) {
         return (
             <div>
                 {toolbar}
-                <div className="p-4 text-center">Loading {labels.suppliers.toLowerCase()}...</div>
+                <LoadingTable rows={8} columns={6} />
             </div>
         );
     }

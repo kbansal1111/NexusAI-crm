@@ -37,6 +37,8 @@ import { opportunitiesService } from "@/lib/api/services/opportunities.service";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { FORM_SHELL_CLASS } from "@/components/shared/form-section";
 
 // ── Schema ──────────────────────────────────────────
 const taskFormSchema = z.object({
@@ -315,7 +317,7 @@ export function TaskForm({ initialData, onSuccess, embedded, onLoadingChange }: 
             <form
                 id="task-form"
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-5"
+                className={cn("space-y-5", FORM_SHELL_CLASS)}
             >
                 {/* ── Row 1: Subject ── */}
                 <FormField
@@ -327,7 +329,6 @@ export function TaskForm({ initialData, onSuccess, embedded, onLoadingChange }: 
                             <FormControl>
                                 <Input
                                     id="task-subject"
-                                    placeholder="e.g. Follow up with client"
                                     {...field}
                                 />
                             </FormControl>
@@ -436,7 +437,7 @@ export function TaskForm({ initialData, onSuccess, embedded, onLoadingChange }: 
 
                 {/* ── Related To Section ── */}
                 <div className="space-y-3">
-                    <Label className="text-sm font-medium">Related To</Label>
+                    <Label className="text-[10px] font-bold uppercase text-foreground/85">Related To</Label>
                     <FormField
                         control={form.control}
                         name="related_to_type"
@@ -584,7 +585,6 @@ export function TaskForm({ initialData, onSuccess, embedded, onLoadingChange }: 
                             <FormControl>
                                 <Textarea
                                     id="task-comments"
-                                    placeholder="Add notes or context..."
                                     rows={3}
                                     className="resize-none"
                                     {...field}

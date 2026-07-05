@@ -25,6 +25,20 @@ export interface SearchableSelectOption {
     disabled?: boolean
 }
 
+/**
+ * Word-prefix matching for client-side filtering — the industry-standard
+ * typeahead rule, same as the server's word_prefix_regex: "ja" matches
+ * "Jaipur" and "New Jalpaiguri" but not "Andijan". Whole-label prefix
+ * scores higher so it sorts first.
+ */
+function wordPrefixFilter(value: string, search: string, keywords?: string[]): number {
+    const q = search.trim().toLowerCase()
+    if (!q) return 1
+    const label = (keywords?.[0] ?? value.split(":::")[0] ?? "").toLowerCase()
+    if (label.startsWith(q)) return 2
+    return label.split(/[^a-z0-9]+/).some((w) => w.startsWith(q)) ? 1 : 0
+}
+
 interface SearchableSelectProps {
     options: SearchableSelectOption[]
     value?: string
@@ -85,7 +99,7 @@ export function SearchableSelect({
                     role="combobox"
                     aria-expanded={open}
                     className={cn(
-                        "h-9 w-full justify-between px-3 font-normal",
+                        "h-8 w-full justify-between px-2 text-xs font-normal",
                         !value && "text-muted-foreground",
                         className
                     )}
@@ -105,7 +119,7 @@ export function SearchableSelect({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command shouldFilter={!onSearch}>
+                <Command shouldFilter={!onSearch} filter={wordPrefixFilter}>
                     <CommandInput 
                         placeholder={searchPlaceholder} 
                         className="h-9" 

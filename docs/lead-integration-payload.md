@@ -121,6 +121,66 @@ X-API-Key: <API_KEY>          # key SIRF is header mein — body mein token nahi
 | `ref_id`, `url`, `dook_enquiry_id`, `departure_id`, `form_type`, `bnpl` | ❌ drop — CRM lead mein koi field nahi |
 | `custom_fields.destination` / `description` / `date_of_travel` / `no_of_passengers` | ❌ drop — canonical fields upar cover karte hain |
 
+## PHP integration example (team ke reference ke liye)
+
+```php
+<?php
+define('TUTTERFLY_LEAD_API', 'https://tutterfly-backend.bigfat.ai/api/v1/integrations/leads');
+define('TUTTERFLY_API_KEY', '<API_KEY>');   // config/env mein rakho
+
+$payload = json_encode(array(
+    "lead" => array(
+        "first_name"  => "",
+        "last_name"   => $name,
+        "email"       => $email,
+        "mobile"      => $mob_no,                // 10 digit chalega, +91 hum laga denge
+        "phone"       => $mob_no,
+        "company"     => $company,
+        "city"        => $city,
+        "state"       => $region,                // purana 'region'
+        "country"     => $country,
+        "ip"          => $ip,                    // visitor IP — ZAROOR bhejo
+        "industry_data" => array(
+            "travel_date"  => $travel_date,      // YYYY-MM-DD — REQUIRED
+            "no_of_nights" => $duration,
+            "no_of_pax"    => $no_of_traveler,
+            "destinations" => $destinations_name // "Bali, Singapore" chalega
+        ),
+        "custom_fields" => array(
+            "campaign_name" => $campaign_id,
+            "experience"    => $experience
+        )
+    )
+));
+
+$ch = curl_init(TUTTERFLY_LEAD_API);
+curl_setopt_array($ch, array(
+    CURLOPT_POST           => true,
+    CURLOPT_POSTFIELDS     => $payload,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT        => 15,
+    CURLOPT_HTTPHEADER     => array(
+        'Content-Type: application/json',
+        'X-API-Key: ' . TUTTERFLY_API_KEY    // key SIRF header mein
+    )
+));
+$response  = curl_exec($ch);
+$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($http_code == 201) {
+    $result = json_decode($response, true);  // lead_id, opportunity_id, converted
+} else {
+    // 401 = key galat | 422 = field missing | 429/5xx = retry
+    error_log("Tutterfly lead API failed [HTTP $http_code] :: $response");
+}
+?>
+```
+
+> **Note (wire format vs storage):** payload mein `ip` top-level hai (website ke liye simple),
+> par CRM isse lead ke **`custom_fields.ip_address`** mein store karta hai — wahi jagah jahan
+> form ka Additional Information → IP Address field save hota hai. Dono align hain.
+
 ## Backend implementation notes (Tutterfly-internal — SHIPPED 2026-07-04)
 
 Endpoint: `app/api/v1/integrations.py`. Keys: `integration_tokens` collection (sha256 hash + prefix,

@@ -73,6 +73,42 @@ async def _resolve_destinations(industry_data: dict, tenant_id=None) -> dict:
     return industry_data
 
 
+async def _bulk_resolve_destinations(leads, tenant_id=None) -> None:
+    """Resolve destination names for a whole page of leads in ONE query.
+
+    The per-lead variant above costs one Atlas round trip per row (N+1) —
+    on a 100-row page that alone dominated list latency.
+    """
+    from app.models.consolidated_picklists import DestinationPicklist
+    from bson import ObjectId as _OID
+
+    all_ids = set()
+    for lead in leads:
+        idata = lead.industry_data
+        if idata and idata.get("destination_ids"):
+            for d_id in idata["destination_ids"]:
+                try:
+                    all_ids.add(_OID(str(d_id)))
+                except Exception:
+                    pass
+
+    name_map: dict = {}
+    if all_ids:
+        dests = await DestinationPicklist.find(
+            {"_id": {"$in": list(all_ids)}, "picklist_type": "destination"}
+        ).to_list()
+        name_map = {str(d.id): d.name for d in dests}
+
+    for lead in leads:
+        idata = lead.industry_data
+        if idata and "destination_ids" in idata:
+            idata["destination_names"] = [
+                name_map[str(d_id)]
+                for d_id in idata.get("destination_ids", [])
+                if str(d_id) in name_map
+            ]
+
+
 @router.post("/", response_model=LeadResponse, status_code=201)
 async def create_lead(
     request: Request,
@@ -167,10 +203,8 @@ async def get_leads(
         cursor=cursor,
     )
     
-    # Resolve destinations for each lead (scoped to tenant)
-    for lead in result["leads"]:
-        if lead.industry_data and "destination_ids" in lead.industry_data:
-            lead.industry_data = await _resolve_destinations(lead.industry_data, current_user.tenant_id)
+    # Resolve destinations for the whole page in one query (no N+1)
+    await _bulk_resolve_destinations(result["leads"], current_user.tenant_id)
 
     return result
 
@@ -223,10 +257,12 @@ async def get_lead(
     
     # Increment view count
     await lead.increment_view_count()
-    
-    # Resolve creator and modifier names for the response
-    creator = await User.get(lead.created_by)
-    modifier = await User.get(lead.last_modified_by_id) if lead.last_modified_by_id else None
+
+    # Resolve creator / modifier / owner names in ONE query instead of three
+    # sequential round trips.
+    _name_ids = {i for i in (lead.created_by, lead.last_modified_by_id, lead.owner_id) if i}
+    _users = await User.find({"_id": {"$in": list(_name_ids)}}).to_list() if _name_ids else []
+    _user_names = {u.id: u.name for u in _users}
     
     lead_response = LeadResponse.model_validate(lead)
 
@@ -247,13 +283,10 @@ async def get_lead(
     if lead_response.industry_data and "destination_ids" in lead_response.industry_data:
         lead_response.industry_data = await _resolve_destinations(lead_response.industry_data, current_user.tenant_id)
 
-    lead_response.created_by_name = creator.name if creator else "Unknown"
-    lead_response.last_modified_by_name = modifier.name if modifier else None
-    
-    # Populate owner_name
-    owner = await User.get(lead.owner_id)
-    lead_response.owner_name = owner.name if owner else "Unknown"
-    
+    lead_response.created_by_name = _user_names.get(lead.created_by, "Unknown")
+    lead_response.last_modified_by_name = _user_names.get(lead.last_modified_by_id) if lead.last_modified_by_id else None
+    lead_response.owner_name = _user_names.get(lead.owner_id, "Unknown")
+
     return lead_response
 
 

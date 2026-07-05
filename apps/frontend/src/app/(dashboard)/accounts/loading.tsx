@@ -1,20 +1,19 @@
 import { LoadingTable } from "@/components/ui/loading";
 
+// Mirrors the loaded page's crm-page/crm-surface layout so the
+// skeleton → content transition causes no layout shift.
 export default function AccountsLoading() {
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="crm-page">
+            <div className="crm-surface px-4 py-3">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Accounts</h1>
-                    <p className="text-muted-foreground">
-                        Manage your customer accounts and companies.
-                    </p>
+                    <h1>Accounts</h1>
+                    <p className="text-sm text-muted-foreground">Manage company records, ownership, and account activity.</p>
                 </div>
-                <div className="h-10 w-32 bg-muted rounded-md animate-pulse" />
             </div>
 
-            <div className="border rounded-lg">
-                <LoadingTable rows={10} columns={5} />
+            <div className="crm-surface overflow-hidden p-4">
+                <LoadingTable rows={10} columns={6} />
             </div>
         </div>
     );

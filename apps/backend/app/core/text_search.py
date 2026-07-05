@@ -12,3 +12,15 @@ def safe_regex(term: str, options: str = "i") -> Dict[str, Any]:
     The user's text is matched literally, case-insensitively by default.
     """
     return {"$regex": re.escape((term or "").strip()), "$options": options}
+
+
+def word_prefix_regex(term: str, options: str = "i") -> Dict[str, Any]:
+    """Industry-standard typeahead matching, escaped like ``safe_regex``.
+
+    The term must appear at the START of the value or of a word inside it:
+    "ja" matches "Jaipur" and "New Jalpaiguri" but not "Andijan". Substring
+    (contains) matching surfaces noise users don't expect and matches far
+    more rows, so anchoring is both the expected UX and the faster query.
+    """
+    t = re.escape((term or "").strip())
+    return {"$regex": f"(^|[^a-zA-Z0-9]){t}", "$options": options}

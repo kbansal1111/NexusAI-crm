@@ -315,28 +315,28 @@ function TravelLeadFields({ form, availableDestinations = [], handleDestinationS
                 <FormField control={form.control as any} name="no_of_nights" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Nights</FormLabel>
-                        <FormControl><Input type="number" placeholder="4" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="no_of_adults" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Adults</FormLabel>
-                        <FormControl><Input type="number" placeholder="2" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="no_of_childs" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Children</FormLabel>
-                        <FormControl><Input type="number" placeholder="0" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="no_of_infants" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Infants</FormLabel>
-                        <FormControl><Input type="number" placeholder="0" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
+                        <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -372,7 +372,7 @@ function HealthcareLeadFields({ form }: IndustryFieldsProps) {
                 <FormField control={form.control as any} name="industry_data.chief_complaint" render={({ field }) => (
                     <FormItem className="col-span-2">
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Chief Complaint</FormLabel>
-                        <FormControl><Textarea placeholder="Primary reason for visit..." className="bg-background text-xs min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Textarea className="bg-background text-xs min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -414,21 +414,21 @@ function HealthcareLeadFields({ form }: IndustryFieldsProps) {
                 <FormField control={form.control as any} name="industry_data.referral_source" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Referral Source</FormLabel>
-                        <FormControl><Input placeholder="e.g. Doctor, Insurance Portal" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.insurance_provider" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Insurance Provider</FormLabel>
-                        <FormControl><Input placeholder="e.g. Aetna, UHC" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.insurance_policy_number" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Policy Number</FormLabel>
-                        <FormControl><Input placeholder="Policy #" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -458,14 +458,14 @@ function EducationLeadFields({ form }: IndustryFieldsProps) {
                 <FormField control={form.control as any} name="industry_data.highest_qualification" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Highest Qualification</FormLabel>
-                        <FormControl><Input placeholder="e.g. Bachelors" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.gpa" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">GPA (0–10)</FormLabel>
-                        <FormControl><Input type="number" step="0.1" min={0} max={10} placeholder="8.5" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input type="number" step="0.1" min={0} max={10} className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -479,7 +479,7 @@ function EducationLeadFields({ form }: IndustryFieldsProps) {
                 <FormField control={form.control as any} name="industry_data.nationality" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Nationality</FormLabel>
-                        <FormControl><Input placeholder="e.g. Indian" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -526,21 +526,21 @@ function ManufacturingLeadFields({ form }: IndustryFieldsProps) {
                 <FormField control={form.control as any} name="industry_data.rfq_number" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">RFQ Number</FormLabel>
-                        <FormControl><Input placeholder="RFQ-2026-001" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.product_category" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Product Category</FormLabel>
-                        <FormControl><Input placeholder="e.g. Electronics, Textiles" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.estimated_quantity" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Estimated Quantity</FormLabel>
-                        <FormControl><Input type="number" min={1} placeholder="1000" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input type="number" min={1} className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -576,14 +576,14 @@ function ManufacturingLeadFields({ form }: IndustryFieldsProps) {
                 <FormField control={form.control as any} name="industry_data.budget_range" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Budget Range</FormLabel>
-                        <FormControl><Input placeholder="e.g. 10K–50K USD" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.technical_specs" render={({ field }) => (
                     <FormItem className="col-span-2">
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Technical Specifications</FormLabel>
-                        <FormControl><Textarea placeholder="Detailed specs..." className="bg-background text-xs min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
+                        <FormControl><Textarea className="bg-background text-xs min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />

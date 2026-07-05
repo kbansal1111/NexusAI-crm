@@ -172,14 +172,16 @@ class DestinationService:
     ) -> List[Destination]:
         """Search destinations"""
         
+        from app.core.text_search import word_prefix_regex
+        _pat = word_prefix_regex(query)
         search_query = {
             "tenant_id": tenant_id,
             "deleted_at": None,
             "$or": [
-                {"name": {"$regex": query, "$options": "i"}},
-                {"description": {"$regex": query, "$options": "i"}},
-                {"country_id": {"$regex": query, "$options": "i"}},
-                {"destination_type": {"$regex": query, "$options": "i"}}
+                {"name": _pat},
+                {"description": _pat},
+                {"country_id": _pat},
+                {"destination_type": _pat}
             ]
         }
         

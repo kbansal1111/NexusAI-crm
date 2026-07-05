@@ -6,7 +6,6 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     Plus,
     LayoutGrid,
-    Loader2,
     RotateCw,
     Settings as SettingsIcon,
     Filter as FilterIcon,
@@ -62,8 +61,10 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { entityViewsService } from "@/lib/api/services/entity-views.service";
 import { accountService } from "@/features/accounts/services/accountService";
-import { destinationsService } from "@/lib/api/services/destinations.service";
+import { useAllDestinations } from "@/hooks/use-destinations";
 import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
+import { useDefaultViewBoot } from "@/features/views/useEntityViews";
+import { LoadingTable } from "@/components/ui/loading";
 import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
@@ -107,6 +108,10 @@ export default function OpportunitiesPageClient() {
     const viewId = searchParams.get("view_id") || "";
     const hasActiveFilter = !!(ownerFilter || stageFilter);
 
+    // Resolve the default view (pinned / "Today") BEFORE fetching, so the
+    // unfiltered "All Opportunities" result never flashes on a fresh load.
+    const { resolving: resolvingView } = useDefaultViewBoot("opportunity");
+
     const {
         data: infinite,
         isLoading: isLoadingOpportunities,
@@ -121,7 +126,7 @@ export default function OpportunitiesPageClient() {
         search,
         owner_id: ownerFilter || undefined,
         sales_stage_id: stageFilter || undefined,
-    });
+    }, { enabled: !resolvingView });
     const { data: stages, isLoading: isLoadingStages } = useSalesStages();
 
     // Flatten the loaded pages; total comes from the first (offset) page.
@@ -132,12 +137,15 @@ export default function OpportunitiesPageClient() {
     const normalizedStages = React.useMemo(() => normalizeSalesStages(stages || []), [stages]);
 
     // ── Saved views + owners (for the toolbar) ────────────────────────────────
-    const { data: savedViews = [] } = useQuery({
+    const { data: savedViews = [], isLoading: savedViewsLoading } = useQuery({
         queryKey: ["entity-views", "opportunity"],
         queryFn: () => entityViewsService.listViews("opportunity"),
         staleTime: 60_000,
     });
     const activeView = savedViews.find((v) => v.id === viewId) || null;
+    // While the active view's display_columns are unknown, keep the skeleton up
+    // instead of flashing the default grouped layout.
+    const columnsPending = !!viewId && savedViewsLoading;
 
     const { data: ownerFormData } = useQuery({
         queryKey: ["account-form-data"],
@@ -146,11 +154,7 @@ export default function OpportunitiesPageClient() {
     });
     const owners: { id: string; name: string }[] = ownerFormData?.users || [];
 
-    const { data: destinationsData } = useQuery({
-        queryKey: ["destinations", "all"],
-        queryFn: () => destinationsService.getDestinations({ limit: 1000 }),
-        staleTime: 10 * 60 * 1000,
-    });
+    const { data: destinationsData } = useAllDestinations();
     const destinationOptions: { id: string; name: string }[] =
         destinationsData?.destinations?.map((d) => ({ id: d.id, name: d.name })) || [];
 
@@ -275,7 +279,7 @@ export default function OpportunitiesPageClient() {
         router.push(`/opportunities/${opportunity.id}`);
     };
 
-    const isLoading = isLoadingOpportunities || isLoadingStages;
+    const isLoading = resolvingView || isLoadingOpportunities || isLoadingStages || columnsPending;
 
 
     return (
@@ -368,8 +372,8 @@ export default function OpportunitiesPageClient() {
             {/* Content Container */}
             <div className="crm-surface overflow-hidden rounded-t-none border-t-0">
                 {isLoading ? (
-                    <div className="flex items-center justify-center h-96">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="p-4">
+                        <LoadingTable rows={10} columns={7} />
                     </div>
                 ) : viewMode === "kanban" ? (
                     <div>

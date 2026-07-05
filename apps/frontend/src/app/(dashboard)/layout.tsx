@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -36,19 +36,15 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const router = useRouter();
     const pathname = usePathname();
     const { data: session } = useSession();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
     const [isLargeScreen, setIsLargeScreen] = useState(false);
 
     // Poll for fresh permissions every 60s — live permission updates without re-login
     usePermissionRefresh(60_000);
 
     useEffect(() => {
-        setMounted(true);
-
         const mediaQuery = window.matchMedia("(min-width: 1024px)");
         setIsLargeScreen(mediaQuery.matches);
 
@@ -69,15 +65,18 @@ export default function DashboardLayout({
         // Clear ALL React Query cache before logout to prevent stale
         // cross-tenant data from showing when a different user logs in
         queryClient.clear();
-        await signOut({ redirect: false });
-        router.push("/login");
-        router.refresh();
+        // Let NextAuth hard-redirect to /login. The previous soft navigation
+        // (redirect:false + router.push/refresh) raced the SessionProvider's
+        // post-signout session refetch: the refresh aborted that in-flight
+        // /api/auth/session request, logging CLIENT_FETCH_ERROR / "Failed to
+        // fetch" until a manual reload. A full-page redirect tears everything
+        // down atomically and leaves no stale RSC cache behind.
+        await signOut({ callbackUrl: "/login" });
     };
 
-    if (!mounted) {
-        return null; // Or a simple skeleton to prevent hydration mismatch
-    }
-
+    // No mounted-gate here: the initial render (sidebar closed, margin 0) is
+    // identical on server and client, so rendering immediately is hydration-safe
+    // and avoids a blank-page flash on every hard load.
     return (
         <div className="flex min-h-screen flex-col bg-background text-foreground">
             <CommandPalette />

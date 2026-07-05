@@ -597,11 +597,13 @@ class ContactService(ActivityMixin):
         
         # Text search
         if query:
+            from app.core.text_search import word_prefix_regex
+            _pat = word_prefix_regex(query)
             search_query["$or"] = [
-                {"first_name": {"$regex": query, "$options": "i"}},
-                {"last_name": {"$regex": query, "$options": "i"}},
-                {"email": {"$regex": query, "$options": "i"}},
-                {"phone": {"$regex": query, "$options": "i"}}
+                {"first_name": _pat},
+                {"last_name": _pat},
+                {"email": _pat},
+                {"phone": _pat}
             ]
         
         # Filter by account
