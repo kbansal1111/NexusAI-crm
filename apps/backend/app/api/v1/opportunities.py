@@ -293,7 +293,7 @@ async def get_opportunities(
             raise HTTPException(status_code=400, detail="Invalid pagination cursor")
     try:
         from app.models.opportunity_picklists import SalesStage, OpportunityType
-        from app.services.visibility_scope import get_visible_owner_ids, apply_visibility_filter, bd_territory_ids
+        from app.services.visibility_scope import get_visible_owner_ids, apply_visibility_filter, get_bd_territory_ids
 
         service = OpportunityService()
 
@@ -325,9 +325,10 @@ async def get_opportunities(
             from app.services.visibility_scope import opportunity_pool_owner_ids
             visible_owner_ids = visible_owner_ids + await opportunity_pool_owner_ids(current_user)
 
-        # BD users additionally see opportunities in their assigned territories
-        # ("Territory + own"). Only for non-admins (admins already see all).
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        # BD users (Territory Managers) are scoped STRICTLY to opportunities in
+        # their territories — this replaces owner scope, it doesn't widen it.
+        # Only computed for non-admins (admins already see everything).
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
 
         # If caller explicitly filters by owner_id, validate it's within their visibility
         effective_owner_id = None
@@ -531,7 +532,7 @@ async def get_opportunity(
     """
     try:
         from app.services.visibility_scope import (
-            get_visible_owner_ids, bd_territory_ids, is_opportunity_visible,
+            get_visible_owner_ids, get_bd_territory_ids, is_opportunity_visible,
         )
 
         service = OpportunityService()
@@ -550,7 +551,7 @@ async def get_opportunity(
         if visible_owner_ids is not None:
             from app.services.visibility_scope import opportunity_pool_owner_ids
             visible_owner_ids = visible_owner_ids + await opportunity_pool_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(
             opportunity.owner_id, opportunity.territory_id, visible_owner_ids, bd_terr
         ):
@@ -577,8 +578,6 @@ async def get_opportunity(
             opportunity.owner_id,
             opportunity.created_by,
             opportunity.last_modified_by_id,
-            opportunity.bd_owner_id,
-            opportunity.reporting_manager_id,
             getattr(opportunity, "operation_user_id", None),
         ]
         user_ids.extend(getattr(opportunity, "team_member_ids", None) or [])
@@ -703,13 +702,9 @@ async def get_opportunity(
         opp_response.segment = segment
         opp_response.creation_type = creation_type
 
-        # BD triple + territory/source/experience — from batched/concurrent results
-        bd_owner = user_map.get(opportunity.bd_owner_id) if opportunity.bd_owner_id else None
-        if bd_owner:
-            opp_response.bd_owner_name = bd_owner.name
-        mgr = user_map.get(opportunity.reporting_manager_id) if opportunity.reporting_manager_id else None
-        if mgr:
-            opp_response.reporting_manager_name = mgr.name
+        # Territory/source/experience — from batched/concurrent results. The
+        # "Territory Manager" (= reporting manager / approver) is resolved from
+        # the territory below; there is no separate BD owner.
         _op_uid = getattr(opportunity, "operation_user_id", None)
         op_user = user_map.get(_op_uid) if _op_uid else None
         if op_user:
@@ -772,7 +767,7 @@ async def update_opportunity(
         Updated opportunity details
     """
     try:
-        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, bd_territory_ids, is_opportunity_visible
+        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, get_bd_territory_ids, is_opportunity_visible
         service = OpportunityService()
         body = await request.json()
         
@@ -786,7 +781,7 @@ async def update_opportunity(
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
         visible_owner_ids = await get_visible_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(existing.owner_id, existing.territory_id, visible_owner_ids, bd_terr):
             raise HTTPException(status_code=404, detail="Opportunity not found")
         
@@ -880,7 +875,7 @@ async def delete_opportunity(
         Success message
     """
     try:
-        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, bd_territory_ids, is_opportunity_visible
+        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, get_bd_territory_ids, is_opportunity_visible
         service = OpportunityService()
         
         # Visibility pre-check
@@ -889,7 +884,7 @@ async def delete_opportunity(
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
         visible_owner_ids = await get_visible_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(existing.owner_id, existing.territory_id, visible_owner_ids, bd_terr):
             raise HTTPException(status_code=404, detail="Opportunity not found")
         
@@ -931,7 +926,7 @@ async def change_opportunity_stage(
         Updated opportunity details
     """
     try:
-        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, bd_territory_ids, is_opportunity_visible
+        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, get_bd_territory_ids, is_opportunity_visible
         service = OpportunityService()
         
         # Visibility pre-check
@@ -940,7 +935,7 @@ async def change_opportunity_stage(
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
         visible_owner_ids = await get_visible_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(existing.owner_id, existing.territory_id, visible_owner_ids, bd_terr):
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
@@ -1017,7 +1012,7 @@ async def lock_opportunity(
         Updated opportunity details
     """
     try:
-        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, bd_territory_ids, is_opportunity_visible
+        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, get_bd_territory_ids, is_opportunity_visible
         service = OpportunityService()
         
         # Visibility pre-check
@@ -1026,7 +1021,7 @@ async def lock_opportunity(
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
         visible_owner_ids = await get_visible_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(existing.owner_id, existing.territory_id, visible_owner_ids, bd_terr):
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
@@ -1063,7 +1058,7 @@ async def unlock_opportunity(
         Updated opportunity details
     """
     try:
-        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, bd_territory_ids, is_opportunity_visible
+        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, get_bd_territory_ids, is_opportunity_visible
         service = OpportunityService()
         
         # Visibility pre-check
@@ -1072,7 +1067,7 @@ async def unlock_opportunity(
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
         visible_owner_ids = await get_visible_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(existing.owner_id, existing.territory_id, visible_owner_ids, bd_terr):
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
@@ -1102,7 +1097,7 @@ async def change_opportunity_owner(
     Change the owner of an opportunity
     """
     try:
-        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, bd_territory_ids, is_opportunity_visible
+        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, get_bd_territory_ids, is_opportunity_visible
         from app.models.user import User as UserDoc
         from app.models.account import Account as AccountDoc
         from app.models.opportunity_picklists import SalesStage, OpportunityType
@@ -1119,7 +1114,7 @@ async def change_opportunity_owner(
         visible_owner_ids = await get_visible_owner_ids(current_user)
         if visible_owner_ids is not None:
             visible_owner_ids = visible_owner_ids + await opportunity_pool_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(existing.owner_id, existing.territory_id, visible_owner_ids, bd_terr):
             raise HTTPException(status_code=404, detail="Opportunity not found")
 
@@ -1172,47 +1167,13 @@ async def change_opportunity_owner(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@router.post("/{opportunity_id}/reassign-bd", response_model=Dict[str, Any])
-async def reassign_opportunity_bd(
-    opportunity_id: str,
-    payload: dict,
-    current_user: User = Depends(check_permission("edit_opportunity")),
-):
-    """Manually override the BD owner / reporting manager on an opportunity."""
-    service = OpportunityService()
-    try:
-        bd_owner_oid = ObjectId(payload["bd_owner_id"]) if payload.get("bd_owner_id") else None
-        manager_oid = ObjectId(payload["reporting_manager_id"]) if payload.get("reporting_manager_id") else None
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid ObjectId in payload")
-    try:
-        opp = await service.reassign_bd(
-            opportunity_id=opportunity_id,
-            tenant_id=current_user.tenant_id,
-            current_user_id=current_user.id,
-            bd_owner_id=bd_owner_oid,
-            reporting_manager_id=manager_oid,
-            reason=payload.get("reason"),
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    if not opp:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    return {
-        "error": False, "message": "BD reassigned",
-        "opportunity_id": str(opp.id),
-        "bd_owner_id": str(opp.bd_owner_id) if opp.bd_owner_id else None,
-        "reporting_manager_id": str(opp.reporting_manager_id) if opp.reporting_manager_id else None,
-        "territory_match_source": opp.territory_match_source,
-    }
-
-
 @router.post("/{opportunity_id}/resolve-territory", response_model=Dict[str, Any])
 async def resolve_opportunity_territory(
     opportunity_id: str,
     current_user: User = Depends(check_permission("edit_opportunity")),
 ):
-    """Re-run automatic BD resolution for an opportunity."""
+    """Re-run automatic territory resolution for an opportunity (re-stamps the
+    territory and its manager from the linked account's billing address)."""
     service = OpportunityService()
     opp = await service.resolve_territory(
         opportunity_id=opportunity_id,
@@ -1225,8 +1186,6 @@ async def resolve_opportunity_territory(
         "error": False, "message": "Territory resolved",
         "opportunity_id": str(opp.id),
         "territory_id": str(opp.territory_id) if opp.territory_id else None,
-        "bd_owner_id": str(opp.bd_owner_id) if opp.bd_owner_id else None,
-        "reporting_manager_id": str(opp.reporting_manager_id) if opp.reporting_manager_id else None,
         "territory_match_source": opp.territory_match_source,
     }
 
@@ -1241,7 +1200,7 @@ async def get_opportunity_history(
     """
     try:
         from app.models.opportunity_picklists import OpportunityHistory, SalesStage
-        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, bd_territory_ids, is_opportunity_visible
+        from app.services.visibility_scope import get_visible_owner_ids, is_record_visible, get_bd_territory_ids, is_opportunity_visible
         from app.services.opportunity_service import OpportunityService
         
         service = OpportunityService()
@@ -1252,7 +1211,7 @@ async def get_opportunity_history(
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
         visible_owner_ids = await get_visible_owner_ids(current_user)
-        bd_terr = bd_territory_ids(current_user) if visible_owner_ids is not None else None
+        bd_terr = await get_bd_territory_ids(current_user) if visible_owner_ids is not None else None
         if not is_opportunity_visible(existing.owner_id, existing.territory_id, visible_owner_ids, bd_terr):
             raise HTTPException(status_code=404, detail="Opportunity not found")
         

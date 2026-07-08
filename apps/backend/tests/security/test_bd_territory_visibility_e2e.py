@@ -4,7 +4,8 @@ Seeds real Opportunity documents into an in-memory Mongo (mongomock_motor +
 Beanie) and drives the actual repository query used by the opportunities list
 endpoint. This proves the whole scoping mechanism at the data layer:
 
-  - A BD user sees their own opportunities OR any in their assigned territories.
+  - A BD user (Territory Manager) sees STRICTLY the opportunities in their
+    assigned territories — owner scope does not apply (a pure BD user owns none).
   - A regular user is owner-scoped only.
   - An admin (no owner filter, no BD filter) sees the whole tenant.
   - Cross-tenant isolation holds: a BD user never sees another tenant's
@@ -56,7 +57,7 @@ def _names(opps):
 
 
 @pytest.mark.asyncio
-async def test_bd_user_sees_own_plus_territory():
+async def test_bd_user_sees_only_territory_deals():
     await _seed()
     repo = OpportunityRepository()
     opps, total, _, _ = await repo.get_filtered_opportunities(
@@ -66,10 +67,12 @@ async def test_bd_user_sees_own_plus_territory():
         limit=100,
     )
     names = _names(opps)
-    assert names == {"A-own-no-territory", "A-territory-other-owner"}
-    assert "A-other-territory" not in names       # not in their territory, not owned
-    assert "B-same-territory-id" not in names      # cross-tenant blocked by tenant filter
-    assert total == 2
+    # Strictly territory-only: ONLY the deal stamped to their territory.
+    assert names == {"A-territory-other-owner"}
+    assert "A-own-no-territory" not in names       # owned by BD but not in their territory
+    assert "A-other-territory" not in names        # a different territory
+    assert "B-same-territory-id" not in names       # cross-tenant blocked by tenant filter
+    assert total == 1
 
 
 @pytest.mark.asyncio

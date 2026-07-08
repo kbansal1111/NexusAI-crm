@@ -581,6 +581,11 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
                                                         isLoading={isLoadingTerritories}
                                                     />
                                                 </FormControl>
+                                                <p className="text-xs text-muted-foreground">
+                                                    The user sees every opportunity in these territories
+                                                    (by country/state/region). This is the same access a
+                                                    Territory Manager gets in Settings → Territory.
+                                                </p>
                                                 <FormMessage />
                                             </FormItem>
                                         );

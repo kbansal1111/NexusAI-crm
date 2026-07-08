@@ -4,8 +4,11 @@ Territory service for managing sales territories and regions.
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from beanie import PydanticObjectId
+from bson import ObjectId
 
 from app.models.territory import Region, Territory
+from app.models.user import User
+from app.core.cache import invalidate_tenant_cache
 from app.schemas.territory import (
     RegionCreate, RegionUpdate,
     TerritoryCreate, TerritoryUpdate,
@@ -123,7 +126,59 @@ class TerritoryService:
         return regions, total
     
     # ==================== Territory CRUD ====================
-    
+
+    async def _validate_manager(
+        self,
+        tenant_oid: PydanticObjectId,
+        manager_id_str: Optional[str],
+    ) -> Optional[ObjectId]:
+        """Validate + coerce a territory's manager id for this tenant.
+
+        SECURITY (CLAUDE.md non-negotiable): the manager comes from the request
+        body — it must NOT be trusted. It is checked to reference a real,
+        non-deleted user in the caller's tenant (a forged/cross-tenant id is
+        rejected) and coerced to ObjectId so the stored `Territory.manager_id` is
+        always an ObjectId (setattr on a Beanie doc does not coerce), which the
+        visibility query relies on to match `_id`.
+        """
+        if not manager_id_str:
+            return None
+        manager_oid = ObjectId(str(manager_id_str))
+        exists = await User.find_one(
+            {"_id": manager_oid, "tenant_id": tenant_oid, "deleted_at": None}
+        )
+        if not exists:
+            raise ValueError(
+                "Territory manager is invalid or does not belong to this tenant"
+            )
+        return manager_oid
+
+    async def _reconcile_manager_mirror(
+        self,
+        tenant_oid: PydanticObjectId,
+        territory_id: PydanticObjectId,
+        old_manager: Optional[ObjectId],
+        new_manager: Optional[ObjectId],
+    ) -> None:
+        """Keep the denormalized `User.territory_ids` / `is_bd_user` mirror in
+        step with a territory's manager, so the User-form picker reflects reality.
+
+        Visibility is computed from the Territory doc directly, so this is a
+        UX-consistency convenience, not a correctness gate. The new manager gains
+        the territory + the BD flag; a replaced manager loses the territory from
+        their mirror (the flag is left as-is).
+        """
+        if old_manager == new_manager:
+            return
+        if new_manager:
+            await User.find(
+                {"_id": new_manager, "tenant_id": tenant_oid, "deleted_at": None}
+            ).update({"$addToSet": {"territory_ids": territory_id}, "$set": {"is_bd_user": True}})
+        if old_manager:
+            await User.find(
+                {"_id": old_manager, "tenant_id": tenant_oid, "deleted_at": None}
+            ).update({"$pull": {"territory_ids": territory_id}})
+
     async def create_territory(
         self,
         data: TerritoryCreate,
@@ -135,14 +190,24 @@ class TerritoryService:
         region = await self.get_region(data.region_id, tenant_id)
         if not region:
             raise ValueError("Region not found")
-            
+
+        tenant_oid = PydanticObjectId(str(tenant_id))
+        manager_oid = await self._validate_manager(tenant_oid, data.manager_id)
+
+        payload = data.model_dump()
+        payload["manager_id"] = manager_oid
         territory = Territory(
-            **data.model_dump(),
+            **payload,
             created_by=user_id,
             owner_id=user_id,
             tenant_id=tenant_id
         )
         await territory.insert()
+
+        await self._reconcile_manager_mirror(tenant_oid, territory.id, None, manager_oid)
+        # BD visibility widens for the new territory's manager — clear the cached
+        # scopes so they see its opportunities immediately.
+        await invalidate_tenant_cache(str(tenant_id))
         return territory
     
     async def get_territory(
@@ -165,16 +230,35 @@ class TerritoryService:
         territory = await self.get_territory(territory_id, tenant_id)
         if not territory:
             return None
-            
+
+        tenant_oid = PydanticObjectId(str(tenant_id))
         update_data = data.model_dump(exclude_unset=True)
+
+        old_manager = territory.manager_id
+        manager_changing = "manager_id" in update_data
+
+        # Tenant-validate + coerce the manager only when it is being changed, so
+        # an unrelated edit (e.g. renaming) never re-validates a stale manager.
+        if manager_changing:
+            update_data["manager_id"] = await self._validate_manager(
+                tenant_oid, update_data.get("manager_id")
+            )
+
         update_data["updated_at"] = datetime.utcnow()
-        
         for key, value in update_data.items():
             setattr(territory, key, value)
-            
+
         await territory.save()
+
+        if manager_changing:
+            await self._reconcile_manager_mirror(
+                tenant_oid, territory.id, old_manager, update_data["manager_id"]
+            )
+            # A manager change moves the BD visibility boundary — clear the cached
+            # scopes so gained/lost access takes effect immediately.
+            await invalidate_tenant_cache(str(tenant_id))
         return territory
-    
+
     async def delete_territory(
         self,
         territory_id: str,
@@ -184,15 +268,24 @@ class TerritoryService:
         territory = await self.get_territory(territory_id, tenant_id)
         if not territory:
             return False
-            
+
         # Check parent relationship
         child_territories = await Territory.find(
             {"parent_territory_id": territory_id, "tenant_id": tenant_id}
         ).count()
         if child_territories > 0:
             raise ValueError("Cannot delete territory with child territories")
-            
+
+        tenant_oid = PydanticObjectId(str(tenant_id))
+        # Detach the territory from every user's mirror so stale ids don't linger
+        # in the User-form multiselect. (Visibility recomputes from Territory, so
+        # a deleted territory already grants no one access.)
+        await User.find(
+            {"tenant_id": tenant_oid, "territory_ids": territory.id, "deleted_at": None}
+        ).update({"$pull": {"territory_ids": territory.id}})
+
         await territory.delete()
+        await invalidate_tenant_cache(str(tenant_id))
         return True
     
     async def list_territories(
@@ -215,11 +308,8 @@ class TerritoryService:
             query["parent_territory_id"] = parent_id
             
         if user_id:
-            query["$or"] = [
-                {"users": user_id},
-                {"manager_id": user_id}
-            ]
-            
+            query["manager_id"] = user_id
+
         if search:
             query["name"] = {"$regex": search, "$options": "i"}
             

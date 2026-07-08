@@ -110,6 +110,11 @@ export function OpportunityDetails({
     const { data: session } = useSession();
     const sessionPermissions: string[] = (session?.user as any)?.permissions ?? [];
     const canUnlock = sessionPermissions.includes("unlock_opportunity");
+    // Gate mutating actions so users only see what they can actually do (the
+    // backend enforces the same permissions — this just avoids "access denied").
+    const canEdit = sessionPermissions.includes("edit_opportunity");
+    const canDelete = sessionPermissions.includes("delete_opportunity");
+    const canCreateTask = sessionPermissions.includes("create_task");
     const [isCloseLostDialogOpen, setIsCloseLostDialogOpen] = useState(false);
     const [pendingCloseLostStageId, setPendingCloseLostStageId] = useState<string>("");
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -517,34 +522,42 @@ export function OpportunityDetails({
                                     />
                                 </label>
                             </div>
-                            <Button
-                                className="bg-blue-500 hover:bg-blue-600 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
-                                size="sm"
-                                onClick={() => !record.is_locked && setIsEditDrawerOpen(true)}
-                                disabled={record.is_locked}
-                                title={record.is_locked ? "Opportunity is locked" : undefined}
-                            >
-                                {record.is_locked ? <><Lock className="h-3 w-3 mr-1" />Locked</> : "Edit"}
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                className="h-8 bg-red-400 hover:bg-red-500"
-                                size="sm"
-                                onClick={() => setIsDeleteOpen(true)}
-                            >
-                                Delete
-                            </Button>
+                            {canEdit && (
+                                <Button
+                                    className="bg-blue-500 hover:bg-blue-600 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    size="sm"
+                                    onClick={() => !record.is_locked && setIsEditDrawerOpen(true)}
+                                    disabled={record.is_locked}
+                                    title={record.is_locked ? "Opportunity is locked" : undefined}
+                                >
+                                    {record.is_locked ? <><Lock className="h-3 w-3 mr-1" />Locked</> : "Edit"}
+                                </Button>
+                            )}
+                            {canDelete && (
+                                <Button
+                                    variant="destructive"
+                                    className="h-8 bg-red-400 hover:bg-red-500"
+                                    size="sm"
+                                    onClick={() => setIsDeleteOpen(true)}
+                                >
+                                    Delete
+                                </Button>
+                            )}
                         </div>
 
                         <div className="w-full mt-4 space-y-2 text-xs text-right">
                             <div className="flex justify-between border-b pb-1">
                                 <span className="text-slate-400">Opportunity Owner</span>
-                                <button
-                                    onClick={() => setIsOwnerDialogOpen(true)}
-                                    className="font-medium text-blue-500 flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                                >
-                                    {record.owner_name} <UserIcon className="h-3 w-3" />
-                                </button>
+                                {canEdit ? (
+                                    <button
+                                        onClick={() => setIsOwnerDialogOpen(true)}
+                                        className="font-medium text-blue-500 flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                                    >
+                                        {record.owner_name} <UserIcon className="h-3 w-3" />
+                                    </button>
+                                ) : (
+                                    <span className="font-medium">{record.owner_name}</span>
+                                )}
                             </div>
                             <div className="flex justify-between border-b pb-1">
                                 <span className="text-slate-400">Operation Owner</span>
@@ -588,10 +601,10 @@ export function OpportunityDetails({
                             return (
                                 <div
                                     key={s.id}
-                                    onClick={() => !record.is_locked && handleStageClick(s.id)}
+                                    onClick={() => canEdit && !record.is_locked && handleStageClick(s.id)}
                                     className={cn(
                                         "relative flex-1 min-w-[110px] whitespace-nowrap py-2 px-4 text-center text-xs font-medium transition-colors border-y border-r first:border-l first:rounded-l-full last:rounded-r-full group",
-                                        record.is_locked ? "cursor-not-allowed" : "cursor-pointer",
+                                        (record.is_locked || !canEdit) ? "cursor-not-allowed" : "cursor-pointer",
                                         s.id === selectedStageId ? "bg-blue-500/15 border-blue-400 text-blue-700 dark:text-blue-300" :
                                             index < currentStageIndex ? "bg-muted border-border text-slate-400 hover:bg-accent" :
                                                 "bg-card border-border text-slate-400 hover:bg-muted/40"
@@ -611,7 +624,7 @@ export function OpportunityDetails({
                             );
                         })}
                     </div>
-                    {!record.is_locked && selectedStageId !== record.sales_stage_id && (
+                    {canEdit && !record.is_locked && selectedStageId !== record.sales_stage_id && (
                         <Button
                             className="self-end shrink-0 sm:self-auto sm:ml-4 bg-blue-500 hover:bg-blue-600 rounded-full text-xs h-8 px-6 whitespace-nowrap"
                             onClick={handleMarkAsCurrentStage}
@@ -634,16 +647,18 @@ export function OpportunityDetails({
                             <TabsTrigger value="financial" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Financial</TabsTrigger>
                             <TabsTrigger value="supplier" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">{industry === "travel" ? "Supplier" : "Vendor"}</TabsTrigger>
                             <TabsTrigger value="attachments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Attachments</TabsTrigger>
-                            <span className="flex items-center px-4 py-3">
-                                <button
-                                    onClick={() => !record.is_locked && setIsEditDrawerOpen(true)}
-                                    disabled={record.is_locked}
-                                    className={cn("text-sm font-medium flex items-center gap-1", record.is_locked ? "text-slate-600 cursor-not-allowed" : "text-slate-400 hover:text-blue-600")}
-                                    title={record.is_locked ? "Opportunity is locked" : undefined}
-                                >
-                                    {record.is_locked ? <><Lock className="h-3.5 w-3.5" /> Locked</> : <><Edit className="h-3.5 w-3.5" /> Edit</>}
-                                </button>
-                            </span>
+                            {canEdit && (
+                                <span className="flex items-center px-4 py-3">
+                                    <button
+                                        onClick={() => !record.is_locked && setIsEditDrawerOpen(true)}
+                                        disabled={record.is_locked}
+                                        className={cn("text-sm font-medium flex items-center gap-1", record.is_locked ? "text-slate-600 cursor-not-allowed" : "text-slate-400 hover:text-blue-600")}
+                                        title={record.is_locked ? "Opportunity is locked" : undefined}
+                                    >
+                                        {record.is_locked ? <><Lock className="h-3.5 w-3.5" /> Locked</> : <><Edit className="h-3.5 w-3.5" /> Edit</>}
+                                    </button>
+                                </span>
+                            )}
                         </TabsList>
 
                         {/* ── ACTIVITY TAB ── */}
@@ -722,15 +737,17 @@ export function OpportunityDetails({
                                 </div>
                             </div>
 
-                            <div className="flex justify-end border-b pb-6 mb-6">
-                                <Button 
-                                    className="bg-blue-500 hover:bg-blue-600 px-8"
-                                    onClick={handleCreateTask}
-                                    disabled={isCreatingTask}
-                                >
-                                    {isCreatingTask ? "Saving..." : "Save"}
-                                </Button>
-                            </div>
+                            {canCreateTask && (
+                                <div className="flex justify-end border-b pb-6 mb-6">
+                                    <Button
+                                        className="bg-blue-500 hover:bg-blue-600 px-8"
+                                        onClick={handleCreateTask}
+                                        disabled={isCreatingTask}
+                                    >
+                                        {isCreatingTask ? "Saving..." : "Save"}
+                                    </Button>
+                                </div>
+                            )}
 
                             {/* Task List */}
                             <div className="space-y-4">
@@ -1074,14 +1091,16 @@ export function OpportunityDetails({
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end pt-4">
-                                    <Button 
-                                        onClick={handleSaveEmail}
-                                        className="bg-blue-600 hover:bg-blue-700 px-8"
-                                    >
-                                        Save
-                                    </Button>
-                                </div>
+                                {canEdit && (
+                                    <div className="flex justify-end pt-4">
+                                        <Button
+                                            onClick={handleSaveEmail}
+                                            className="bg-blue-600 hover:bg-blue-700 px-8"
+                                        >
+                                            Save
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </TabsContent>
 

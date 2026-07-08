@@ -86,8 +86,8 @@ class UserService(ActivityMixin):
 
         await user.insert()
 
-        # BD panel: assign territories (validated to this tenant) and reconcile
-        # Territory.users membership so the territory admin UI stays consistent.
+        # BD panel: make the user the manager of the given territories (validated
+        # to this tenant) so they see those territories' opportunities.
         if user_data.territory_ids:
             await self.sync_user_territories(user, user_data.territory_ids, tenant_id)
             await user.save()
@@ -255,7 +255,7 @@ class UserService(ActivityMixin):
             user.assigned_destinations = [ObjectId(did) for did in user_data.assigned_destinations]
             updated_fields['assigned_destinations'] = user_data.assigned_destinations
 
-        # Handle BD territory assignment (validated + reconciled with Territory.users)
+        # Handle BD territory assignment (validated + reconciled to Territory.manager_id)
         if user_data.territory_ids is not None:
             old_values['territory_ids'] = [str(t) for t in user.territory_ids]
             await self.sync_user_territories(user, user_data.territory_ids, tenant_id)
@@ -292,17 +292,19 @@ class UserService(ActivityMixin):
         territory_id_strs: List[str],
         tenant_id: ObjectId,
     ) -> None:
-        """Assign the given territories to a BD user.
+        """Make this user the manager of the given territories.
+
+        "Territory Manager" and "BD user" are the same role: a territory has ONE
+        manager, who sees its opportunities. Assigning territories here sets
+        `Territory.manager_id = user.id` for the selected territories (the user
+        takes them over) and clears it on the ones they no longer hold. The
+        `user.territory_ids` mirror is kept in step for the User-form picker.
 
         SECURITY: every territory id is validated to belong to the caller's
         tenant before any write — a forged/cross-tenant id is rejected, so a
-        user can never be scoped to another tenant's territory.
-
-        `user.territory_ids` is the authoritative per-user assignment (read on
-        every scoped request); `Territory.users` is kept in sync so the
-        territory admin UI and bd_assignment round-robin stay consistent. The
-        caller is responsible for saving the user document (the field is set
-        here in-memory; Territory.users membership is reconciled directly).
+        user can never be scoped to another tenant's territory. The caller saves
+        the user document (the mirror is set here in-memory; Territory.manager_id
+        is reconciled directly).
         """
         from app.models.territory import Territory
 
@@ -317,20 +319,32 @@ class UserService(ActivityMixin):
                     "One or more territory_ids are invalid or do not belong to this tenant"
                 )
 
-        old_ids = set(user.territory_ids or [])
+        old_ids = {t.id for t in await Territory.find(
+            {"manager_id": user.id, "tenant_id": tenant_id}
+        ).to_list()}
         new_set = set(new_ids)
         user.territory_ids = new_ids
 
         to_add = new_set - old_ids
         to_remove = old_ids - new_set
         if to_add:
+            # This user becomes the manager; the previous manager (if any) is
+            # displaced. Detach the territory from the previous manager's mirror.
+            displaced = await Territory.find(
+                {"_id": {"$in": list(to_add)}, "tenant_id": tenant_id}
+            ).to_list()
+            prev_mgr_ids = {t.manager_id for t in displaced if t.manager_id and t.manager_id != user.id}
             await Territory.find(
                 {"_id": {"$in": list(to_add)}, "tenant_id": tenant_id}
-            ).update({"$addToSet": {"users": user.id}})
+            ).update({"$set": {"manager_id": user.id}})
+            for pm in prev_mgr_ids:
+                await User.find(
+                    {"_id": pm, "tenant_id": tenant_id, "deleted_at": None}
+                ).update({"$pull": {"territory_ids": {"$in": list(to_add)}}})
         if to_remove:
             await Territory.find(
-                {"_id": {"$in": list(to_remove)}, "tenant_id": tenant_id}
-            ).update({"$pull": {"users": user.id}})
+                {"_id": {"$in": list(to_remove)}, "tenant_id": tenant_id, "manager_id": user.id}
+            ).update({"$set": {"manager_id": None}})
 
     async def update_password(
         self,

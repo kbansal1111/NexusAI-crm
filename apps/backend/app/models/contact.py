@@ -68,14 +68,6 @@ class Contact(BaseDocument):
     view_count: int = 0
     is_favorite: bool = False
 
-    # BD multi-owner triple — resolved from mailing address.
-    territory_id: Optional[PydanticObjectId] = None
-    region_id: Optional[PydanticObjectId] = None
-    bd_owner_id: Optional[PydanticObjectId] = None
-    reporting_manager_id: Optional[PydanticObjectId] = None
-    territory_match_source: Optional[str] = None
-    territory_assigned_at: Optional[datetime] = None
-
     @before_event(Insert)
     async def _denormalize_names(self):
         """PERF: populate owner_name + account_name on create."""

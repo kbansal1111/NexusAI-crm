@@ -20,9 +20,9 @@ export default function TerritoryPage() {
       <div>
         <h1 className="text-2xl font-semibold">Territory & Regions</h1>
         <p className="text-sm text-muted-foreground">
-          Geographic hierarchy that drives BD auto-assignment. A lead&apos;s address resolves to one
-          territory, which selects the BD owner. Their manager (via role hierarchy) becomes the
-          reporting manager / approver.
+          Geographic hierarchy that drives BD assignment. Each territory has one manager (the BD
+          user), who sees every opportunity in it and is its reporting manager / approver. An
+          opportunity&apos;s account address resolves to a territory automatically.
         </p>
       </div>
       <Tabs defaultValue="regions">
@@ -243,7 +243,7 @@ function TerritoriesTab() {
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Region</th>
                 <th className="px-3 py-2">Geo Match</th>
-                <th className="px-3 py-2">BD Users</th>
+                <th className="px-3 py-2">BD User</th>
                 <th className="px-3 py-2 w-32 text-right">Actions</th>
               </tr>
             </thead>
@@ -261,7 +261,7 @@ function TerritoriesTab() {
                       .filter(Boolean)
                       .join(" · ") || "—"}
                   </td>
-                  <td className="px-3 py-2">{t.users.length}</td>
+                  <td className="px-3 py-2">{t.manager_id ? "Assigned" : "—"}</td>
                   <td className="px-3 py-2 text-right">
                     <Button
                       size="icon"

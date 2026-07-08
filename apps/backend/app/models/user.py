@@ -60,10 +60,16 @@ class User(BaseDocument):
     not_assigned_countries: List[str] = Field(default_factory=list)
 
     # BD panel — territory-based sales cockpit.
-    # is_bd_user drives territory-scoped opportunity visibility (see
-    # visibility_scope.bd_territory_ids); territory_ids is the authoritative
-    # per-user territory assignment, kept in sync with Territory.users by
-    # user_service.sync_user_territories.
+    # SOURCE OF TRUTH for territory-scoped opportunity visibility is the
+    # Territory document: a user sees a territory's opportunities iff they are its
+    # manager (Territory.manager_id) — see visibility_scope.get_bd_territory_ids.
+    # "Territory Manager" and "BD owner" are the same role. The two fields below
+    # are a denormalized MIRROR of "territories this user manages", kept in sync
+    # by user_service.sync_user_territories and territory_service, and read by the
+    # User form to pre-fill the "Assigned Territories" control. Visibility does
+    # NOT depend on them, so the mirror can never drift into granting/denying
+    # access on its own. is_bd_user is a UI hint (reveals the territory picker),
+    # not a visibility gate.
     is_bd_user: bool = False
     territory_ids: List[PydanticObjectId] = Field(default_factory=list)
     

@@ -44,6 +44,18 @@ def _key(tenant_id, user_id) -> str:
     return f"{prefix}:scope:visible_owner_ids:{tenant_id}:{user_id}"
 
 
+def _bd_key(tenant_id, user_id) -> str:
+    """Key for the BD territory-membership widener (see visibility_scope).
+
+    Same {prefix}:scope:{ns}:{tenant}:{user} shape as _key so both the tenant
+    glob and invalidate_scope_cache clear it in one sweep.
+    """
+    from fastapi_cache import FastAPICache
+
+    prefix = FastAPICache.get_prefix()
+    return f"{prefix}:scope:bd_territory_ids:{tenant_id}:{user_id}"
+
+
 async def get_cached_visible_owner_ids(tenant_id, user_id):
     """Return the cached value, or the _MISS sentinel.
 
@@ -83,18 +95,56 @@ async def set_cached_visible_owner_ids(tenant_id, user_id, value: Optional[List[
         logger.debug("scope_cache set failed: %s", e)
 
 
-async def invalidate_scope_cache(tenant_id) -> None:
-    """Clear all cached visibility scopes for a tenant.
+async def get_cached_bd_territory_ids(tenant_id, user_id):
+    """Return the cached BD territory list, or the _MISS sentinel.
 
-    Call on role / role-hierarchy / user-active changes. With a 90s TTL this is
-    a belt-and-suspenders measure; staleness is bounded even without it.
+    Cached value is a List[ObjectId] (possibly empty). An empty list is stored
+    as "no widening" and returned as None, matching get_bd_territory_ids's
+    contract. Returns _MISS when there is no entry (or Redis is unavailable).
+    """
+    client = cache_module.redis_client
+    if client is None or tenant_id is None or user_id is None:
+        return _MISS
+    try:
+        raw = await client.get(_bd_key(tenant_id, user_id))
+    except Exception as e:  # noqa: BLE001 - cache must never break the request
+        logger.debug("scope_cache bd get failed: %s", e)
+        return _MISS
+    if raw is None:
+        return _MISS
+    try:
+        payload = json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return _MISS
+    ids = [ObjectId(s) for s in payload.get("ids", [])]
+    return ids or None
+
+
+async def set_cached_bd_territory_ids(tenant_id, user_id, value: Optional[List[ObjectId]]) -> None:
+    client = cache_module.redis_client
+    if client is None or tenant_id is None or user_id is None:
+        return
+    payload = {"ids": [str(o) for o in (value or [])]}
+    try:
+        await client.set(_bd_key(tenant_id, user_id), json.dumps(payload), ex=TTL_SECONDS)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("scope_cache bd set failed: %s", e)
+
+
+async def invalidate_scope_cache(tenant_id) -> None:
+    """Clear all cached visibility scopes for a tenant (owner-scope + BD territory).
+
+    Call on role / role-hierarchy / user-active / territory-membership changes.
+    With a 90s TTL this is a belt-and-suspenders measure; staleness is bounded
+    even without it. The `scope:*` glob covers both the visible_owner_ids and
+    bd_territory_ids namespaces.
     """
     client = cache_module.redis_client
     if client is None:
         return
     from fastapi_cache import FastAPICache
 
-    pattern = f"{FastAPICache.get_prefix()}:scope:visible_owner_ids:{tenant_id}:*"
+    pattern = f"{FastAPICache.get_prefix()}:scope:*:{tenant_id}:*"
     try:
         cursor = 0
         while True:

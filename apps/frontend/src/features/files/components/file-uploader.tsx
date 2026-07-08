@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUploadFile } from "@/features/files/api/use-files";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 
 interface FileUploaderProps {
@@ -17,6 +18,11 @@ export function FileUploader({ entityType, entityId, onUploadComplete }: FileUpl
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const uploadFile = useUploadFile();
+    const { can } = usePermissions();
+
+    // Shared across every detail page — if the user can't upload, show nothing
+    // (the backend enforces upload_file too). The file list stays visible.
+    if (!can("upload_file")) return null;
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();

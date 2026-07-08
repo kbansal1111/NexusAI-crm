@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Edit, Trash, CheckCircle } from "lucide-react";
 import { Event } from "@/features/events/types";
 import { useDeleteEvent, useMarkEventHeld } from "@/features/events/api/use-events";
+import { usePermissions } from "@/hooks/use-permissions";
 import { useRouter } from "next/navigation";
 import {
     AlertDialog,
@@ -31,6 +32,7 @@ export function EventActions({ event }: EventActionsProps) {
     const router = useRouter();
     const deleteEvent = useDeleteEvent();
     const markHeld = useMarkEventHeld();
+    const { can } = usePermissions();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const handleDelete = async () => {
@@ -60,25 +62,29 @@ export function EventActions({ event }: EventActionsProps) {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                        onClick={() => router.push(`/events/${event.id}`)}
-                    >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                    </DropdownMenuItem>
-                    {event.status === 'Planned' && (
+                    {can("edit_event") && (
+                        <DropdownMenuItem
+                            onClick={() => router.push(`/events/${event.id}`)}
+                        >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                        </DropdownMenuItem>
+                    )}
+                    {can("edit_event") && event.status === 'Planned' && (
                         <DropdownMenuItem onClick={handleMarkHeld}>
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Mark as Held
                         </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setShowDeleteDialog(true)}
-                    >
-                        <Trash className="mr-2 h-4 w-4" />
-                        Delete
-                    </DropdownMenuItem>
+                    {can("delete_event") && (
+                        <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setShowDeleteDialog(true)}
+                        >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Delete
+                        </DropdownMenuItem>
+                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
 

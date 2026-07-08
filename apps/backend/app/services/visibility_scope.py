@@ -161,17 +161,54 @@ def _merge_or(query: dict, or_clauses: list) -> dict:
     return query
 
 
-def bd_territory_ids(user: User) -> Optional[List[ObjectId]]:
-    """Territory ids that widen a BD user's opportunity visibility.
+async def _compute_bd_territory_ids(user: User) -> Optional[List[ObjectId]]:
+    """Uncached: the territories this user manages.
 
-    A BD user (is_bd_user=True) additionally sees opportunities whose
-    territory_id is in their assigned territories, on top of their normal
-    owner/hierarchy scope ("Territory + own"). Returns None when the user is
-    not a BD user or has no territories — meaning "no territory widening".
+    SINGLE SOURCE OF TRUTH is the Territory document: a user "belongs to" a
+    territory if they are its manager (`Territory.manager_id`). "Territory
+    Manager" and "BD owner" are the same role, so managing a territory is what
+    grants territory-scoped opportunity visibility. This deliberately does NOT
+    read the denormalized `User.territory_ids`/`is_bd_user` mirror, so the two
+    admin edit paths (Territory settings dialog vs. the User form) can never
+    drift into a state where one grants visibility and the other doesn't.
+
+    Tenant-scoped: only this tenant's active territories are considered, so a
+    forged/stale territory id can never surface another tenant's data.
     """
-    if getattr(user, "is_bd_user", False) and user.territory_ids:
-        return list(user.territory_ids)
-    return None
+    from app.models.territory import Territory
+
+    territories = await Territory.find(
+        {
+            "tenant_id": user.tenant_id,
+            "is_active": True,
+            "manager_id": user.id,
+        }
+    ).to_list()
+    return [t.id for t in territories] or None
+
+
+async def get_bd_territory_ids(user: User) -> Optional[List[ObjectId]]:
+    """Territory ids that STRICTLY scope a user's opportunity visibility.
+
+    A user who manages any territory is a Territory Manager / BD user: they see
+    exactly the opportunities stamped with their territories — this REPLACES
+    owner/hierarchy scope for opportunities rather than widening it (a pure BD
+    user owns no opportunities). Returns None when the user manages no territory,
+    in which case normal owner/hierarchy scope applies.
+
+    Cached per (tenant_id, user_id) alongside the owner-scope cache (same TTL,
+    same invalidation on territory / user changes) so the membership lookup
+    doesn't run on every list/detail request. Callers only invoke this for
+    non-admins (admins already see the whole tenant), so there is no admin
+    sentinel to store here.
+    """
+    cached = await scope_cache.get_cached_bd_territory_ids(user.tenant_id, user.id)
+    if cached is not scope_cache._MISS:
+        return cached
+
+    result = await _compute_bd_territory_ids(user)
+    await scope_cache.set_cached_bd_territory_ids(user.tenant_id, user.id, result)
+    return result
 
 
 def is_opportunity_visible(
@@ -182,11 +219,14 @@ def is_opportunity_visible(
 ) -> bool:
     """Detail-view counterpart of the opportunity list filter.
 
-    Visible if the owner is in the user's scope (admin/None → always) OR, for a
-    BD user, the opportunity's territory is one of the user's territories.
+    - Admin (visible_owner_ids is None) → sees everything.
+    - Territory Manager / BD user (bd_territory_ids non-empty) → STRICTLY the
+      opportunities in their territories; owner/hierarchy scope does not apply
+      (a pure BD user owns no opportunities).
+    - Regular user → owner/hierarchy scope.
     """
-    if is_record_visible(record_owner_id, visible_owner_ids):
+    if visible_owner_ids is None:
         return True
-    if bd_territory_ids and record_territory_id is not None and record_territory_id in bd_territory_ids:
-        return True
-    return False
+    if bd_territory_ids:
+        return record_territory_id is not None and record_territory_id in bd_territory_ids
+    return is_record_visible(record_owner_id, visible_owner_ids)

@@ -16,6 +16,22 @@ import { ChangeOwnerDialog } from "./ChangeOwnerDialog";
 import { OwnerPopover } from "./OwnerPopover";
 import { useEffect, useState } from "react";
 import { getSegmentBadgeClass, getSegmentLabel } from "@/lib/segments";
+import { usePermissions } from "@/hooks/use-permissions";
+
+// Map the header's entity `type` to the permission the BACKEND actually enforces.
+// Person Accounts share the /accounts endpoints, so they are gated by the
+// account permissions (not the vestigial *_person_account strings) — the gate
+// must match the server or we'd hide a button that works / show one that 403s.
+const TYPE_PERMS: Record<
+    EntityDetailHeaderProps["type"],
+    { edit: string; delete: string }
+> = {
+    "Contact": { edit: "edit_contact", delete: "delete_contact" },
+    "Account": { edit: "edit_account", delete: "delete_account" },
+    "Person Account": { edit: "edit_account", delete: "delete_account" },
+    "Lead": { edit: "edit_lead", delete: "delete_lead" },
+    "Supplier": { edit: "edit_supplier", delete: "delete_supplier" },
+};
 
 interface EntityDetailHeaderProps {
     type: "Contact" | "Account" | "Person Account" | "Lead" | "Supplier";
@@ -49,6 +65,10 @@ export function EntityDetailHeader({
     isChangingOwner
 }: EntityDetailHeaderProps) {
     const [isOwnerModalOpen, setIsOwnerModalOpen] = useState(false);
+    const { can } = usePermissions();
+    const perms = TYPE_PERMS[type];
+    const canEdit = can(perms.edit);
+    const canDelete = can(perms.delete);
 
     // Optimistic owner: reflect a just-changed owner instantly, without waiting
     // for the server round-trip / router.refresh() to land. Once the parent
@@ -86,20 +106,24 @@ export function EntityDetailHeader({
                     </div>
 
                     <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
-                        <Button
-                            variant="default"
-                            onClick={onEdit}
-                        >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={onDelete}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                        </Button>
+                        {canEdit && (
+                            <Button
+                                variant="default"
+                                onClick={onEdit}
+                            >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                            </Button>
+                        )}
+                        {canDelete && (
+                            <Button
+                                variant="destructive"
+                                onClick={onDelete}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -138,7 +162,7 @@ export function EntityDetailHeader({
                         <p className="text-xs font-semibold text-muted-foreground uppercase">{type} Owner</p>
                         <div className="flex items-center gap-2">
                             <OwnerPopover ownerId={displayOwnerId} ownerName={displayOwnerName} className="text-sm font-medium" />
-                            {onChangeOwner ? (
+                            {onChangeOwner && canEdit ? (
                                 <button
                                     type="button"
                                     onClick={() => setIsOwnerModalOpen(true)}

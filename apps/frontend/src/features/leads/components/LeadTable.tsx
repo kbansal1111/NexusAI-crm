@@ -42,6 +42,7 @@ import { LoadingState, LoadingTable } from "@/components/ui/loading";
 import Link from "next/link";
 import { ConvertLeadDialog } from "./ConvertLeadDialog";
 import { ImportLeadsDialog } from "./ImportLeadsDialog";
+import { PermissionGate } from "@/components/permissions/PermissionGate";
 import { useIndustry, type IndustryType } from "@/lib/industry-labels";
 import { getSegmentBadgeClass, getSegmentLabel } from "@/lib/segments";
 import { useAllDestinations } from "@/hooks/use-destinations";
@@ -181,14 +182,16 @@ function EditableLeadCell({
             ) : (
                 <span className="text-sm text-muted-foreground">{initial || placeholder || "-"}</span>
             )}
-            <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="opacity-0 transition-opacity group-hover/edit:opacity-100"
-                title="Edit"
-            >
-                <Pencil className="h-3 w-3 text-primary" />
-            </button>
+            <PermissionGate permission="edit_lead">
+                <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="opacity-0 transition-opacity group-hover/edit:opacity-100"
+                    title="Edit"
+                >
+                    <Pencil className="h-3 w-3 text-primary" />
+                </button>
+            </PermissionGate>
         </div>
     );
 }
@@ -820,9 +823,11 @@ export function LeadTable({
                                         <DropdownMenuItem onClick={() => exportAll("csv")}>
                                             <Download className="mr-2 h-4 w-4" /> Export all (CSV)
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
-                                            <Upload className="mr-2 h-4 w-4" /> Import Leads (CSV)
-                                        </DropdownMenuItem>
+                                        <PermissionGate permission="create_lead">
+                                            <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
+                                                <Upload className="mr-2 h-4 w-4" /> Import Leads (CSV)
+                                            </DropdownMenuItem>
+                                        </PermissionGate>
                                     </>
                                 }
                             />

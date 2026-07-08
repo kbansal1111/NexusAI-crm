@@ -28,7 +28,6 @@ export interface Territory {
   countries: string[];
   states: string[];
   postal_codes?: string[];
-  users: string[];
   manager_id?: string | null;
   assignment_type?: "manual" | "geographic" | "rule_based";
   is_active: boolean;

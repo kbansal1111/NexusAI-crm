@@ -9,31 +9,48 @@ approvals, automation rules), which was removed entirely.
 
 ## 1. Concepts & data model
 
+**"Territory Manager" and "BD owner" are the same one person.** A territory has
+exactly **one manager**, and that user (the BD user) sees the territory's
+opportunities. There is no separate "BD user pool" and no round-robin. The
+**Territory document is the single source of truth** — no separate flag can grant
+visibility on its own and drift out of sync.
+
 | Thing | Where | Purpose |
 |---|---|---|
-| **`is_bd_user`** flag | `User.is_bd_user` (`app/models/user.py`) | Marks a user as a BD user. Drives territory-scoped visibility. |
-| **`territory_ids`** | `User.territory_ids` (list) | The BD user's assigned territories. **Authoritative** per-user assignment, read on every scoped request (zero extra query — the user is already loaded). |
-| **Territory / Region** | `app/models/territory.py` | Geographic sales territories (countries/states/postal codes). `Territory.users[]` is kept in sync with `User.territory_ids`. Managed at **Settings → Territory**. |
+| **`Territory.manager_id`** | `app/models/territory.py` | The territory's single manager = its BD user. Grants that user territory-scoped visibility. Also stamped onto matched opportunities as `reporting_manager_id` (the "Territory Manager" shown on the opportunity + the approver in the approval flow). |
+| **Territory / Region** | `app/models/territory.py` | Geographic sales territories (countries/states/postal codes). Managed at **Settings → Territory**. The manager is validated to the tenant on write. |
 | **`Opportunity.territory_id`** | `app/models/opportunity.py` | The territory a deal belongs to. Auto-resolved from the linked **account's billing address**. This is the field BD visibility matches on. |
+| **`User.is_bd_user` / `User.territory_ids`** | `app/models/user.py` | A denormalized **mirror** of "territories this user manages", used only to pre-fill the User form's territory picker. **Not** a visibility gate — visibility is computed from the Territory doc. |
 
 Leads are **not** part of BD/territory anymore — all BD fields were stripped
 from the Lead model. Territory lives at the **opportunity** level only.
 
 ---
 
-## 2. Flow: making a user a BD user + assigning a territory
+## 2. Flow: assigning a territory to its BD user (manager)
 
-**Where:** Admin → Users → create/edit user (`user-form.tsx`).
+There are **two equivalent admin paths**; both set `Territory.manager_id` (the
+source of truth), so both grant the same territory-scoped visibility.
 
-1. Set **BD User = Yes** (`is_bd_user`).
-2. Pick one or more **Assigned Territories** (multi-select, appears only when BD User = Yes).
-3. Save.
+**Path A — Settings → Territory** (`TerritoryFormDialog.tsx`):
+- Pick the **Territory Manager (BD User)** (`Territory.manager_id`).
+- **Backend** (`territory_service.create_territory` / `update_territory`):
+  - **Tenant-validates** the manager id (rejects forged/cross-tenant ids → `400`)
+    and coerces it to `ObjectId`.
+  - Reconciles the `User.territory_ids` / `is_bd_user` mirror (new manager gains
+    the territory + BD flag; a replaced manager loses it).
+  - Invalidates the tenant scope cache so visibility recomputes immediately.
 
-**Backend** (`user_service.sync_user_territories`):
-- Validates every territory id belongs to the caller's **tenant** (rejects forged/cross-tenant ids → `400`).
-- Sets `user.territory_ids` (authoritative).
-- Reconciles `Territory.users[]` (adds to selected, `$pull`s from deselected) so the Territory admin UI stays consistent.
-- Tenant scope cache is invalidated so visibility recomputes immediately.
+**Path B — Admin → Users** (`user-form.tsx`):
+- Set **BD User = Yes** and pick **Assigned Territories** (multi-select).
+- **Backend** (`user_service.sync_user_territories`): makes this user the
+  `manager_id` of the selected territories (displacing any previous manager),
+  clears it on deselected ones, mirrors into `user.territory_ids`, and
+  invalidates the tenant scope cache.
+
+Either way the user becomes the territory's manager, so
+`visibility_scope.get_bd_territory_ids` picks them up on the next request. A
+territory has one manager; assigning it to a new user takes it over.
 
 ---
 
@@ -44,24 +61,28 @@ from the Lead model. Territory lives at the **opportunity** level only.
   is matched against territories via `bd_assignment_service.resolve_for_address()`
   (postal exact → postal wildcard → state → country).
 - On a match, the opportunity is stamped with `territory_id`, `region_id`, and
-  `reporting_manager_id` (the territory's manager — this is the **"Territory Manager"**
-  shown on the opportunity detail page).
+  `reporting_manager_id` (the territory's manager — the **"Territory Manager"**
+  shown on the opportunity detail page and the approver in the approval flow).
 - Opportunities with **no account** (or no matching territory) stay unstamped —
-  a BD user still sees those only if they personally own them.
+  the BD user still sees those only if they personally own them.
 
-**Manual override:** `POST /opportunities/{id}/reassign-bd` and
-`POST /opportunities/{id}/resolve-territory` remain available.
+**Re-resolve:** `POST /opportunities/{id}/resolve-territory` re-runs the match
+(e.g. after the account's address changes).
 
 ---
 
 ## 4. Flow: what a BD user sees and can edit ("Territory + own")
 
 A BD user's scope is **their own/hierarchy opportunities OR any opportunity in
-their assigned territories**. This applies **everywhere** opportunities appear —
+the territories they manage**. This applies **everywhere** opportunities appear —
 the main Opportunities module, the BD panel, tasks, and dashboard numbers.
 
 Implemented in `app/services/visibility_scope.py`:
-- `bd_territory_ids(user)` → the user's territories if `is_bd_user`, else `None`.
+- `get_bd_territory_ids(user)` (async) → the ids of the tenant's active
+  territories where the user is `manager_id`, else `None`.
+  Computed straight from the Territory collection (single source of truth) and
+  cached per `(tenant, user)` in `scope_cache` (90s TTL, invalidated on
+  territory/user changes). Admins never call it (they already see everything).
 - List query (`opportunity_repository.get_filtered_opportunities`): the owner
   filter is re-expressed as `{$or: [{owner_id ∈ visible}, {territory_id ∈ bd_territories}]}`,
   **ANDed** with the always-present `tenant_id` filter (so it composes safely
@@ -74,7 +95,7 @@ Implemented in `app/services/visibility_scope.py`:
 | User type | Sees | Can edit |
 |---|---|---|
 | **Admin** (`is_admin` role) | **Everything in the tenant** (owner + territory scoping bypassed) | Everything |
-| **BD user** | Own/hierarchy **+** all opportunities in assigned territories | Own **+** territory deals (subject to role permissions) |
+| **Territory manager** (the territory's BD user) | Own/hierarchy **+** all opportunities in the territories they manage | Own **+** territory deals (subject to role permissions) |
 | **Regular user** | Own/hierarchy only | Own only |
 
 > **Explicit owner filter:** when a user filters the list by a specific owner,
@@ -125,9 +146,10 @@ the numbers match the Opportunities tab exactly.
 
 ## 7. Tenant isolation (non-negotiable)
 
-Every BD query is tenant-scoped first. A BD user's `territory_ids` are validated
-to their tenant on assignment, and every opportunity query ANDs `tenant_id`
-before the territory `$or`. Result: a BD user can **never** see another tenant's
+Every BD query is tenant-scoped first. A territory's manager is validated to the
+tenant on assignment; `get_bd_territory_ids` only ever returns territories in the
+user's own tenant; and every opportunity query ANDs `tenant_id` before the
+territory `$or`. Result: a BD user can **never** see another tenant's
 opportunities — even if a territory id were forged or reused across tenants.
 This is locked by hermetic tests (below).
 

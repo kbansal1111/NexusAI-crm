@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { PermissionGate } from "@/components/permissions/PermissionGate";
 
 export default function EventsPage() {
     const [page, setPage] = useState(1);
@@ -22,11 +23,13 @@ export default function EventsPage() {
                         Manage your calendar, meetings, and calls.
                     </p>
                 </div>
-                <Button asChild>
-                    <Link href="/events/new">
-                        <Plus className="mr-2 h-4 w-4" /> Create Event
-                    </Link>
-                </Button>
+                <PermissionGate permission="create_event">
+                    <Button asChild>
+                        <Link href="/events/new">
+                            <Plus className="mr-2 h-4 w-4" /> Create Event
+                        </Link>
+                    </Button>
+                </PermissionGate>
             </div>
 
             <div className="flex items-center space-x-2">

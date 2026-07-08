@@ -17,11 +17,13 @@ import { useGetRoles } from "@/features/admin/api/use-roles";
 import { RoleActions } from "./role-actions";
 import { Badge } from "@/components/ui/badge";
 import { Role, getRoleId } from "@/features/admin/types/roles";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export function RoleList() {
     const router = useRouter();
     const { data: roles = [], isLoading, isError } = useGetRoles();
     const [searchQuery, setSearchQuery] = useState("");
+    const { can } = usePermissions();
 
     const handleAddProfile = () => {
         router.push("/admin/role-management/new");
@@ -72,9 +74,11 @@ export function RoleList() {
                         className="pl-9"
                     />
                 </div>
-                <Button size="sm" onClick={handleAddProfile}>
-                    <Plus className="mr-1 h-4 w-4" /> Create Profile
-                </Button>
+                {can("create_role") && (
+                    <Button size="sm" onClick={handleAddProfile}>
+                        <Plus className="mr-1 h-4 w-4" /> Create Profile
+                    </Button>
+                )}
             </div>
 
             <div className="rounded-md border">
@@ -120,15 +124,17 @@ export function RoleList() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleEditProfile(role)}
-                                                title="Edit profile"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <RoleActions role={role} />
+                                            {can("edit_role") && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleEditProfile(role)}
+                                                    title="Edit profile"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                            {can("delete_role") && <RoleActions role={role} />}
                                         </div>
                                     </TableCell>
                                 </TableRow>

@@ -31,9 +31,9 @@ class OpportunityRepository(BaseRepository[Opportunity]):
         None). Otherwise offset pagination with a total count, plus a cursor for
         the next page so the caller can switch to "load more".
 
-        `bd_territory_ids` widens visibility for BD users: results match the
-        owner filter OR any opportunity in the user's territories ("Territory +
-        own"). It's ANDed via $and so it never clobbers a search $or.
+        `bd_territory_ids` scopes a BD user (Territory Manager) STRICTLY to the
+        opportunities in their territories — the owner filter is dropped, not
+        OR-ed. It's ANDed via $and so it never clobbers a search $or.
         """
         tenant_obj_id = PydanticObjectId(tenant_id) if isinstance(tenant_id, str) else tenant_id
 
@@ -52,18 +52,17 @@ class OpportunityRepository(BaseRepository[Opportunity]):
         for k, v in kwargs.items():
             query[k] = v
 
-        # BD territory widening: (owner-scoped) OR (territory in user's set).
-        # Pull the owner clause out and re-express it as an $or ANDed into the
-        # query so it composes with an existing search $or / view $and. The
-        # tenant_id filter above still applies, so cross-tenant territory ids
-        # can never surface another tenant's opportunities.
+        # BD territory scoping — STRICTLY territory-only. A user who manages any
+        # territory is a Territory Manager / BD user: their opportunity list is
+        # EXACTLY the deals stamped to their territories. Owner/hierarchy scope
+        # does NOT additionally apply — a pure BD user owns no opportunities, so
+        # the owner clause is dropped entirely. ANDed via $and so it composes
+        # with a search $or / view $and. The tenant_id filter above still
+        # applies, so cross-tenant territory ids can never surface another
+        # tenant's opportunities.
         if bd_territory_ids:
-            owner_clause = query.pop("owner_id", None)
-            bd_or: List[Dict[str, Any]] = []
-            if owner_clause is not None:
-                bd_or.append({"owner_id": owner_clause})
-            bd_or.append({"territory_id": {"$in": bd_territory_ids}})
-            query.setdefault("$and", []).append({"$or": bd_or})
+            query.pop("owner_id", None)
+            query.setdefault("$and", []).append({"territory_id": {"$in": bd_territory_ids}})
 
         from app.core.pagination import keyset_page, encode_cursor
 

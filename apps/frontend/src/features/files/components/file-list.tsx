@@ -7,6 +7,7 @@ import { Download, Trash, FileIcon } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { apiClient } from "@/lib/api/client";
 import { blobErrorDetail } from "@/lib/api/blobError";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 
 interface FileListProps {
@@ -17,6 +18,7 @@ interface FileListProps {
 export function FileList({ entityType, entityId }: FileListProps) {
     const { data: files = [], isLoading } = useGetEntityFiles(entityType, entityId);
     const deleteFile = useDeleteFile();
+    const { can } = usePermissions();
 
     if (isLoading) return <div>Loading files...</div>;
 
@@ -68,12 +70,16 @@ export function FileList({ entityType, entityId }: FileListProps) {
                                 <TableCell>{(file.file_size / 1024).toFixed(1)} KB</TableCell>
                                 <TableCell>{file.created_at ? formatDate(file.created_at) : '-'}</TableCell>
                                 <TableCell className="text-right space-x-2">
-                                    <Button variant="ghost" size="sm" onClick={() => handleDownload(file.id, file.original_filename)}>
-                                        <Download className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(file.id)}>
-                                        <Trash className="h-4 w-4" />
-                                    </Button>
+                                    {can("download_file") && (
+                                        <Button variant="ghost" size="sm" onClick={() => handleDownload(file.id, file.original_filename)}>
+                                            <Download className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                    {can("delete_file") && (
+                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(file.id)}>
+                                            <Trash className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))

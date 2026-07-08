@@ -196,19 +196,16 @@ class OpportunityResponse(BaseModel):
     is_person_account: bool = False
     type: Optional[str] = None
 
-    # BD multi-owner triple (auto-resolved from account billing address /
-    # converting lead). Names are enriched server-side for the right panel.
+    # Territory assignment (auto-resolved from the account billing address).
+    # "Territory Manager" and "BD owner" are the same person: the territory's
+    # manager, shown on the detail panel and used as the approver.
     territory_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     region_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     territory_name: Optional[str] = None
     # Manager of the opportunity's territory (Territory.manager_id) — the
-    # "Territory Manager" shown on the detail panel.
+    # "Territory Manager" (BD user) shown on the detail panel, resolved live.
     territory_manager_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     territory_manager_name: Optional[str] = None
-    bd_owner_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    bd_owner_name: Optional[str] = None
-    reporting_manager_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    reporting_manager_name: Optional[str] = None
     operation_user_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     operation_user_name: Optional[str] = None
     # Team members — names enriched server-side for the right panel.

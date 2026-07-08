@@ -53,9 +53,11 @@ import {
     Product,
     ProductCreateData,
 } from "@/lib/api/services/products.service";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function ProductsPage() {
     const queryClient = useQueryClient();
+    const { can } = usePermissions();
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -178,12 +180,14 @@ export default function ProductsPage() {
                         resetForm();
                     }
                 }}>
+                    {can("create_product") && (
                     <DialogTrigger asChild>
                         <Button onClick={() => setIsCreateOpen(true)}>
                             <Plus className="mr-2 h-4 w-4" />
                             Add Product
                         </Button>
                     </DialogTrigger>
+                    )}
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
                             <DialogTitle>{editingProduct ? "Edit Product" : "Create Product"}</DialogTitle>
@@ -376,18 +380,24 @@ export default function ProductsPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => handleEdit(product)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive"
-                                                        onClick={() => deleteMutation.mutate(product.id)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
+                                                    {can("edit_product") && (
+                                                        <DropdownMenuItem onClick={() => handleEdit(product)}>
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {can("delete_product") && (
+                                                        <>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-destructive"
+                                                                onClick={() => deleteMutation.mutate(product.id)}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>

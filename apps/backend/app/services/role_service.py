@@ -109,7 +109,8 @@ CORE_PERMISSIONS = [
 
     # BD Panel (universal across industries) — territory-scoped sales cockpit.
     # view_bd_panel gates the panel UI; territory-based opportunity visibility is
-    # driven by the is_bd_user flag + user.territory_ids (see visibility_scope).
+    # driven by territory ownership — a user who is a territory's manager (the BD
+    # user) sees its opportunities (see visibility_scope.get_bd_territory_ids).
     "view_bd_panel",
     "manage_territory",
 ]
@@ -301,10 +302,17 @@ class RoleService(ActivityMixin):
     ) -> bool:
         """Soft delete a role"""
         role = await self.get_role(role_id, tenant_id)
-        
+
         if not role:
             return False
-        
+
+        # Admin/super-admin roles are protected — deleting the admin role would
+        # strip super-admin access from the whole tenant. Enforced here
+        # regardless of what the UI shows (mirrors the super-admin guard in
+        # delete_user). To remove such a role, first clear its is_admin flag.
+        if getattr(role, "is_admin", False):
+            raise ValueError("The Super Admin role cannot be deleted")
+
         # Check if any users have this role
         users_with_role = await User.find(
             {"role_ids": ObjectId(role_id), "tenant_id": tenant_id, "deleted_at": None}

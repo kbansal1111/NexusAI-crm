@@ -456,22 +456,28 @@ export function TaskList() {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem onClick={() => setEditTask(task)}>
-                                                <Edit className="mr-2 h-3.5 w-3.5" /> Edit
-                                            </DropdownMenuItem>
-                                            {task.status?.toLowerCase() !== "completed" && (
-                                                <DropdownMenuItem onClick={() => handleComplete(task.id)}>
-                                                    <CheckCircle className="mr-2 h-3.5 w-3.5 text-green-600" />
-                                                    Mark Complete
+                                            <PermissionGate permission="edit_task">
+                                                <DropdownMenuItem onClick={() => setEditTask(task)}>
+                                                    <Edit className="mr-2 h-3.5 w-3.5" /> Edit
                                                 </DropdownMenuItem>
+                                            </PermissionGate>
+                                            {task.status?.toLowerCase() !== "completed" && (
+                                                <PermissionGate permission="edit_task">
+                                                    <DropdownMenuItem onClick={() => handleComplete(task.id)}>
+                                                        <CheckCircle className="mr-2 h-3.5 w-3.5 text-green-600" />
+                                                        Mark Complete
+                                                    </DropdownMenuItem>
+                                                </PermissionGate>
                                             )}
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                                onClick={() => handleDelete(task.id)}
-                                                className="text-red-600"
-                                            >
-                                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                                            </DropdownMenuItem>
+                                            <PermissionGate permission="delete_task">
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDelete(task.id)}
+                                                    className="text-red-600"
+                                                >
+                                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                                                </DropdownMenuItem>
+                                            </PermissionGate>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell>

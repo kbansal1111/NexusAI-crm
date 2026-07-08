@@ -86,6 +86,11 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     ("integration_tokens", [("token_hash", ASCENDING)]),
     ("integration_tokens", [("tenant_id", ASCENDING), ("is_active", ASCENDING)]),
 
+    # --- territories: BD visibility resolves a user's territories on every
+    #     opportunity list/detail (get_bd_territory_ids) via tenant + active +
+    #     manager_id. Keep that lookup index-covered. ---
+    ("territories", [("tenant_id", ASCENDING), ("is_active", ASCENDING), ("manager_id", ASCENDING)]),
+
     # --- owner-scoped list paging: non-admin users always filter by
     #     owner_id $in (visibility scope) + sort created_at; these keep that
     #     path index-covered as row counts grow ---

@@ -133,7 +133,8 @@ async def create_territory(
             **territory.model_dump(exclude={"id"})
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        # Bad body (unknown region, forged/cross-tenant member or manager id).
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/territories", response_model=TerritoryListResponse)
@@ -222,11 +223,15 @@ async def update_territory(
     current_user: User = Depends(check_permission("manage_territory"))
 ):
     """Update a territory."""
-    territory = await territory_service.update_territory(
-        territory_id=territory_id,
-        data=data,
-        tenant_id=current_user.tenant_id
-    )
+    try:
+        territory = await territory_service.update_territory(
+            territory_id=territory_id,
+            data=data,
+            tenant_id=current_user.tenant_id
+        )
+    except ValueError as e:
+        # Forged/cross-tenant member or manager id in the body.
+        raise HTTPException(status_code=400, detail=str(e))
     if not territory:
         raise HTTPException(status_code=404, detail="Territory not found")
     return TerritoryResponse(
@@ -370,8 +375,7 @@ async def list_bd_report(
             "territory_id": str(t.id),
             "name": t.name,
             "region_id": str(t.region_id),
-            "user_count": len(t.users),
-            "user_ids": [str(u) for u in t.users],
+            "manager_id": str(t.manager_id) if t.manager_id else None,
         }
         for t in territories
     ]
@@ -397,7 +401,6 @@ async def post_bd_report_details(
                 "territory_id": str(t.id),
                 "name": t.name,
                 "region_id": str(t.region_id),
-                "users": [str(u) for u in t.users],
                 "manager_id": str(t.manager_id) if t.manager_id else None,
                 "countries": t.countries,
                 "states": t.states,

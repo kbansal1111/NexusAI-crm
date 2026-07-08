@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSession } from "next-auth/react";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,9 +63,10 @@ export function EntityActivitySidebar({
     opportunitySummary
 }: EntityActivitySidebarProps) {
     const { data: session } = useSession();
+    const { can } = usePermissions();
     const { data: usersData } = useGetUsers();
     const users = (usersData as any)?.users || usersData?.data || [];
-    
+
     const [taskSubject, setTaskSubject] = useState("");
     const [dueDate, setDueDate] = useState("");
     const [assignedTo, setAssignedTo] = useState("");
@@ -225,15 +227,17 @@ export function EntityActivitySidebar({
                                             <label className="text-xs font-medium text-muted-foreground">Name</label>
                                             <Input disabled value={entityName || "None"} className="h-9 bg-muted/40 font-medium text-foreground" />
                                         </div>
-                                        <div className="flex justify-end pt-2">
-                                            <Button
-                                                onClick={handleSaveTask}
-                                                disabled={isSaving}
-                                                className="h-9 px-6 text-xs font-semibold"
-                                            >
-                                                {isSaving ? "Saving..." : "Save"}
-                                            </Button>
-                                        </div>
+                                        {can("create_task") && (
+                                            <div className="flex justify-end pt-2">
+                                                <Button
+                                                    onClick={handleSaveTask}
+                                                    disabled={isSaving}
+                                                    className="h-9 px-6 text-xs font-semibold"
+                                                >
+                                                    {isSaving ? "Saving..." : "Save"}
+                                                </Button>
+                                            </div>
+                                        )}
                                     </TabsContent>
 
                                     <TabsContent value="call" className="mt-0 py-8 text-center text-muted-foreground">

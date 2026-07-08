@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -16,6 +16,8 @@ import {
 import { Loader2 } from "lucide-react";
 import { territoryService, type Territory, type Region } from "@/lib/api/services/territory.service";
 import { usersExtraService } from "@/lib/api/services/users-extra.service";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { locationService, type Country as GeoCountry, type State as GeoState } from "@/lib/api/services/locations.service";
 
 interface Props {
   open: boolean;
@@ -34,7 +36,6 @@ const EMPTY: Omit<Territory, "id" | "region_name"> = {
   countries: [],
   states: [],
   postal_codes: [],
-  users: [],
   manager_id: null,
   assignment_type: "geographic",
   is_active: true,
@@ -51,6 +52,54 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
   const [form, setForm] = useState<typeof EMPTY>(EMPTY);
   const [users, setUsers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
   const [saving, setSaving] = useState(false);
+
+  // Country/State are picked from the SAME canonical location source the Account
+  // form uses (values stored by NAME), so a territory's countries/states match
+  // an account's billing_country/billing_state exactly — no case/spelling drift.
+  const [countryOpts, setCountryOpts] = useState<GeoCountry[]>([]);
+  const [stateOpts, setStateOpts] = useState<GeoState[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
+  const [loadingStates, setLoadingStates] = useState(false);
+  // name -> Country, accumulated across popular + searches, to resolve the id
+  // needed to load a country's states.
+  const countryByName = useRef<Map<string, GeoCountry>>(new Map());
+
+  const mergeCountries = (list: GeoCountry[]) => {
+    for (const c of list) countryByName.current.set(c.name, c);
+    setCountryOpts((prev) => {
+      const map = new Map(prev.map((c) => [c.name, c]));
+      for (const c of list) map.set(c.name, c);
+      return Array.from(map.values());
+    });
+  };
+  const mergeStates = (list: GeoState[]) => {
+    setStateOpts((prev) => {
+      const map = new Map(prev.map((s) => [s.name, s]));
+      for (const s of list) map.set(s.name, s);
+      return Array.from(map.values());
+    });
+  };
+
+  const handleCountrySearch = (q: string, signal?: AbortSignal) => {
+    if (!q) return;
+    setLoadingCountries(true);
+    locationService
+      .searchCountries(q, signal)
+      .then((r) => mergeCountries(r.countries))
+      .catch(() => {})
+      .finally(() => setLoadingCountries(false));
+  };
+  const handleStateSearch = (q: string, signal?: AbortSignal) => {
+    if (!q) return;
+    const sel = form.countries || [];
+    const countryId = sel.length === 1 ? countryByName.current.get(sel[0])?.id : undefined;
+    setLoadingStates(true);
+    locationService
+      .searchStates(q, countryId, signal)
+      .then((r) => mergeStates(r.states))
+      .catch(() => {})
+      .finally(() => setLoadingStates(false));
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -74,14 +123,51 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
     }
   }, [territory, open]);
 
-  const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+  // Seed the country dropdown with the popular list when the dialog opens.
+  useEffect(() => {
+    if (!open) return;
+    setLoadingCountries(true);
+    locationService
+      .getCountries(true)
+      .then((r) => mergeCountries(r.countries))
+      .catch(() => {})
+      .finally(() => setLoadingCountries(false));
+  }, [open]);
 
-  const toggleUser = (uid: string) => {
-    setForm((f) => ({
-      ...f,
-      users: f.users.includes(uid) ? f.users.filter((x) => x !== uid) : [...f.users, uid],
-    }));
-  };
+  // Load the states belonging to every selected country so the State dropdown
+  // only offers states that actually sit inside the territory's countries.
+  const selectedCountriesKey = (form.countries || []).join(",");
+  useEffect(() => {
+    if (!open) return;
+    const names = form.countries || [];
+    if (names.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingStates(true);
+      try {
+        for (const name of names) {
+          let c = countryByName.current.get(name);
+          if (!c) {
+            const res = await locationService.searchCountries(name);
+            mergeCountries(res.countries);
+            c = res.countries.find((x) => x.name === name) || countryByName.current.get(name);
+          }
+          if (c && !cancelled) {
+            const st = await locationService.getStates(c.id);
+            if (!cancelled) mergeStates(st.states);
+          }
+        }
+      } catch {
+        /* best-effort; existing values still display as-is */
+      } finally {
+        if (!cancelled) setLoadingStates(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selectedCountriesKey]);
 
   const submit = async () => {
     if (!form.name.trim()) return toast.error("Name is required");
@@ -174,21 +260,29 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
           </div>
 
           <div className="grid gap-1.5">
-            <Label htmlFor="tctry">Countries (comma-separated codes/names)</Label>
-            <Input
-              id="tctry"
-              placeholder="IN, US, GB"
-              value={(form.countries || []).join(", ")}
-              onChange={(e) => setForm({ ...form, countries: csv(e.target.value) })}
+            <Label>Countries</Label>
+            <MultiSelect
+              options={countryOpts.map((c) => ({ label: c.name, value: c.name }))}
+              selected={form.countries || []}
+              onChange={(vals) => setForm({ ...form, countries: vals })}
+              onSearch={handleCountrySearch}
+              isLoading={loadingCountries}
+              placeholder="Search and select countries"
             />
+            <p className="text-xs text-muted-foreground">
+              Picked from the shared location list so values match an account&apos;s billing country exactly.
+            </p>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="tst">States (comma-separated)</Label>
-            <Input
-              id="tst"
-              placeholder="KA, MH, TN"
-              value={(form.states || []).join(", ")}
-              onChange={(e) => setForm({ ...form, states: csv(e.target.value) })}
+            <Label>States</Label>
+            <MultiSelect
+              options={stateOpts.map((s) => ({ label: s.name, value: s.name }))}
+              selected={form.states || []}
+              onChange={(vals) => setForm({ ...form, states: vals })}
+              onSearch={handleStateSearch}
+              isLoading={loadingStates}
+              placeholder={(form.countries || []).length ? "Search and select states" : "Select a country first"}
+              disabled={(form.countries || []).length === 0}
             />
           </div>
           <div className="grid gap-1.5">
@@ -201,32 +295,9 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
             />
           </div>
 
-          <div className="grid gap-1.5">
-            <Label>BD Users (selectable for territory)</Label>
-            <div className="max-h-40 overflow-y-auto rounded-md border p-2 space-y-1">
-              {users.length === 0 && (
-                <p className="text-xs text-muted-foreground">No active users in this tenant.</p>
-              )}
-              {users.map((u) => (
-                <label key={u.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.users.includes(u.id)}
-                    onChange={() => toggleUser(u.id)}
-                  />
-                  <span>{u.name}</span>
-                  {u.email && <span className="text-muted-foreground text-xs">{u.email}</span>}
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {form.users.length} user(s) selected. Round-robin uses oldest last_assigned_at.
-            </p>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label>Territory Manager</Label>
+              <Label>Territory Manager (BD User)</Label>
               <Select
                 value={form.manager_id || "__none__"}
                 onValueChange={(v) =>
@@ -245,6 +316,10 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                The one person who owns this territory — sees every opportunity in it
+                (country/state/region).
+              </p>
             </div>
             <div className="flex items-center gap-2 pt-7">
               <Switch

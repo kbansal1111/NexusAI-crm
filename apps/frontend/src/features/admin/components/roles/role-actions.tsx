@@ -50,7 +50,9 @@ export function RoleActions({ role }: RoleActionsProps) {
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    if (!canDelete || role.is_system) {
+    // Super Admin / admin roles are protected — deleting the admin role would
+    // strip super-admin access from the tenant (also enforced backend-side).
+    if (!canDelete || role.is_admin || role.is_system) {
         return null;
     }
 

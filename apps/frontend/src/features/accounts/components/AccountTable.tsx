@@ -174,14 +174,16 @@ function EditableTextCell({
     return (
         <div className="group/edit flex items-center gap-1.5 text-muted-foreground">
             <span>{initial || placeholder || "-"}</span>
-            <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="opacity-0 transition-opacity group-hover/edit:opacity-100"
-                title="Edit"
-            >
-                <Pencil className="h-3 w-3 text-primary" />
-            </button>
+            <PermissionGate permission="edit_account">
+                <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="opacity-0 transition-opacity group-hover/edit:opacity-100"
+                    title="Edit"
+                >
+                    <Pencil className="h-3 w-3 text-primary" />
+                </button>
+            </PermissionGate>
         </div>
     );
 }
@@ -244,14 +246,16 @@ function EditableTypeCell({ account, onSaved }: { account: Account; onSaved: () 
     return (
         <div className="group/edit flex items-center gap-1.5 text-muted-foreground">
             <span>{account.account_type_name || "-"}</span>
-            <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="opacity-0 transition-opacity group-hover/edit:opacity-100"
-                title="Edit account type"
-            >
-                <Pencil className="h-3 w-3 text-primary" />
-            </button>
+            <PermissionGate permission="edit_account">
+                <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="opacity-0 transition-opacity group-hover/edit:opacity-100"
+                    title="Edit account type"
+                >
+                    <Pencil className="h-3 w-3 text-primary" />
+                </button>
+            </PermissionGate>
         </div>
     );
 }
@@ -640,42 +644,46 @@ export function AccountTable({
                         <CreateAccountButton />
                     </PermissionGate>
 
-                    {mergeMode ? (
-                        <>
-                            <span className="whitespace-nowrap text-xs text-muted-foreground">
-                                {selected.length}/2 selected
-                            </span>
-                            <Button
-                                variant="default"
-                                className="whitespace-nowrap"
-                                disabled={selected.length !== 2}
-                                onClick={() => {
-                                    setPrimaryId(selected[0]);
-                                    setMergeDialogOpen(true);
-                                }}
-                            >
-                                <GitMerge className="mr-1 h-4 w-4" /> Merge Selected
-                            </Button>
+                    {/* Merge collapses one account into another (destructive) —
+                        gate on delete permission. */}
+                    <PermissionGate permission="delete_account">
+                        {mergeMode ? (
+                            <>
+                                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                                    {selected.length}/2 selected
+                                </span>
+                                <Button
+                                    variant="default"
+                                    className="whitespace-nowrap"
+                                    disabled={selected.length !== 2}
+                                    onClick={() => {
+                                        setPrimaryId(selected[0]);
+                                        setMergeDialogOpen(true);
+                                    }}
+                                >
+                                    <GitMerge className="mr-1 h-4 w-4" /> Merge Selected
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="whitespace-nowrap"
+                                    onClick={() => {
+                                        setMergeMode(false);
+                                        setSelected([]);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </>
+                        ) : (
                             <Button
                                 variant="outline"
                                 className="whitespace-nowrap"
-                                onClick={() => {
-                                    setMergeMode(false);
-                                    setSelected([]);
-                                }}
+                                onClick={() => setMergeMode(true)}
                             >
-                                Cancel
+                                Merge Account
                             </Button>
-                        </>
-                    ) : (
-                        <Button
-                            variant="outline"
-                            className="whitespace-nowrap"
-                            onClick={() => setMergeMode(true)}
-                        >
-                            Merge Account
-                        </Button>
-                    )}
+                        )}
+                    </PermissionGate>
 
                     <Button
                         variant="outline"
@@ -702,9 +710,11 @@ export function AccountTable({
                                 <DropdownMenuItem onClick={() => exportAll("csv")}>
                                     <Download className="mr-2 h-4 w-4" /> Export all (CSV)
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setImportOpen(true)}>
-                                    <Upload className="mr-2 h-4 w-4" /> Import Accounts (CSV)
-                                </DropdownMenuItem>
+                                <PermissionGate permission="create_account">
+                                    <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                                        <Upload className="mr-2 h-4 w-4" /> Import Accounts (CSV)
+                                    </DropdownMenuItem>
+                                </PermissionGate>
                             </>
                         }
                     />

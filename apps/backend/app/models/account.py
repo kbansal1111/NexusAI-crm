@@ -63,23 +63,9 @@ class Account(BaseDocument):
     # Metadata
     view_count: int = 0
     is_favorite: bool = False
-    
-    # Territory (legacy fields)
-    territory_state_id: Optional[PydanticObjectId] = None
-    territory_country_id: Optional[PydanticObjectId] = None
 
-    # BD multi-owner triple — auto-resolved from billing address. See
-    # bd_assignment_service.resolve_for_address().
-    territory_id: Optional[PydanticObjectId] = None
-    region_id: Optional[PydanticObjectId] = None
-    bd_owner_id: Optional[PydanticObjectId] = None
-    reporting_manager_id: Optional[PydanticObjectId] = None
-    territory_match_source: Optional[str] = None
-    territory_assigned_at: Optional[datetime] = None
-    
     @field_validator(
         "acc_type_id", "acc_parent_id", "industry_id", "category_id",
-        "territory_state_id", "territory_country_id",
         "last_modified_by_id",
         mode="before"
     )

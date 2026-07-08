@@ -25,57 +25,6 @@ class OpportunityService(ActivityMixin):
         self.notification_service = NotificationService()
         self.repository = OpportunityRepository()
     
-    async def reassign_bd(
-        self,
-        opportunity_id: str,
-        tenant_id: ObjectId,
-        current_user_id: ObjectId,
-        bd_owner_id: Optional[ObjectId] = None,
-        reporting_manager_id: Optional[ObjectId] = None,
-        reason: Optional[str] = None,
-    ):
-        """Manually override the BD triple on an opportunity."""
-        from app.models.user import User
-        from app.services.bd_assignment_service import bd_assignment_service
-        opp = await self.get_opportunity(opportunity_id, tenant_id)
-        if not opp:
-            return None
-        previous_bd = str(opp.bd_owner_id) if opp.bd_owner_id else None
-        previous_manager = str(opp.reporting_manager_id) if opp.reporting_manager_id else None
-        if bd_owner_id is not None:
-            owner = await User.find_one(
-                {"_id": bd_owner_id, "tenant_id": tenant_id, "is_active": True, "deleted_at": None}
-            )
-            if not owner:
-                raise ValueError("bd_owner_id must reference an active user in this tenant")
-            opp.bd_owner_id = bd_owner_id
-            if reporting_manager_id is None:
-                opp.reporting_manager_id = await bd_assignment_service.resolve_manager_for_user(
-                    tenant_id, bd_owner_id
-                )
-        if reporting_manager_id is not None:
-            mgr = await User.find_one(
-                {"_id": reporting_manager_id, "tenant_id": tenant_id, "is_active": True, "deleted_at": None}
-            )
-            if not mgr:
-                raise ValueError("reporting_manager_id must reference an active user in this tenant")
-            opp.reporting_manager_id = reporting_manager_id
-        opp.territory_match_source = "manual"
-        opp.territory_assigned_at = datetime.utcnow()
-        opp.last_modified_by_id = current_user_id
-        await opp.save()
-        await self.log_custom_activity(
-            action="bd_reassigned",
-            entity_type="opportunity",
-            entity=opp,
-            description=f"BD reassigned (reason: {reason or 'manual override'})",
-            changes={
-                "bd_owner_id": {"old": previous_bd, "new": str(opp.bd_owner_id) if opp.bd_owner_id else None},
-                "reporting_manager_id": {"old": previous_manager, "new": str(opp.reporting_manager_id) if opp.reporting_manager_id else None},
-            },
-        )
-        return opp
-
     async def resolve_territory(
         self,
         opportunity_id: str,
@@ -83,7 +32,8 @@ class OpportunityService(ActivityMixin):
         current_user_id: ObjectId,
     ):
         """Re-run automatic territory resolution for an existing opportunity
-        from the linked account's billing address."""
+        from the linked account's billing address (e.g. after the address
+        changes). Re-stamps which territory the deal belongs to."""
         from app.services.bd_assignment_service import bd_assignment_service
         opp = await self.get_opportunity(opportunity_id, tenant_id)
         if not opp:
@@ -103,8 +53,6 @@ class OpportunityService(ActivityMixin):
             return opp
         opp.territory_id = assignment.territory_id
         opp.region_id = assignment.region_id
-        opp.bd_owner_id = assignment.bd_owner_id
-        opp.reporting_manager_id = assignment.reporting_manager_id
         opp.territory_match_source = assignment.match_source
         opp.territory_assigned_at = datetime.utcnow()
         opp.last_modified_by_id = current_user_id
@@ -193,8 +141,6 @@ class OpportunityService(ActivityMixin):
                     if not assignment.is_empty():
                         opportunity.territory_id = assignment.territory_id
                         opportunity.region_id = assignment.region_id
-                        opportunity.bd_owner_id = assignment.bd_owner_id
-                        opportunity.reporting_manager_id = assignment.reporting_manager_id
                         opportunity.territory_match_source = assignment.match_source
                         from datetime import datetime as _dt
                         opportunity.territory_assigned_at = _dt.utcnow()

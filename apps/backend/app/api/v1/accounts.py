@@ -77,8 +77,6 @@ def account_to_response(account: Account) -> AccountResponse:
 # Fields on the Account model that hold ObjectId references.
 _VIEW_OBJECTID_FIELDS = {
     "owner_id", "acc_type_id", "acc_parent_id", "industry_id", "category_id",
-    "territory_state_id", "territory_country_id", "territory_id",
-    "region_id", "bd_owner_id", "reporting_manager_id",
     "created_by", "last_modified_by_id",
 }
 _VIEW_BOOL_FIELDS = {"is_person_account", "is_favorite"}

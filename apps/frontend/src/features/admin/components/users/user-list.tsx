@@ -18,10 +18,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export function UserList() {
     const { data, isLoading, isError } = useGetUsers();
     const updateUser = useUpdateUser();
+    const { can } = usePermissions();
 
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
@@ -60,9 +62,11 @@ export function UserList() {
                         {users.length} {users.length === 1 ? "user" : "users"}
                     </Badge>
                 </div>
-                <Button size="sm" onClick={handleAddUser}>
-                    <Plus className="mr-1 h-4 w-4" /> Add User
-                </Button>
+                {can("create_user") && (
+                    <Button size="sm" onClick={handleAddUser}>
+                        <Plus className="mr-1 h-4 w-4" /> Add User
+                    </Button>
+                )}
             </div>
 
             <div className="rounded-md border">
@@ -116,21 +120,23 @@ export function UserList() {
                                                         toast.error(err?.message || "Failed to update user status");
                                                     }
                                                 }}
-                                                disabled={updateUser.isPending}
+                                                disabled={updateUser.isPending || !can("edit_user")}
                                             />
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleEditUser(user)}
-                                                    title="Edit user"
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
+                                                {can("edit_user") && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleEditUser(user)}
+                                                        title="Edit user"
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 {/* Super admins cannot be deleted — hide the delete menu. */}
-                                                {!user.is_super_admin && <UserActions user={user} />}
+                                                {!user.is_super_admin && can("delete_user") && <UserActions user={user} />}
                                             </div>
                                         </TableCell>
                                     </TableRow>

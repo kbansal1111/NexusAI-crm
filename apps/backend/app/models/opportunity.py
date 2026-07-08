@@ -53,13 +53,13 @@ class Opportunity(BaseDocument):
     operation_user_id: Optional[PydanticObjectId] = None
     team_member_ids: List[PydanticObjectId] = Field(default_factory=list)
 
-    # BD multi-owner triple â€” auto-resolved from address (account billing fields
-    # if account-linked, else lead address at conversion time). See
-    # bd_assignment_service.resolve_for_address().
+    # Territory (BD) assignment — auto-resolved from the linked account's billing
+    # address on create. See bd_assignment_service.resolve_for_address(). The
+    # territory's manager ("Territory Manager" = the BD user) is resolved live
+    # from territory_id → Territory.manager_id when displaying; it is not copied
+    # onto the opportunity.
     territory_id: Optional[PydanticObjectId] = None
     region_id: Optional[PydanticObjectId] = None
-    bd_owner_id: Optional[PydanticObjectId] = None
-    reporting_manager_id: Optional[PydanticObjectId] = None
     territory_match_source: Optional[str] = None  # postal_code|postal_code_pattern|state|country|manual
     territory_assigned_at: Optional[datetime] = None
     

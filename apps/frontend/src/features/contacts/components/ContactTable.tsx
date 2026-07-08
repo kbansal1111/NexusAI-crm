@@ -58,6 +58,7 @@ import { Contact } from "../types";
 import { contactsService } from "@/lib/api/services/contacts.service";
 import { OwnerPopover } from "@/components/shared/OwnerPopover";
 import { ImportDataDialog, normalizeImportResult } from "@/components/shared/ImportDataDialog";
+import { PermissionGate } from "@/components/permissions/PermissionGate";
 import { entityViewsService } from "@/lib/api/services/entity-views.service";
 import { customFieldsService, type EntityType } from "@/lib/api/services/field-registry.service";
 import { ListViewSelector, ListViewSettings } from "@/features/views/ListViewMenu";
@@ -181,14 +182,16 @@ function EditableContactCell({
             ) : (
                 <span className="text-sm text-muted-foreground">{initial || placeholder || "-"}</span>
             )}
-            <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="opacity-0 transition-opacity group-hover/edit:opacity-100"
-                title="Edit"
-            >
-                <Pencil className="h-3 w-3 text-primary" />
-            </button>
+            <PermissionGate permission="edit_contact">
+                <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="opacity-0 transition-opacity group-hover/edit:opacity-100"
+                    title="Edit"
+                >
+                    <Pencil className="h-3 w-3 text-primary" />
+                </button>
+            </PermissionGate>
         </div>
     );
 }
@@ -497,7 +500,9 @@ export function ContactTable({
                             <>
                                 <DropdownMenuItem onClick={refresh}><RefreshCw className="mr-2 h-4 w-4" /> Refresh</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => exportAll("csv")}><Download className="mr-2 h-4 w-4" /> Export all (CSV)</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setImportOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import Contacts (CSV)</DropdownMenuItem>
+                                <PermissionGate permission="create_contact">
+                                    <DropdownMenuItem onClick={() => setImportOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import Contacts (CSV)</DropdownMenuItem>
+                                </PermissionGate>
                             </>
                         }
                     />

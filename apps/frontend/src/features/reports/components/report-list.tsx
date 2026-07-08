@@ -14,11 +14,13 @@ import { Edit, Trash, Play } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export function ReportList() {
     const { data: reports = [], isLoading, isError } = useGetReports();
     const deleteReport = useDeleteReport();
     const router = useRouter();
+    const { can } = usePermissions();
 
     if (isLoading) return <div>Loading reports...</div>;
     if (isError) return <div>Error loading reports</div>;
@@ -61,12 +63,16 @@ export function ReportList() {
                                     <Button variant="ghost" size="sm" onClick={() => router.push(`/reports/${report.id || report._id}`)}>
                                         <Play className="h-4 w-4 mr-1" /> Run
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => router.push(`/reports/${report.id || report._id}/edit`)}> {/* Add edit route later if needed */}
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(report.id || report._id)}>
-                                        <Trash className="h-4 w-4" />
-                                    </Button>
+                                    {can("edit_report") && (
+                                        <Button variant="ghost" size="sm" onClick={() => router.push(`/reports/${report.id || report._id}/edit`)}> {/* Add edit route later if needed */}
+                                            <Edit className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                    {can("delete_report") && (
+                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(report.id || report._id)}>
+                                            <Trash className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))

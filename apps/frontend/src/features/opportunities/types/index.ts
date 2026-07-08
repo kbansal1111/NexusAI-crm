@@ -58,16 +58,14 @@ export interface Opportunity {
     // Additional Information (starting_city) + registry custom-field values
     custom_fields?: Record<string, unknown>;
 
-    // BD multi-owner triple (auto-resolved from account billing address / lead conversion)
+    // Territory assignment (auto-resolved from account billing address). The
+    // "Territory Manager" is the single BD user who owns the territory; it is
+    // resolved live from the territory, not stored on the opportunity.
     territory_id?: string;
     region_id?: string;
     territory_name?: string;
     territory_manager_id?: string;
     territory_manager_name?: string;
-    bd_owner_id?: string;
-    bd_owner_name?: string;
-    reporting_manager_id?: string;
-    reporting_manager_name?: string;
     operation_user_id?: string;
     operation_user_name?: string;
     team_member_ids?: string[];

@@ -67,8 +67,9 @@ class Territory(Document):
     states: List[str] = Field(default_factory=list)  # State codes/names
     postal_codes: List[str] = Field(default_factory=list)  # Zip/Postal codes (supports wildcards)
     
-    # Users
-    users: List[PydanticObjectId] = Field(default_factory=list)  # Sales rep IDs assigned to this territory
+    # Assignment — a territory has exactly ONE manager (the "Territory Manager" /
+    # "BD owner" — the same role). That user sees the territory's opportunities
+    # and is their reporting manager. There is no separate BD-user pool.
     manager_id: Optional[PydanticObjectId] = None  # Territory manager
     
     # Status
@@ -90,5 +91,5 @@ class Territory(Document):
         # indexes = [
         # [("tenant_id", 1), ("name", 1)],
             # [("tenant_id", 1), ("region_id", 1)],
-            # [("tenant_id", 1), ("users", 1)],
+            # [("tenant_id", 1), ("manager_id", 1)],
         # ]

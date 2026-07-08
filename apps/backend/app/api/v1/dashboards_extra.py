@@ -455,24 +455,26 @@ async def my_opp_dashboard(current_user: User = Depends(get_current_user)):
 # ============== BD panel dashboards ==============
 
 async def _bd_opportunity_match(current_user: User) -> Dict[str, Any]:
-    """MongoDB match for the BD dashboard: tenant + (owner-visible OR territory).
-
-    Mirrors the opportunity list scoping in visibility_scope: an admin sees the
-    whole tenant; a non-admin BD user sees their own/hierarchy opportunities OR
-    any opportunity in their assigned territories ("Territory + own"). The
-    tenant_id filter is always present, so a cross-tenant territory id can never
-    surface another tenant's data.
+    """MongoDB match for the BD dashboard, mirroring the opportunity list scoping
+    in visibility_scope:
+      - admin → whole tenant;
+      - Territory Manager / BD user → STRICTLY the opportunities in their
+        assigned territories (owner/hierarchy scope does NOT apply — a pure BD
+        user owns no opportunities);
+      - regular user → their own/hierarchy opportunities.
+    The tenant_id filter is always present, so a cross-tenant territory id can
+    never surface another tenant's data.
     """
-    from app.services.visibility_scope import get_visible_owner_ids, bd_territory_ids
+    from app.services.visibility_scope import get_visible_owner_ids, get_bd_territory_ids
     match: Dict[str, Any] = {"tenant_id": current_user.tenant_id, "deleted_at": None}
     visible = await get_visible_owner_ids(current_user)
     if visible is None:
         return match  # admin — whole tenant
-    bd_terr = bd_territory_ids(current_user)
-    or_clauses: List[Dict[str, Any]] = [{"owner_id": {"$in": visible}}]
+    bd_terr = await get_bd_territory_ids(current_user)
     if bd_terr:
-        or_clauses.append({"territory_id": {"$in": bd_terr}})
-    match["$or"] = or_clauses
+        match["territory_id"] = {"$in": bd_terr}  # Territory Manager: territory-only
+    else:
+        match["owner_id"] = {"$in": visible}
     return match
 
 

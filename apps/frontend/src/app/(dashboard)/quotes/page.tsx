@@ -35,10 +35,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { quotesService } from "@/lib/api/services/quotes.service";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { QuoteData } from "@/lib/pdf/generateQuotePdf";
 
 export default function QuotesPage() {
     const queryClient = useQueryClient();
+    const { can } = usePermissions();
     const [searchQuery, setSearchQuery] = useState("");
     const [isGeneratingPdf, setIsGeneratingPdf] = useState<string | null>(null);
 
@@ -123,12 +125,14 @@ export default function QuotesPage() {
                         Manage your sales quotes and estimates.
                     </p>
                 </div>
-                <Link href="/quotes/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create Quote
-                    </Button>
-                </Link>
+                {can("create_quote") && (
+                    <Link href="/quotes/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Quote
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             {/* Search */}
@@ -207,20 +211,26 @@ export default function QuotesPage() {
                                                         )}
                                                         Download PDF
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/quotes/${quote.id}`}>
-                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                            Edit
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="text-destructive"
-                                                        onClick={() => deleteMutation.mutate(quote.id)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete
-                                                    </DropdownMenuItem>
+                                                    {can("edit_quote") && (
+                                                        <>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/quotes/${quote.id}`}>
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    Edit
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
+                                                    {can("delete_quote") && (
+                                                        <DropdownMenuItem
+                                                            className="text-destructive"
+                                                            onClick={() => deleteMutation.mutate(quote.id)}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>
