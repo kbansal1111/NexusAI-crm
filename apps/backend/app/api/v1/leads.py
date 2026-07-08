@@ -17,7 +17,7 @@ from app.models.lead_picklists import LeadStatus, Source
 from app.models.lead_custom_fields import UserLeadView
 from app.schemas.lead import (
     LeadCreate, LeadUpdate, LeadResponse, LeadListResponse, LeadConvert,
-    LeadOwnerChange, LeadBDReassign,
+    LeadOwnerChange,
 )
 from app.services.lead_service import LeadService
 from app.api.deps import get_current_user, check_permission
@@ -578,76 +578,6 @@ async def export_leads(
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
-
-
-@router.post("/{lead_id}/reassign-bd", response_model=Dict[str, Any])
-async def reassign_lead_bd(
-    lead_id: str,
-    payload: LeadBDReassign,
-    current_user: User = Depends(check_permission("edit_lead")),
-    service: LeadService = Depends(get_lead_service),
-):
-    """Manually override a lead's BD owner and/or reporting manager.
-
-    Both ids are validated to belong to the caller's tenant. Auto-resolution
-    will not overwrite a manual assignment unless `resolve-territory` is
-    explicitly called.
-    """
-    try:
-        bd_owner_oid = ObjectId(payload.bd_owner_id) if payload.bd_owner_id else None
-        manager_oid = ObjectId(payload.reporting_manager_id) if payload.reporting_manager_id else None
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid ObjectId in payload")
-
-    try:
-        lead = await service.reassign_bd(
-            lead_id=lead_id,
-            tenant_id=current_user.tenant_id,
-            current_user_id=current_user.id,
-            bd_owner_id=bd_owner_oid,
-            reporting_manager_id=manager_oid,
-            reason=payload.reason,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-
-    return {
-        "error": False,
-        "message": "BD reassigned",
-        "lead_id": str(lead.id),
-        "bd_owner_id": str(lead.bd_owner_id) if lead.bd_owner_id else None,
-        "reporting_manager_id": str(lead.reporting_manager_id) if lead.reporting_manager_id else None,
-        "territory_match_source": lead.territory_match_source,
-    }
-
-
-@router.post("/{lead_id}/resolve-territory", response_model=Dict[str, Any])
-async def resolve_lead_territory(
-    lead_id: str,
-    current_user: User = Depends(check_permission("edit_lead")),
-    service: LeadService = Depends(get_lead_service),
-):
-    """Re-run automatic territory + BD resolution for a single lead."""
-    lead = await service.resolve_territory(
-        lead_id=lead_id,
-        tenant_id=current_user.tenant_id,
-        current_user_id=current_user.id,
-    )
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-
-    return {
-        "error": False,
-        "message": "Territory resolved",
-        "lead_id": str(lead.id),
-        "territory_id": str(lead.territory_id) if lead.territory_id else None,
-        "bd_owner_id": str(lead.bd_owner_id) if lead.bd_owner_id else None,
-        "reporting_manager_id": str(lead.reporting_manager_id) if lead.reporting_manager_id else None,
-        "territory_match_source": lead.territory_match_source,
-    }
 
 
 @router.post("/bulk-delete")

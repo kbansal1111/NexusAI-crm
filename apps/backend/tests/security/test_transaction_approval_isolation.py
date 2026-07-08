@@ -39,6 +39,13 @@ TIMEOUT = 30.0
 TENANTS = {
     "A": {"email": "admin@tutterfly.com", "password": "admin1", "label": "Travel (Tenant A)"},
     "B": {"email": "admin-health@tutterfly.com", "password": "admin1", "label": "Healthcare (Tenant B)"},
+    # Tenant A's accounts-team reviewer (verify/approve perms). The admin does
+    # NOT hold these permissions — approval is a finance-team capability.
+    "A_verifier": {
+        "email": os.getenv("VERIFIER_EMAIL", "accounts@tutterfly.com"),
+        "password": os.getenv("VERIFIER_PASSWORD", "Accounts@123"),
+        "label": "Accounts team (Tenant A)",
+    },
 }
 
 
@@ -103,8 +110,18 @@ async def run() -> bool:
             a = await _session(client, "A")
             b = await _session(client, "B")
         except Exception as e:
-            results.fail("Auth", str(e))
+            results.fail("Auth", repr(e))
             return results.summary()
+
+        # Verifier session: the accounts-team user who verifies/approves. If it
+        # doesn't exist in this environment, fall back to A's admin (steps will
+        # then only pass when that admin holds the approval permissions).
+        try:
+            av = await _session(client, "A_verifier")
+            results.ok("Logged in as Tenant A accounts verifier")
+        except Exception:
+            av = a
+            results.skip("Verifier login", "accounts verifier unavailable; using Tenant A admin")
 
         if a["tenant_id"] == b["tenant_id"]:
             results.fail("Tenant separation", "both admins resolved to the same tenant")
@@ -117,9 +134,28 @@ async def run() -> bool:
             results.skip("Setup", "no sales stages seeded for Tenant A")
             return results.summary()
 
+        # Opportunity create requires a linked account + contact and (for
+        # travel tenants) industry_data — reuse the tenant's existing records.
+        accs = await client.get(f"{BASE_URL}/accounts/", params={"limit": 1}, headers=a["headers"])
+        acc_body = accs.json() if accs.status_code == 200 else {}
+        acc_list = acc_body if isinstance(acc_body, list) else acc_body.get("accounts", acc_body.get("items", []))
+        cons = await client.get(f"{BASE_URL}/contacts/", params={"limit": 1}, headers=a["headers"])
+        con_body = cons.json() if cons.status_code == 200 else {}
+        con_list = con_body if isinstance(con_body, list) else con_body.get("contacts", con_body.get("items", []))
+        if not acc_list or not con_list:
+            results.skip("Setup", "Tenant A has no account/contact to attach an opportunity to")
+            return results.summary()
+
         opp = await client.post(
             f"{BASE_URL}/opportunities/",
-            json={"name": f"A Approval Opp {ts}", "amount": 1000.0, "sales_stage_id": stages.json()[0]["id"]},
+            json={
+                "name": f"A Approval Opp {ts}",
+                "amount": 1000.0,
+                "sales_stage_id": stages.json()[0]["id"],
+                "account_id": acc_list[0]["id"],
+                "contact_id": con_list[0]["id"],
+                "industry_data": {"travel_date": "2027-01-15T00:00:00", "no_of_pax": 1},
+            },
             headers=a["headers"],
         )
         if opp.status_code not in (200, 201):
@@ -142,22 +178,81 @@ async def run() -> bool:
         else:
             results.fail("Initial status", f"expected pending_verification, got {txn.get('approval_status')}")
 
-        # --- 2. Sanity: A verifies then approves its OWN transaction ---
+        # --- 2. Sanity: Tenant A's accounts team verifies then approves ---
         v = await client.post(
-            f"{BASE_URL}/opportunities/{opp_id}/transactions/{txn_id}/verify", headers=a["headers"]
+            f"{BASE_URL}/opportunities/{opp_id}/transactions/{txn_id}/verify", headers=av["headers"]
         )
         if v.status_code == 200 and v.json().get("approval_status") == "verified":
-            results.ok("Sanity: A can verify own transaction (→ verified)")
+            results.ok("Sanity: A's accounts team can verify (→ verified)")
         else:
             results.fail("Sanity verify", f"{v.status_code} -- {v.text[:200]}")
 
         ap = await client.post(
-            f"{BASE_URL}/opportunities/{opp_id}/transactions/{txn_id}/approve", headers=a["headers"]
+            f"{BASE_URL}/opportunities/{opp_id}/transactions/{txn_id}/approve", headers=av["headers"]
         )
         if ap.status_code == 200 and ap.json().get("approval_status") == "approved":
-            results.ok("Sanity: A can approve own transaction (→ approved)")
+            results.ok("Sanity: A's accounts team can approve (→ approved)")
         else:
             results.fail("Sanity approve", f"{ap.status_code} -- {ap.text[:200]}")
+
+        # --- 2b. Payment-schedule receipts enter the approval workflow ---
+        # Marking a milestone Received creates a Receive txn that must be
+        # pending_verification (NOT auto-approved), and rejecting it must
+        # revert the milestone to Pending.
+        ps = await client.post(
+            f"{BASE_URL}/opportunities/{opp_id}/payment-schedule",
+            json={"amount": 1000.0, "description": "Milestone 1"},
+            headers=a["headers"],
+        )
+        if ps.status_code not in (200, 201):
+            results.fail("Create schedule item", f"{ps.status_code} -- {ps.text[:200]}")
+        else:
+            ps_id = ps.json()["id"]
+            recv = await client.put(
+                f"{BASE_URL}/opportunities/{opp_id}/payment-schedule/{ps_id}",
+                json={"status": "Received", "payment_method": "Online"},
+                headers=a["headers"],
+            )
+            ps_txn_id = recv.json().get("transaction_id") if recv.status_code == 200 else None
+            if recv.status_code == 200 and ps_txn_id:
+                results.ok("Milestone marked Received creates a linked transaction")
+            else:
+                results.fail("Mark Received", f"{recv.status_code} -- {recv.text[:200]}")
+
+            if ps_txn_id:
+                txns = await client.get(
+                    f"{BASE_URL}/opportunities/{opp_id}/transactions", headers=a["headers"]
+                )
+                ps_txn = next((t for t in txns.json() if t["id"] == ps_txn_id), None)
+                if ps_txn and ps_txn.get("approval_status") == "pending_verification":
+                    results.ok("Schedule receipt starts pending_verification (no approval bypass)")
+                else:
+                    results.fail(
+                        "Schedule receipt status",
+                        f"expected pending_verification, got {ps_txn and ps_txn.get('approval_status')}",
+                    )
+
+                rej = await client.post(
+                    f"{BASE_URL}/opportunities/{opp_id}/transactions/{ps_txn_id}/reject",
+                    json={"reason": "amount mismatch"},
+                    headers=av["headers"],
+                )
+                if rej.status_code == 200 and rej.json().get("approval_status") == "rejected":
+                    results.ok("Schedule receipt can be rejected")
+                else:
+                    results.fail("Reject schedule receipt", f"{rej.status_code} -- {rej.text[:200]}")
+
+                sched = await client.get(
+                    f"{BASE_URL}/opportunities/{opp_id}/payment-schedule", headers=a["headers"]
+                )
+                item = next((i for i in sched.json() if i["id"] == ps_id), None)
+                if item and item.get("status") == "Pending" and not item.get("transaction_id"):
+                    results.ok("Rejected receipt reverts milestone to Pending")
+                else:
+                    results.fail(
+                        "Milestone revert on reject",
+                        f"expected Pending/no txn link, got {item and (item.get('status'), item.get('transaction_id'))}",
+                    )
 
         # Fresh pending transaction for the cross-tenant mutation attempts.
         txn2_resp = await client.post(

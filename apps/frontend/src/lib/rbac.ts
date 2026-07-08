@@ -30,13 +30,8 @@ const ROUTE_RULES: { prefix: string; permission: string }[] = [
     { prefix: "/departure", permission: "view_dashboard" },
     { prefix: "/dashboard", permission: "view_dashboard" },
 
-    // BD Panel (universal across industries)
-    { prefix: "/bd/approvals", permission: "approve_bd_visit" },
-    { prefix: "/bd/expenses", permission: "view_expense" },
-    { prefix: "/bd/tracking", permission: "view_live_tracking" },
-    { prefix: "/bd/visits", permission: "view_bd_visit" },
+    // BD Panel (universal across industries) — territory-scoped sales cockpit
     { prefix: "/bd", permission: "view_bd_panel" },
-    { prefix: "/settings/automation", permission: "manage_automation_rules" },
     { prefix: "/settings/territory", permission: "manage_territory" },
 
     // Healthcare vertical

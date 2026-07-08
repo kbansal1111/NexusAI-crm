@@ -21,6 +21,7 @@ class OpportunityRepository(BaseRepository[Opportunity]):
         owner_id: Optional[str | PydanticObjectId] = None,
         sales_stage_id: Optional[str | PydanticObjectId] = None,
         cursor: Optional[str] = None,
+        bd_territory_ids: Optional[List[PydanticObjectId]] = None,
         **kwargs
     ) -> Tuple[List[Opportunity], Optional[int], Optional[str], bool]:
         """Get opportunities with multiple filters and pagination.
@@ -29,6 +30,10 @@ class OpportunityRepository(BaseRepository[Opportunity]):
         given, uses keyset pagination (O(1) deep paging, COUNT skipped → total is
         None). Otherwise offset pagination with a total count, plus a cursor for
         the next page so the caller can switch to "load more".
+
+        `bd_territory_ids` widens visibility for BD users: results match the
+        owner filter OR any opportunity in the user's territories ("Territory +
+        own"). It's ANDed via $and so it never clobbers a search $or.
         """
         tenant_obj_id = PydanticObjectId(tenant_id) if isinstance(tenant_id, str) else tenant_id
 
@@ -46,6 +51,19 @@ class OpportunityRepository(BaseRepository[Opportunity]):
         # Merge keyword filters securely
         for k, v in kwargs.items():
             query[k] = v
+
+        # BD territory widening: (owner-scoped) OR (territory in user's set).
+        # Pull the owner clause out and re-express it as an $or ANDed into the
+        # query so it composes with an existing search $or / view $and. The
+        # tenant_id filter above still applies, so cross-tenant territory ids
+        # can never surface another tenant's opportunities.
+        if bd_territory_ids:
+            owner_clause = query.pop("owner_id", None)
+            bd_or: List[Dict[str, Any]] = []
+            if owner_clause is not None:
+                bd_or.append({"owner_id": owner_clause})
+            bd_or.append({"territory_id": {"$in": bd_territory_ids}})
+            query.setdefault("$and", []).append({"$or": bd_or})
 
         from app.core.pagination import keyset_page, encode_cursor
 

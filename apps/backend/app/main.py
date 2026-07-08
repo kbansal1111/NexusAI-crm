@@ -213,8 +213,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # Include routers
 from app.api.v1 import accounts, contacts, auth, leads, opportunities, tasks, events, notes, emails, files, suppliers, itineraries, packages, departures, users, roles, destinations, departments, products, quotes, invoices, countries, activity_logs, tags, notifications, comments, reminders, templates, reports, dashboards, territories, incentives, billing, webhooks, search, opportunity_financial, hierarchies
-# BD Panel — Phase 4+ (visits, expenses, tracking, automation rules)
-from app.api.v1 import bd_visits, expenses as bd_expenses, tracking as bd_tracking, automation_rules
 from app.api.v1 import settings as settings_routes
 from app.api.v1 import contacts_extra
 from app.api.v1 import accounts_extra
@@ -302,11 +300,6 @@ app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(dashboards_extra.router, prefix="/api/v1/dashboards", tags=["Dashboards Extras"])
 app.include_router(dashboards.router, prefix="/api/v1/dashboards", tags=["Dashboards"])
 app.include_router(territories.router, prefix="/api/v1/territories", tags=["Territories"])
-# BD Panel — visits, expenses, live tracking
-app.include_router(bd_visits.router, prefix="/api/v1/bd-visits", tags=["BD Visits"])
-app.include_router(bd_expenses.router, prefix="/api/v1/expenses", tags=["BD Expenses"])
-app.include_router(bd_tracking.router, prefix="/api/v1/tracking", tags=["BD Tracking"])
-app.include_router(automation_rules.router, prefix="/api/v1/automation-rules", tags=["Automation Rules"])
 app.include_router(incentives.router, prefix="/api/v1/incentives", tags=["Incentives"])
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
 app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["Webhooks"])

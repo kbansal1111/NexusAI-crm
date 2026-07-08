@@ -72,23 +72,40 @@ async def _notify_owner(opp, txn, *, title: str, message: str, ntype: str):
         _logger.warning("Failed to notify owner for txn %s", txn.id, exc_info=True)
 
 
-async def _notify_verifiers(opp, txn):
-    """Notify the accounts team (verifiers) that a new amount awaits verification."""
+async def _notify_verifiers_generic(opp, *, title: str, message: str, txn=None, ntype: str = "task"):
+    """Notify the accounts team (verify permission) about a ledger event.
+
+    The queue page is where they act, so reviewable events link there; pass
+    `txn` to attach the transaction as the notification entity.
+    """
     try:
         approvers = await _users_with_permission(opp.tenant_id, "verify_opportunity_transaction")
         for u in approvers:
             await _notifier.notify_user(
                 user_id=u.id,
                 tenant_id=opp.tenant_id,
-                title="Transaction awaiting verification",
-                message=f"A {txn.transaction_type} of {txn.amount} needs your verification.",
-                type="task",
-                entity_type="opportunity_transaction",
-                entity_id=ObjectId(txn.id),
-                action_url=f"/opportunities/{txn.opportunity_id}?tab=financial",
+                title=title,
+                message=message,
+                type=ntype,
+                entity_type="opportunity_transaction" if txn is not None else "opportunity",
+                entity_id=ObjectId(txn.id) if txn is not None else ObjectId(opp.id),
+                action_url="/opportunities/approvals",
             )
     except Exception:
-        _logger.warning("Failed to notify verifiers for txn %s", txn.id, exc_info=True)
+        _logger.warning("Failed to notify verifiers for opp %s", opp.id, exc_info=True)
+
+
+async def _notify_verifiers(opp, txn):
+    """Notify the accounts team (verifiers) that a new amount awaits verification."""
+    await _notify_verifiers_generic(
+        opp,
+        title="Transaction awaiting verification",
+        message=(
+            f"A {txn.transaction_type} of {txn.amount} on '{getattr(opp, 'name', 'an opportunity')}' "
+            f"needs your verification."
+        ),
+        txn=txn,
+    )
 
 
 # ─────────────────────────── HELPER: verify opportunity ───────────────────────
@@ -363,6 +380,38 @@ async def upsert_costing(
 
 # ─────────────────────────── PAYMENT SCHEDULE CRUD ────────────────────────────
 
+def _ps_item_to_response(item: PaymentScheduleItem, receipt_status: "str | None") -> PaymentScheduleItemResponse:
+    """Convert a schedule item to its response, with the linked receipt's approval state."""
+    return PaymentScheduleItemResponse(
+        id=str(item.id),
+        opportunity_id=str(item.opportunity_id),
+        tenant_id=str(item.tenant_id),
+        description=item.description,
+        due_date=item.due_date,
+        amount=item.amount,
+        status=item.status,
+        payment_method=item.payment_method,
+        reference_number=item.reference_number,
+        notes=item.notes,
+        paid_at=item.paid_at,
+        transaction_id=str(item.transaction_id) if item.transaction_id else None,
+        receipt_approval_status=receipt_status,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+async def _receipt_status_map(items: List[PaymentScheduleItem], tenant_id) -> dict:
+    """approval_status of each item's linked Receive transaction (tenant-scoped)."""
+    txn_ids = [i.transaction_id for i in items if i.transaction_id]
+    if not txn_ids:
+        return {}
+    txns = await OpportunityTransaction.find(
+        {"_id": {"$in": txn_ids}, "tenant_id": tenant_id}
+    ).to_list()
+    return {t.id: (getattr(t, "approval_status", None) or "approved") for t in txns}
+
+
 @router.get("/{opportunity_id}/payment-schedule", response_model=List[PaymentScheduleItemResponse])
 async def get_payment_schedule(
     opportunity_id: str,
@@ -375,23 +424,9 @@ async def get_payment_schedule(
         {"opportunity_id": ObjectId(opportunity_id), "tenant_id": current_user.tenant_id}
     ).sort("+created_at").to_list()
 
+    receipt_statuses = await _receipt_status_map(items, current_user.tenant_id)
     return [
-        PaymentScheduleItemResponse(
-            id=str(item.id),
-            opportunity_id=str(item.opportunity_id),
-            tenant_id=str(item.tenant_id),
-            description=item.description,
-            due_date=item.due_date,
-            amount=item.amount,
-            status=item.status,
-            payment_method=item.payment_method,
-            reference_number=item.reference_number,
-            notes=item.notes,
-            paid_at=item.paid_at,
-            transaction_id=str(item.transaction_id) if item.transaction_id else None,
-            created_at=item.created_at,
-            updated_at=item.updated_at,
-        )
+        _ps_item_to_response(item, receipt_statuses.get(item.transaction_id))
         for item in items
     ]
 
@@ -419,22 +454,7 @@ async def create_payment_schedule_item(
     )
     await item.insert()
 
-    return PaymentScheduleItemResponse(
-        id=str(item.id),
-        opportunity_id=str(item.opportunity_id),
-        tenant_id=str(item.tenant_id),
-        description=item.description,
-        due_date=item.due_date,
-        amount=item.amount,
-        status=item.status,
-        payment_method=item.payment_method,
-        reference_number=item.reference_number,
-        notes=item.notes,
-        paid_at=item.paid_at,
-        transaction_id=str(item.transaction_id) if item.transaction_id else None,
-        created_at=item.created_at,
-        updated_at=item.updated_at,
-    )
+    return _ps_item_to_response(item, None)
 
 
 @router.put("/{opportunity_id}/payment-schedule/{item_id}", response_model=PaymentScheduleItemResponse)
@@ -470,9 +490,10 @@ async def update_payment_schedule_item(
         paid_at_value = update_data.get("paid_at") or datetime.utcnow()
         update_data["paid_at"] = paid_at_value
 
-        # Auto-create the Receive transaction in the ledger. This represents
-        # money actually received (a confirmed receipt), so it is recorded as
-        # already approved rather than entering the verify/approve queue.
+        # Auto-create the Receive transaction in the ledger. Like every other
+        # sales-entered amount it enters the approval workflow
+        # (pending_verification) so the accounts team verifies the receipt —
+        # otherwise the payment schedule would be a loophole around review.
         txn = OpportunityTransaction(
             opportunity_id=ObjectId(opportunity_id),
             tenant_id=current_user.tenant_id,
@@ -483,9 +504,7 @@ async def update_payment_schedule_item(
             reference_id=update_data.get("reference_number"),
             note=update_data.get("notes"),
             payment_schedule_item_id=item.id,
-            approval_status="approved",
-            approved_by=current_user.id,
-            approved_at=paid_at_value,
+            approval_status="pending_verification",
             created_by=current_user.id,
         )
         await txn.insert()
@@ -504,9 +523,21 @@ async def update_payment_schedule_item(
                     {"_id": item.transaction_id, "tenant_id": current_user.tenant_id}
                 )
                 if linked_txn:
+                    was_reviewed = getattr(linked_txn, "approval_status", None) in ("verified", "approved")
                     await linked_txn.delete()
+                    # Accounts already reviewed this receipt — tell them it was
+                    # removed from the ledger so the audit trail isn't silent.
+                    if was_reviewed:
+                        await _notify_verifiers_generic(
+                            opp,
+                            title="Reviewed receipt removed",
+                            message=(
+                                f"A {linked_txn.approval_status} receipt of {linked_txn.amount} "
+                                f"was removed (payment milestone reverted to Pending)."
+                            ),
+                        )
             except Exception:
-                pass
+                _logger.warning("Failed to delete linked txn for schedule item %s", item.id, exc_info=True)
         update_data["transaction_id"] = None
 
     # Apply updates — coerce transaction_id string (from client schema) to PydanticObjectId
@@ -524,31 +555,22 @@ async def update_payment_schedule_item(
     item.last_modified_by_id = current_user.id
     await item.save()
 
-    # On payment received, notify the sales owner that money has landed.
+    # On payment received: the receipt now awaits accounts review — tell the
+    # verifiers there is work in their queue and the sales owner what happened.
     if new_status == "Received" and old_status != "Received":
+        await _notify_verifiers(opp, txn)
         await _notify_owner(
             opp, txn,
-            title="Payment received",
-            message=f"A payment of {item.amount} was received on this opportunity.",
+            title="Payment recorded",
+            message=(
+                f"A payment of {item.amount} was recorded on this opportunity "
+                f"and is awaiting accounts verification."
+            ),
             ntype="success",
         )
 
-    return PaymentScheduleItemResponse(
-        id=str(item.id),
-        opportunity_id=str(item.opportunity_id),
-        tenant_id=str(item.tenant_id),
-        description=item.description,
-        due_date=item.due_date,
-        amount=item.amount,
-        status=item.status,
-        payment_method=item.payment_method,
-        reference_number=item.reference_number,
-        notes=item.notes,
-        paid_at=item.paid_at,
-        transaction_id=str(item.transaction_id) if item.transaction_id else None,
-        created_at=item.created_at,
-        updated_at=item.updated_at,
-    )
+    receipt_statuses = await _receipt_status_map([item], current_user.tenant_id)
+    return _ps_item_to_response(item, receipt_statuses.get(item.transaction_id))
 
 
 @router.delete("/{opportunity_id}/payment-schedule/{item_id}")
@@ -885,6 +907,22 @@ async def reject_transaction(
     txn.updated_at = datetime.utcnow()
     txn.last_modified_by_id = current_user.id
     await txn.save()
+
+    # A rejected receipt that came from a payment-schedule milestone means the
+    # money was NOT accepted — revert the milestone to Pending so the schedule
+    # and the ledger tell the same story. The rejected transaction stays as the
+    # audit record; re-marking the milestone Received creates a fresh one.
+    if txn.payment_schedule_item_id:
+        schedule_item = await PaymentScheduleItem.find_one(
+            {"_id": txn.payment_schedule_item_id, "tenant_id": current_user.tenant_id}
+        )
+        if schedule_item and schedule_item.transaction_id == txn.id:
+            schedule_item.status = "Pending"
+            schedule_item.paid_at = None
+            schedule_item.transaction_id = None
+            schedule_item.updated_at = datetime.utcnow()
+            schedule_item.last_modified_by_id = current_user.id
+            await schedule_item.save()
 
     reason = f" Reason: {data.reason}" if data.reason else ""
     await _notify_owner(

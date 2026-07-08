@@ -20,7 +20,6 @@ from app.repositories.lead_repository import LeadRepository
 from app.services.webhook_service import webhook_service
 from app.services import field_registry_service
 from app.schemas.field_registry import CustomFieldValuePayload
-from app.services.bd_assignment_service import bd_assignment_service
 import logging as _logging
 from datetime import timezone as _dt_timezone
 
@@ -152,26 +151,6 @@ class LeadService(ActivityMixin):
         
         await lead.insert()
 
-        # Auto-resolve BD triple (territory + BD owner + reporting manager).
-        # Failure is non-fatal — lead still saves with triple unset.
-        try:
-            assignment = await bd_assignment_service.resolve_for_address(
-                tenant_id=tenant_id,
-                country=lead.country,
-                state=lead.state,
-                zip_code=lead.zip,
-            )
-            if not assignment.is_empty():
-                lead.territory_id = assignment.territory_id
-                lead.region_id = assignment.region_id
-                lead.bd_owner_id = assignment.bd_owner_id
-                lead.reporting_manager_id = assignment.reporting_manager_id
-                lead.territory_match_source = assignment.match_source
-                lead.territory_assigned_at = datetime.utcnow()
-                await lead.save()
-        except Exception:
-            logger.warning("BD auto-assignment failed for lead %s", lead.id, exc_info=True)
-
         # Link destinations if provided in industry_data (travel only)
         industry_dest_ids = (lead.industry_data or {}).get('destination_ids', [])
         if industry_dest_ids:
@@ -245,13 +224,6 @@ class LeadService(ActivityMixin):
         except Exception:
             pass  # Webhook failures should never block core operations
 
-        # Phase 9: automation rule dispatch
-        try:
-            from app.services import automation_service
-            await automation_service.dispatch("lead.created", lead, tenant_id)
-        except Exception:
-            logger.warning("Automation dispatch failed (lead.created)", exc_info=True)
-
         return lead
     async def get_lead(self, lead_id: str, tenant_id: ObjectId) -> Optional[Lead]:
         """Get lead by ID (allows soft-deleted/converted leads)"""
@@ -296,17 +268,11 @@ class LeadService(ActivityMixin):
         original_values = {}
         updated_fields = {}
 
-        # Track whether any address field changed — triggers BD re-resolution.
-        ADDRESS_FIELDS = {"street", "city", "state", "zip", "country"}
-        address_changed = False
-
         # Update fields and track changes
         update_data = lead_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             original_value = getattr(lead, field, None)
             original_values[field] = str(original_value) if original_value else None
-            if field in ADDRESS_FIELDS and value != original_value:
-                address_changed = True
             if field == "custom_fields" and isinstance(value, dict):
                 # Merge Additional Information keys instead of replacing the
                 # whole dict, so partial updates don't wipe other keys.
@@ -322,34 +288,6 @@ class LeadService(ActivityMixin):
         validate_lead_record(lead, industry=industry)
 
         await lead.save()
-
-        # Re-resolve BD triple when address changes. Never blocks the save.
-        if address_changed:
-            try:
-                prev_bd_owner = lead.bd_owner_id
-                assignment = await bd_assignment_service.resolve_for_address(
-                    tenant_id=tenant_id,
-                    country=lead.country,
-                    state=lead.state,
-                    zip_code=lead.zip,
-                )
-                if not assignment.is_empty():
-                    lead.territory_id = assignment.territory_id
-                    lead.region_id = assignment.region_id
-                    lead.bd_owner_id = assignment.bd_owner_id
-                    lead.reporting_manager_id = assignment.reporting_manager_id
-                    lead.territory_match_source = assignment.match_source
-                    lead.territory_assigned_at = datetime.utcnow()
-                    await lead.save()
-                    if prev_bd_owner != assignment.bd_owner_id:
-                        await self.log_assignment_changed(
-                            entity=lead,
-                            entity_type="lead",
-                            old_assigned_to=str(prev_bd_owner) if prev_bd_owner else None,
-                            new_assigned_to=str(assignment.bd_owner_id) if assignment.bd_owner_id else None,
-                        )
-            except Exception:
-                logger.warning("BD re-assignment failed for lead %s", lead.id, exc_info=True)
 
         # Write custom field values via unified registry (Phase 1 §A).
         # Only a LIST of {id, value} pairs targets the registry — the plain
@@ -416,16 +354,8 @@ class LeadService(ActivityMixin):
             except Exception:
                 pass
 
-        # Phase 9: automation rule dispatch
-        if updated_fields:
-            try:
-                from app.services import automation_service
-                await automation_service.dispatch("lead.updated", lead, tenant_id)
-            except Exception:
-                logger.warning("Automation dispatch failed (lead.updated)", exc_info=True)
-
         return lead
-    
+
     async def delete_lead(
         self,
         lead_id: str,
@@ -989,14 +919,6 @@ class LeadService(ActivityMixin):
                 opportunity.owner_id = ObjectId(opportunity.owner_id)
             if isinstance(opportunity.created_by, str):
                 opportunity.created_by = ObjectId(opportunity.created_by)
-            # Copy BD triple from the converting lead so the opportunity
-            # inherits Territory / BD Owner / Reporting Manager.
-            opportunity.territory_id = lead.territory_id
-            opportunity.region_id = lead.region_id
-            opportunity.bd_owner_id = lead.bd_owner_id
-            opportunity.reporting_manager_id = lead.reporting_manager_id
-            opportunity.territory_match_source = lead.territory_match_source
-            opportunity.territory_assigned_at = lead.territory_assigned_at
 
             try:
                 await opportunity.insert()
@@ -1261,91 +1183,6 @@ class LeadService(ActivityMixin):
         return lead
     
     
-    async def reassign_bd(
-        self,
-        lead_id: str,
-        tenant_id: ObjectId,
-        current_user_id: ObjectId,
-        bd_owner_id: Optional[ObjectId] = None,
-        reporting_manager_id: Optional[ObjectId] = None,
-        reason: Optional[str] = None,
-    ) -> Optional[Lead]:
-        """Manual override of the BD triple. Validates tenant membership."""
-        lead = await self.get_lead(lead_id, tenant_id)
-        if not lead:
-            return None
-
-        previous_bd = str(lead.bd_owner_id) if lead.bd_owner_id else None
-        previous_manager = str(lead.reporting_manager_id) if lead.reporting_manager_id else None
-
-        if bd_owner_id is not None:
-            owner = await User.find_one(
-                {"_id": bd_owner_id, "tenant_id": tenant_id, "is_active": True, "deleted_at": None}
-            )
-            if not owner:
-                raise ValueError("bd_owner_id must reference an active user in this tenant")
-            lead.bd_owner_id = bd_owner_id
-            # If manager not explicitly set, recompute from hierarchy.
-            if reporting_manager_id is None:
-                lead.reporting_manager_id = await bd_assignment_service.resolve_manager_for_user(
-                    tenant_id, bd_owner_id
-                )
-
-        if reporting_manager_id is not None:
-            mgr = await User.find_one(
-                {"_id": reporting_manager_id, "tenant_id": tenant_id, "is_active": True, "deleted_at": None}
-            )
-            if not mgr:
-                raise ValueError("reporting_manager_id must reference an active user in this tenant")
-            lead.reporting_manager_id = reporting_manager_id
-
-        lead.territory_match_source = "manual"
-        lead.territory_assigned_at = datetime.utcnow()
-        lead.last_modified_by_id = current_user_id
-        await lead.save()
-
-        await self.log_custom_activity(
-            action="bd_reassigned",
-            entity_type="lead",
-            entity=lead,
-            description=f"BD reassigned (reason: {reason or 'manual override'})",
-            changes={
-                "bd_owner_id": {"old": previous_bd, "new": str(lead.bd_owner_id) if lead.bd_owner_id else None},
-                "reporting_manager_id": {"old": previous_manager, "new": str(lead.reporting_manager_id) if lead.reporting_manager_id else None},
-            },
-        )
-        return lead
-
-    async def resolve_territory(
-        self,
-        lead_id: str,
-        tenant_id: ObjectId,
-        current_user_id: ObjectId,
-    ) -> Optional[Lead]:
-        """Re-run automatic territory + BD resolution for an existing lead."""
-        lead = await self.get_lead(lead_id, tenant_id)
-        if not lead:
-            return None
-
-        assignment = await bd_assignment_service.resolve_for_address(
-            tenant_id=tenant_id,
-            country=lead.country,
-            state=lead.state,
-            zip_code=lead.zip,
-        )
-        if assignment.is_empty():
-            return lead
-
-        lead.territory_id = assignment.territory_id
-        lead.region_id = assignment.region_id
-        lead.bd_owner_id = assignment.bd_owner_id
-        lead.reporting_manager_id = assignment.reporting_manager_id
-        lead.territory_match_source = assignment.match_source
-        lead.territory_assigned_at = datetime.utcnow()
-        lead.last_modified_by_id = current_user_id
-        await lead.save()
-        return lead
-
     async def get_leads_with_metadata(
         self,
         tenant_id: ObjectId,

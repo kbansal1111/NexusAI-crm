@@ -63,16 +63,19 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
     }, []);
 
     // ── Calculations ────────────────────────────────────────────────────────
+    // Rejected transactions stay visible as audit rows but must not count
+    // toward the ledger totals — accounts refused the amount.
+    const counted = transactions.filter((t) => t.approval_status !== "rejected");
 
-    const totalReceived = transactions
+    const totalReceived = counted
         .filter((t) => t.transaction_type === "Receive")
         .reduce((s, t) => s + t.amount, 0);
 
-    const totalPaid = transactions
+    const totalPaid = counted
         .filter((t) => t.transaction_type === "Pay")
         .reduce((s, t) => s + t.amount, 0);
 
-    const totalRefund = transactions
+    const totalRefund = counted
         .filter((t) => t.transaction_type === "Refund")
         .reduce((s, t) => s + t.amount, 0);
 

@@ -39,6 +39,9 @@ export interface PaymentScheduleItem {
     notes?: string;
     paid_at?: string;
     transaction_id?: string;
+    /** Approval state of the linked receipt — the milestone reads "Received"
+     *  only once this is "approved"; before that it is pending verification. */
+    receipt_approval_status?: "pending_verification" | "verified" | "approved" | "rejected" | null;
     created_at?: string;
     updated_at?: string;
 }

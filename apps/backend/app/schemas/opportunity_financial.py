@@ -83,6 +83,10 @@ class PaymentScheduleItemResponse(BaseModel):
     notes: Optional[str] = None
     paid_at: Optional[datetime] = None
     transaction_id: Optional[str] = None
+    # Approval state of the linked Receive transaction (None until the
+    # milestone is marked Received). The UI shows the milestone as "Received"
+    # only once this is "approved"; before that it is pending verification.
+    receipt_approval_status: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

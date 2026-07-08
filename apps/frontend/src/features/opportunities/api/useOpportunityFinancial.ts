@@ -181,6 +181,10 @@ export const useVerifyTransaction = (opportunityId: string) => {
             queryClient.invalidateQueries({
                 queryKey: ["opportunities", opportunityId, "transactions"],
             });
+            // Schedule milestones display the linked receipt's approval state.
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
             toast.success("Transaction verified");
         },
         onError: () => toast.error("Failed to verify transaction"),
@@ -196,6 +200,10 @@ export const useApproveTransaction = (opportunityId: string) => {
             queryClient.invalidateQueries({
                 queryKey: ["opportunities", opportunityId, "transactions"],
             });
+            // Approval is what flips a schedule milestone to "Received".
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
             toast.success("Transaction approved");
         },
         onError: () => toast.error("Failed to approve transaction"),
@@ -210,6 +218,10 @@ export const useRejectTransaction = (opportunityId: string) => {
         onSuccess: () => {
             queryClient.invalidateQueries({
                 queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Rejecting a schedule-linked receipt reverts its milestone to Pending.
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
             });
             toast.success("Transaction rejected");
         },
@@ -238,6 +250,9 @@ export const useQueueVerifyTransaction = () => {
             queryClient.invalidateQueries({
                 queryKey: ["opportunities", opportunityId, "transactions"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
             toast.success("Transaction verified");
         },
         onError: () => toast.error("Failed to verify transaction"),
@@ -253,6 +268,10 @@ export const useQueueApproveTransaction = () => {
             queryClient.invalidateQueries({ queryKey: QUEUE_KEY });
             queryClient.invalidateQueries({
                 queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Approval is what flips a schedule milestone to "Received".
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
             });
             toast.success("Transaction approved");
         },
@@ -276,6 +295,10 @@ export const useQueueRejectTransaction = () => {
             queryClient.invalidateQueries({ queryKey: QUEUE_KEY });
             queryClient.invalidateQueries({
                 queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Rejecting a schedule-linked receipt reverts its milestone to Pending.
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
             });
             toast.success("Transaction rejected");
         },

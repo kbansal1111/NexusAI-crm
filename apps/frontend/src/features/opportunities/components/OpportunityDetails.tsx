@@ -551,26 +551,17 @@ export function OpportunityDetails({
                                 <span className="font-medium">{record.operation_user_name || "-"}</span>
                             </div>
                             <div className="flex justify-between border-b pb-1">
-                                <span className="text-slate-400">BD Owner</span>
+                                <span className="text-slate-400">Territory Manager</span>
                                 <span className="font-medium text-blue-500">
-                                    {record.bd_owner_name || (record.bd_owner_id ? "(unknown)" : "Unassigned")}
+                                    {record.territory_manager_name || "—"}
                                 </span>
                             </div>
-                            <div className="flex justify-between border-b pb-1">
-                                <span className="text-slate-400">Territory</span>
-                                <span className="font-medium">
-                                    {record.territory_name || (record.territory_id ? "(unresolved)" : "Unassigned")}
-                                    {record.territory_match_source && (
-                                        <span className="ml-1 text-[10px] text-slate-500">
-                                            via {record.territory_match_source}
-                                        </span>
-                                    )}
-                                </span>
-                            </div>
-                            <div className="flex justify-between pb-1">
-                                <span className="text-slate-400">Reporting Manager</span>
-                                <span className="font-medium text-blue-500">
-                                    {record.reporting_manager_name || (record.reporting_manager_id ? "(unknown)" : "—")}
+                            <div className="flex justify-between gap-4 pb-1">
+                                <span className="text-slate-400 whitespace-nowrap">Team Members</span>
+                                <span className="font-medium text-right">
+                                    {record.team_member_names && record.team_member_names.length > 0
+                                        ? record.team_member_names.join(", ")
+                                        : "—"}
                                 </span>
                             </div>
                         </div>
