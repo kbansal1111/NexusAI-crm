@@ -107,5 +107,3 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-export { ENTITY_TYPES };

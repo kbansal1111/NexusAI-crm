@@ -46,7 +46,11 @@ class UserBase(BaseModel):
     assigned_countries: List[str] = Field(default_factory=list)
     assigned_destinations: List[str] = Field(default_factory=list)
     not_assigned_countries: List[str] = Field(default_factory=list)
-    
+
+    # BD panel — flag + assigned Territory ids (see Territory model)
+    is_bd_user: bool = False
+    territory_ids: List[str] = Field(default_factory=list)
+
     # Targets
     monthly_revenue_target: float = 0.0
     monthly_deals_target: int = 0
@@ -96,10 +100,14 @@ class UserUpdate(BaseModel):
     assigned_countries: Optional[List[str]] = None
     assigned_destinations: Optional[List[str]] = None
     not_assigned_countries: Optional[List[str]] = None
-    
+
+    # BD panel
+    is_bd_user: Optional[bool] = None
+    territory_ids: Optional[List[str]] = None
+
     monthly_revenue_target: Optional[float] = None
     monthly_deals_target: Optional[int] = None
-    
+
     # SMTP settings
     smtp_host: Optional[str] = None
     smtp_port: Optional[int] = None
@@ -173,6 +181,9 @@ class UserResponse(UserBase):
             # Convert assigned_destinations to strings
             if hasattr(obj, 'assigned_destinations') and obj.assigned_destinations:
                 data['assigned_destinations'] = [str(dest_id) for dest_id in obj.assigned_destinations]
+            # Convert territory_ids to strings
+            if hasattr(obj, 'territory_ids') and obj.territory_ids:
+                data['territory_ids'] = [str(t) for t in obj.territory_ids]
             # Convert audit fields to strings
             if hasattr(obj, 'created_by') and obj.created_by:
                 data['created_by'] = str(obj.created_by)

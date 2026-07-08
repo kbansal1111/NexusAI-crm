@@ -19,7 +19,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_permission
 from app.models.user import User
 from app.models.opportunity import Opportunity
 from app.models.opportunity_picklists import SalesStage
@@ -452,52 +452,136 @@ async def my_opp_dashboard(current_user: User = Depends(get_current_user)):
     return {"owner_id": str(current_user.id), "count": count}
 
 
-# ============== BD dashboards ==============
+# ============== BD panel dashboards ==============
+
+async def _bd_opportunity_match(current_user: User) -> Dict[str, Any]:
+    """MongoDB match for the BD dashboard: tenant + (owner-visible OR territory).
+
+    Mirrors the opportunity list scoping in visibility_scope: an admin sees the
+    whole tenant; a non-admin BD user sees their own/hierarchy opportunities OR
+    any opportunity in their assigned territories ("Territory + own"). The
+    tenant_id filter is always present, so a cross-tenant territory id can never
+    surface another tenant's data.
+    """
+    from app.services.visibility_scope import get_visible_owner_ids, bd_territory_ids
+    match: Dict[str, Any] = {"tenant_id": current_user.tenant_id, "deleted_at": None}
+    visible = await get_visible_owner_ids(current_user)
+    if visible is None:
+        return match  # admin — whole tenant
+    bd_terr = bd_territory_ids(current_user)
+    or_clauses: List[Dict[str, Any]] = [{"owner_id": {"$in": visible}}]
+    if bd_terr:
+        or_clauses.append({"territory_id": {"$in": bd_terr}})
+    match["$or"] = or_clauses
+    return match
+
 
 @router.get("/bd/summary")
-async def bd_summary(current_user: User = Depends(get_current_user)):
-    """Mirror old `/get_bd_oppo_dashboard`."""
-    return {"summary": "bd_summary", "rows": []}
+async def bd_summary(current_user: User = Depends(check_permission("view_bd_panel"))):
+    """Header numbers for the BD dashboard: closed (won) revenue this month,
+    open pipeline value, and the BD user's monthly revenue target."""
+    match = await _bd_opportunity_match(current_user)
+    won_ids = await _won_stage_ids(current_user.tenant_id)
+    start, end, _ = _period_bounds("current_month")
+
+    closed_rows = await Opportunity.aggregate([
+        {"$match": {**match, "sales_stage_id": {"$in": won_ids},
+                    "close_date": {"$gte": start, "$lte": end}}},
+        {"$group": {"_id": None, "closed": {"$sum": _amount_double()}}},
+    ]).to_list()
+    open_rows = await Opportunity.aggregate([
+        {"$match": {**match, "sales_stage_id": {"$nin": won_ids}}},
+        {"$group": {"_id": None, "open": {"$sum": _amount_double()}}},
+    ]).to_list()
+
+    return {
+        "closed": closed_rows[0]["closed"] if closed_rows else 0,
+        "open": open_rows[0]["open"] if open_rows else 0,
+        "target": current_user.monthly_revenue_target or 0,
+    }
 
 
-@router.get("/bd/today-opportunities")
-async def bd_today_opportunities(current_user: User = Depends(get_current_user)):
-    """Mirror old `/get_bd_dashboard_today_oppo`."""
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    return {"date": today.isoformat(), "opportunities": []}
+@router.get("/bd/revenue-chart")
+async def bd_revenue_chart(current_user: User = Depends(check_permission("view_bd_panel"))):
+    """Cumulative daily won revenue, this month vs last month, scoped to the BD
+    user's visibility. Same shape as /dashboards/revenue-chart (consumed by the
+    SalesChart component via getSalesChartData)."""
+    match = await _bd_opportunity_match(current_user)
+    won_ids = await _won_stage_ids(current_user.tenant_id)
+
+    now = datetime.utcnow()
+    this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if now.month == 1:
+        last_month_start = this_month_start.replace(year=now.year - 1, month=12)
+    else:
+        last_month_start = this_month_start.replace(month=now.month - 1)
+
+    opps = await Opportunity.find({
+        **match,
+        "sales_stage_id": {"$in": won_ids},
+        "close_date": {"$gte": last_month_start},
+    }).to_list()
+
+    _, days_this = monthrange(now.year, now.month)
+    _, days_last = monthrange(last_month_start.year, last_month_start.month)
+    max_days = max(days_this, days_last)
+
+    per_day = {
+        d: {"day": d, "sale_this_month": 0, "sale_last_month": 0, "target": 0}
+        for d in range(1, max_days + 1)
+    }
+    for opp in opps:
+        if not opp.close_date:
+            continue
+        day = min(opp.close_date.day, max_days)
+        amount = float(getattr(opp, "amount", 0) or 0)
+        if opp.close_date >= this_month_start:
+            per_day[day]["sale_this_month"] += amount
+        else:
+            per_day[day]["sale_last_month"] += amount
+
+    run_this = run_last = 0.0
+    for d in range(1, max_days + 1):
+        run_this += per_day[d]["sale_this_month"]
+        run_last += per_day[d]["sale_last_month"]
+        per_day[d]["sale_this_month"] = run_this
+        per_day[d]["sale_last_month"] = run_last
+
+    return list(per_day.values())
 
 
-@router.get("/bd/today-revenue")
-async def bd_today_revenue(current_user: User = Depends(get_current_user)):
-    """Mirror old `/get_bd_dashboard_today_revenue`."""
-    return {"date": datetime.utcnow().date().isoformat(), "revenue": 0}
+@router.get("/bd/stage-breakdown")
+async def bd_stage_breakdown(current_user: User = Depends(check_permission("view_bd_panel"))):
+    """Opportunity count/value grouped by sales stage, scoped to the BD user's
+    visibility. Same shape as the pipeline analytics (stages + percentage)."""
+    match = await _bd_opportunity_match(current_user)
 
+    agg = await Opportunity.aggregate([
+        {"$match": match},
+        {"$group": {
+            "_id": "$sales_stage_id",
+            "count": {"$sum": 1},
+            "value": {"$sum": _amount_double()},
+        }},
+    ]).to_list()
 
-@router.get("/bd/tomorrow-departures")
-async def bd_tomorrow_departures(current_user: User = Depends(get_current_user)):
-    """Mirror old `/get_bd_dashboard_tomorrow_dep`."""
-    tomorrow = datetime.utcnow() + timedelta(days=1)
-    return {"date": tomorrow.date().isoformat(), "departures": []}
+    stages = await SalesStage.find({"tenant_id": current_user.tenant_id}).to_list()
+    stage_names = {str(s.id): s.name for s in stages}
 
+    buckets: Dict[str, Dict[str, Any]] = {}
+    for row in agg:
+        sid = row.get("_id")
+        name = stage_names.get(str(sid), "Unknown") if sid else "Unknown"
+        b = buckets.setdefault(name, {"stage": name, "count": 0, "value": 0})
+        b["count"] += row.get("count", 0)
+        b["value"] += row.get("value", 0) or 0
 
-@router.get("/bd/graph-performance")
-async def bd_graph_performance(current_user: User = Depends(get_current_user)):
-    """Mirror old `/get_bd_opp_graph_performance`."""
-    return {"series": [], "buckets": []}
-
-
-@router.get("/bd/stage-percentage")
-async def bd_stage_percentage(current_user: User = Depends(get_current_user)):
-    """Mirror old `/get_bd_stage_oppo_percentage`.
-
-    SECURITY: previously used SalesStage.find_all() which returned every
-    tenant's sales stages — a cross-tenant leak even though only id/name were
-    exposed. Now tenant-scoped.
-    """
-    stages = await SalesStage.find(
-        {"tenant_id": current_user.tenant_id, "is_active": True}
-    ).to_list()
-    return {"stages": [{"id": str(s.id), "name": s.name, "percentage": 0} for s in stages]}
+    total_count = sum(b["count"] for b in buckets.values())
+    result = list(buckets.values())
+    for b in result:
+        b["percentage"] = round(b["count"] / total_count * 100, 2) if total_count else 0.0
+    return {"stages": result, "total_count": total_count,
+            "total_value": sum(b["value"] for b in buckets.values())}
 
 
 # ============== Generic graph endpoints ==============

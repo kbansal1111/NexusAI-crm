@@ -20,9 +20,7 @@ export type PicklistType =
   | "inclusion"
   | "supplier_type"
   | "destination"
-  | "itinerary_inclusion"
-  | "bd_activity_type"
-  | "expense_category";
+  | "itinerary_inclusion";
 
 export interface PicklistItem {
   id: string;

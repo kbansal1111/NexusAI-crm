@@ -38,6 +38,7 @@ import { User } from "@/features/admin/types";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { locationService } from "@/lib/api/services/locations.service";
+import { territoryService, type Territory } from "@/lib/api/services/territory.service";
 import { MultiSelect } from "@/components/ui/multi-select";
 
 
@@ -68,6 +69,8 @@ const userFormSchema = z.object({
     is_available_for_assignment: z.boolean().default(true),
     assigned_countries: z.array(z.string()).default([]),
     not_assigned_countries: z.array(z.string()).default([]),
+    is_bd_user: z.boolean().default(false),
+    territory_ids: z.array(z.string()).default([]),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -88,6 +91,8 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
     const isEditing = !!initialData;
     const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
     const [isLoadingCountries, setIsLoadingCountries] = useState(false);
+    const [territories, setTerritories] = useState<Territory[]>([]);
+    const [isLoadingTerritories, setIsLoadingTerritories] = useState(false);
 
     React.useEffect(() => {
         if (open) {
@@ -98,6 +103,12 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
                 })
                 .catch((err) => console.error("Failed to load countries", err))
                 .finally(() => setIsLoadingCountries(false));
+
+            setIsLoadingTerritories(true);
+            territoryService.listTerritories()
+                .then((res) => setTerritories(res.territories || []))
+                .catch((err) => console.error("Failed to load territories", err))
+                .finally(() => setIsLoadingTerritories(false));
         }
     }, [open]);
 
@@ -132,6 +143,8 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
             is_available_for_assignment: initialData?.is_available_for_assignment ?? true,
             assigned_countries: initialData?.assigned_countries || [],
             not_assigned_countries: initialData?.not_assigned_countries || [],
+            is_bd_user: initialData?.is_bd_user ?? false,
+            territory_ids: initialData?.territory_ids || [],
         },
     });
 
@@ -154,6 +167,8 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
                 is_available_for_assignment: initialData?.is_available_for_assignment ?? true,
                 assigned_countries: initialData?.assigned_countries || [],
                 not_assigned_countries: initialData?.not_assigned_countries || [],
+                is_bd_user: initialData?.is_bd_user ?? false,
+                territory_ids: initialData?.territory_ids || [],
             });
         }
     }, [open, initialData]);
@@ -174,6 +189,8 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
                 is_available_for_assignment: data.is_available_for_assignment,
                 assigned_countries: data.assigned_countries,
                 not_assigned_countries: data.not_assigned_countries,
+                is_bd_user: data.is_bd_user,
+                territory_ids: data.territory_ids,
             };
 
             if (isEditing) {
@@ -518,6 +535,58 @@ export function UserFormSheet({ open, onOpenChange, initialData }: UserFormSheet
                                     </FormItem>
                                 )}
                             />
+
+                            {/* BD User flag */}
+                            <FormField
+                                control={form.control}
+                                name="is_bd_user"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>BD User</FormLabel>
+                                        <Select
+                                            onValueChange={(v) => field.onChange(v === "yes")}
+                                            defaultValue={field.value ? "yes" : "no"}
+                                            value={field.value ? "yes" : "no"}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="yes">Yes</SelectItem>
+                                                <SelectItem value="no">No</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Assigned Territories — only relevant for BD users */}
+                            {form.watch("is_bd_user") && (
+                                <FormField
+                                    control={form.control}
+                                    name="territory_ids"
+                                    render={({ field }) => {
+                                        const options = territories.map((t) => ({ value: t.id, label: t.name }));
+                                        return (
+                                            <FormItem>
+                                                <FormLabel>Assigned Territories</FormLabel>
+                                                <FormControl>
+                                                    <MultiSelect
+                                                        options={options}
+                                                        selected={field.value || []}
+                                                        onChange={field.onChange}
+                                                        placeholder="Select territories..."
+                                                        isLoading={isLoadingTerritories}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        );
+                                    }}
+                                />
+                            )}
 
                             {/* Countries Assign */}
                             <FormField

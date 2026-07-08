@@ -823,6 +823,41 @@ async def match_custom_field_entity_ids(
     return [getattr(d, entity_fk) for d in docs]
 
 
+async def match_account_filter_ids(
+    account_rules: List[Dict[str, Any]],
+    tenant_id: PydanticObjectId,
+) -> Optional[List[PydanticObjectId]]:
+    """Account ids matching a set of 'account.<field>' filter rules (tenant-scoped).
+
+    Fields like Account Type / City / State / Street / Zip live on the linked
+    Account, not on the opportunity. Those rules are resolved here to the set of
+    matching account ids, which the caller ANDs into the opportunity query via
+    {account_id: {$in: ids}}. All account rules are ANDed together, so an
+    opportunity matches only when its account satisfies every account rule.
+
+    Returns a list (possibly empty) when at least one rule translated, or None
+    when no rule was usable (so the caller skips instead of emptying the result).
+    """
+    from app.core.entity_filter import build_filter_clauses
+    from app.models.account import Account
+
+    # Strip the "account." prefix so the account whitelist recognises the field.
+    stripped = []
+    for r in account_rules:
+        field = str(r.get("field", ""))
+        if not field.startswith("account."):
+            continue
+        stripped.append({**r, "field": field.split("account.", 1)[1]})
+
+    clauses = build_filter_clauses("account", stripped)
+    if not clauses:
+        return None
+
+    q: Dict[str, Any] = {"tenant_id": tenant_id, "deleted_at": None, "$and": clauses}
+    accounts = await Account.find(q).to_list()
+    return [a.id for a in accounts]
+
+
 async def apply_entity_view_filters(
     query: Dict[str, Any],
     entity_type: str,
@@ -833,8 +868,9 @@ async def apply_entity_view_filters(
     """AND a saved view's structured filter_rules (+ custom-field rules) into `query`.
 
     Standard fields go through the whitelisted translator; custom 'additional:'
-    rules resolve to a set of matching ids. Shared by every module's list
-    endpoint so the behavior is identical across modules.
+    rules resolve to a set of matching ids; 'account.<field>' rules resolve to a
+    set of matching account ids. Shared by every module's list endpoint so the
+    behavior is identical across modules.
     """
     from app.core.entity_filter import build_filter_clauses
 
@@ -851,6 +887,14 @@ async def apply_entity_view_filters(
             ids = await match_custom_field_entity_ids(entity_type, cr, tenant_id)
             if ids is not None:  # None ⇒ unsupported op, skip (don't empty the result)
                 query.setdefault("$and", []).append({"_id": {"$in": ids}})
+
+    # Account-attribute filters (Account Type/City/State/Street/Zip) — resolve the
+    # linked account rather than the opportunity document itself.
+    account_rules = [r for r in rules if str(r.get("field", "")).startswith("account.")]
+    if account_rules:
+        acct_ids = await match_account_filter_ids(account_rules, tenant_id)
+        if acct_ids is not None:  # None ⇒ nothing translated, don't empty the result
+            query.setdefault("$and", []).append({"account_id": {"$in": acct_ids}})
 
 
 def view_has_custom_columns(view: Any) -> bool:

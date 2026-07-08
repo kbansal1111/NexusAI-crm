@@ -201,12 +201,19 @@ class OpportunityResponse(BaseModel):
     territory_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     region_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     territory_name: Optional[str] = None
+    # Manager of the opportunity's territory (Territory.manager_id) — the
+    # "Territory Manager" shown on the detail panel.
+    territory_manager_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
+    territory_manager_name: Optional[str] = None
     bd_owner_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     bd_owner_name: Optional[str] = None
     reporting_manager_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     reporting_manager_name: Optional[str] = None
     operation_user_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     operation_user_name: Optional[str] = None
+    # Team members — names enriched server-side for the right panel.
+    team_member_ids: Annotated[Optional[List[str]], BeforeValidator(lambda v: [str(x) for x in v] if v else [])] = Field(default_factory=list)
+    team_member_names: Optional[List[str]] = Field(default_factory=list)
     territory_match_source: Optional[str] = None
     territory_assigned_at: Optional[datetime] = None
 

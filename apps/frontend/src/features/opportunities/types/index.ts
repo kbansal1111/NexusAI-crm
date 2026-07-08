@@ -62,12 +62,16 @@ export interface Opportunity {
     territory_id?: string;
     region_id?: string;
     territory_name?: string;
+    territory_manager_id?: string;
+    territory_manager_name?: string;
     bd_owner_id?: string;
     bd_owner_name?: string;
     reporting_manager_id?: string;
     reporting_manager_name?: string;
     operation_user_id?: string;
     operation_user_name?: string;
+    team_member_ids?: string[];
+    team_member_names?: string[];
     territory_match_source?: string;
     territory_assigned_at?: string;
 }

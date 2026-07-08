@@ -70,6 +70,14 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = ""
 
+    # AI Assistant (OpenRouter — OpenAI-compatible gateway)
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    # OpenRouter model slug; swap models via env without code changes.
+    ASSISTANT_MODEL: str = "anthropic/claude-sonnet-4.5"
+    # Hard cap on tool-call rounds per assistant turn.
+    ASSISTANT_MAX_TOOL_ROUNDS: int = 8
+
     # Stripe (Billing)
     STRIPE_SECRET_KEY: str = ""
     STRIPE_PUBLISHABLE_KEY: str = ""

@@ -147,29 +147,46 @@ def is_task_visible(task_owner_id: Optional[ObjectId], task_assigned_id: Optiona
     return False
 
 
-def apply_lead_bd_visibility_filter(
-    query: dict,
-    visible_owner_ids: Optional[List[ObjectId]],
-) -> dict:
-    """
-    Lead-specific filter that grants visibility when the user is EITHER the
-    sales owner OR the BD owner OR the reporting manager. Admin (None) is
-    unchanged.
+def _merge_or(query: dict, or_clauses: list) -> dict:
+    """Merge an $or set into a Mongo query without clobbering an existing one.
 
-    Use this in /bd/* views where BDs need to see leads they are field-owners
-    of even if the sales owner is outside their hierarchy.
+    If the query already has an $or, both sets are ANDed together so each
+    remains independently satisfied; otherwise the $or is added directly.
     """
-    if visible_owner_ids is None:
-        return query
-    or_clauses = [
-        {"owner_id": {"$in": visible_owner_ids}},
-        {"bd_owner_id": {"$in": visible_owner_ids}},
-        {"reporting_manager_id": {"$in": visible_owner_ids}},
-    ]
-    # Merge with existing $or rather than overwrite, if any.
     existing_or = query.pop("$or", None)
     if existing_or:
-        query["$and"] = [{"$or": existing_or}, {"$or": or_clauses}]
+        query.setdefault("$and", []).extend([{"$or": existing_or}, {"$or": or_clauses}])
     else:
         query["$or"] = or_clauses
     return query
+
+
+def bd_territory_ids(user: User) -> Optional[List[ObjectId]]:
+    """Territory ids that widen a BD user's opportunity visibility.
+
+    A BD user (is_bd_user=True) additionally sees opportunities whose
+    territory_id is in their assigned territories, on top of their normal
+    owner/hierarchy scope ("Territory + own"). Returns None when the user is
+    not a BD user or has no territories — meaning "no territory widening".
+    """
+    if getattr(user, "is_bd_user", False) and user.territory_ids:
+        return list(user.territory_ids)
+    return None
+
+
+def is_opportunity_visible(
+    record_owner_id: ObjectId,
+    record_territory_id: Optional[ObjectId],
+    visible_owner_ids: Optional[List[ObjectId]],
+    bd_territory_ids: Optional[List[ObjectId]] = None,
+) -> bool:
+    """Detail-view counterpart of the opportunity list filter.
+
+    Visible if the owner is in the user's scope (admin/None → always) OR, for a
+    BD user, the opportunity's territory is one of the user's territories.
+    """
+    if is_record_visible(record_owner_id, visible_owner_ids):
+        return True
+    if bd_territory_ids and record_territory_id is not None and record_territory_id in bd_territory_ids:
+        return True
+    return False

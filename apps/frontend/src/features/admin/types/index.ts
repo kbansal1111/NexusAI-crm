@@ -35,6 +35,10 @@ export interface User {
     assigned_countries?: string[];
     not_assigned_countries?: string[];
 
+    // BD panel
+    is_bd_user?: boolean;
+    territory_ids?: string[];
+
     // Targets
     monthly_revenue_target: number;
     monthly_deals_target: number;
@@ -58,6 +62,8 @@ export interface UserInput {
     is_available_for_assignment?: boolean;
     assigned_countries?: string[];
     not_assigned_countries?: string[];
+    is_bd_user?: boolean;
+    territory_ids?: string[];
     monthly_revenue_target?: number;
     monthly_deals_target?: number;
 }

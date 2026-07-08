@@ -64,17 +64,6 @@ class Lead(BaseDocument):
     created_by: PydanticObjectId
     last_modified_by_id: Optional[PydanticObjectId] = None
 
-    # BD multi-owner triple — auto-resolved from territory + role hierarchy.
-    # See bd_assignment_service.resolve_for_address().
-    territory_id: Optional[PydanticObjectId] = None
-    region_id: Optional[PydanticObjectId] = None
-    bd_owner_id: Optional[PydanticObjectId] = None
-    reporting_manager_id: Optional[PydanticObjectId] = None
-    territory_match_source: Optional[str] = None  # postal_code|postal_code_pattern|state|country|manual
-    territory_assigned_at: Optional[datetime] = None
-    # Flag driving Phase 9 automation rules (auto-create BD visit when set).
-    requires_field_meeting: bool = False
-    
     # Custom Fields
     custom_fields: Dict[str, Any] = Field(default_factory=dict)
     
@@ -103,8 +92,6 @@ class Lead(BaseDocument):
             [("tenant_id", 1), ("owner_id", 1)],
             [("tenant_id", 1), ("is_converted", 1)],
             [("tenant_id", 1), ("lead_status_id", 1)],
-            [("tenant_id", 1), ("bd_owner_id", 1)],
-            [("tenant_id", 1), ("territory_id", 1)],
         ]
 
     

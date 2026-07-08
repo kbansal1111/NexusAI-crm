@@ -28,6 +28,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { CommandPalette } from "@/components/search/CommandPalette";
 import { GlobalSearchBar } from "@/components/search/GlobalSearchBar";
 import { RouteGuard } from "@/components/permissions/RouteGuard";
+import { AssistantGate } from "@/features/assistant/components/AssistantGate";
 import { usePermissionRefresh } from "@/hooks/use-permission-refresh";
 
 
@@ -136,6 +137,7 @@ export default function DashboardLayout({
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
+                        <AssistantGate />
                         <ThemeToggle />
                         <NotificationBell />
                         <DropdownMenu>

@@ -169,3 +169,139 @@ export const useUpdateTransaction = (opportunityId: string) => {
         onError: () => toast.error("Failed to update transaction"),
     });
 };
+
+// ── Approval workflow hooks (accounts team) ────────────────────────────────────
+
+export const useVerifyTransaction = (opportunityId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (txnId: string) =>
+            financialService.verifyTransaction(opportunityId, txnId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Schedule milestones display the linked receipt's approval state.
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
+            toast.success("Transaction verified");
+        },
+        onError: () => toast.error("Failed to verify transaction"),
+    });
+};
+
+export const useApproveTransaction = (opportunityId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (txnId: string) =>
+            financialService.approveTransaction(opportunityId, txnId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Approval is what flips a schedule milestone to "Received".
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
+            toast.success("Transaction approved");
+        },
+        onError: () => toast.error("Failed to approve transaction"),
+    });
+};
+
+export const useRejectTransaction = (opportunityId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ txnId, reason }: { txnId: string; reason?: string }) =>
+            financialService.rejectTransaction(opportunityId, txnId, reason),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Rejecting a schedule-linked receipt reverts its milestone to Pending.
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
+            toast.success("Transaction rejected");
+        },
+        onError: () => toast.error("Failed to reject transaction"),
+    });
+};
+
+// ── Accounts approval queue (tenant-wide, not tied to one opportunity) ──────────
+
+const QUEUE_KEY = ["transactions", "approval-queue"] as const;
+
+export const useTransactionApprovalQueue = (status?: string) => {
+    return useQuery({
+        queryKey: [...QUEUE_KEY, status ?? "open"],
+        queryFn: () => financialService.getApprovalQueue(status),
+    });
+};
+
+export const useQueueVerifyTransaction = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ opportunityId, txnId }: { opportunityId: string; txnId: string }) =>
+            financialService.verifyTransaction(opportunityId, txnId),
+        onSuccess: (_data, { opportunityId }) => {
+            queryClient.invalidateQueries({ queryKey: QUEUE_KEY });
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
+            toast.success("Transaction verified");
+        },
+        onError: () => toast.error("Failed to verify transaction"),
+    });
+};
+
+export const useQueueApproveTransaction = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ opportunityId, txnId }: { opportunityId: string; txnId: string }) =>
+            financialService.approveTransaction(opportunityId, txnId),
+        onSuccess: (_data, { opportunityId }) => {
+            queryClient.invalidateQueries({ queryKey: QUEUE_KEY });
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Approval is what flips a schedule milestone to "Received".
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
+            toast.success("Transaction approved");
+        },
+        onError: () => toast.error("Failed to approve transaction"),
+    });
+};
+
+export const useQueueRejectTransaction = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            opportunityId,
+            txnId,
+            reason,
+        }: {
+            opportunityId: string;
+            txnId: string;
+            reason?: string;
+        }) => financialService.rejectTransaction(opportunityId, txnId, reason),
+        onSuccess: (_data, { opportunityId }) => {
+            queryClient.invalidateQueries({ queryKey: QUEUE_KEY });
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "transactions"],
+            });
+            // Rejecting a schedule-linked receipt reverts its milestone to Pending.
+            queryClient.invalidateQueries({
+                queryKey: ["opportunities", opportunityId, "payment-schedule"],
+            });
+            toast.success("Transaction rejected");
+        },
+        onError: () => toast.error("Failed to reject transaction"),
+    });
+};

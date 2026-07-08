@@ -300,6 +300,8 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
     // ── Status change: intercept Received ──────────────────────────────────
 
     const handleStatusChange = (itemId: string, newStatus: string) => {
+        // Placeholder for a receipt awaiting accounts review — not a real status.
+        if (newStatus === "UnderReview") return;
         if (newStatus === "Received") {
             // Find the item and open Payment Received dialog
             const item = savedItems.find((i) => i.id === itemId);
@@ -451,7 +453,14 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {savedItems.map((item, idx) => (
+                                    {savedItems.map((item, idx) => {
+                                        // A recorded receipt reads "Received" only once accounts
+                                        // approves it; until then it is under verification.
+                                        const underReview =
+                                            item.status === "Received" &&
+                                            !!item.receipt_approval_status &&
+                                            item.receipt_approval_status !== "approved";
+                                        return (
                                         <tr
                                             key={item.id}
                                             className="border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors"
@@ -467,23 +476,33 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
                                             </td>
                                             <td className="px-4 py-3">
                                                 <select
-                                                    value={item.status}
+                                                    value={underReview ? "UnderReview" : item.status}
                                                     onChange={(e) =>
                                                         handleStatusChange(item.id, e.target.value)
                                                     }
                                                     disabled={updateMutation.isPending || isLocked}
                                                     className={`text-sm border rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:opacity-60 ${
-                                                        item.status === "Received"
+                                                        item.status === "Received" && !underReview
                                                             ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
                                                             : "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40"
                                                     }`}
                                                 >
                                                     <option value="Pending">Pending</option>
-                                                    <option value="Received">Received</option>
+                                                    {underReview ? (
+                                                        // Receipt recorded, awaiting accounts. Sales can
+                                                        // only withdraw it (back to Pending) — flipping to
+                                                        // Received happens via accounts approval.
+                                                        <option value="UnderReview" disabled>
+                                                            Pending verification
+                                                        </option>
+                                                    ) : (
+                                                        <option value="Received">Received</option>
+                                                    )}
                                                 </select>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

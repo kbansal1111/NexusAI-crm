@@ -39,6 +39,9 @@ export interface PaymentScheduleItem {
     notes?: string;
     paid_at?: string;
     transaction_id?: string;
+    /** Approval state of the linked receipt — the milestone reads "Received"
+     *  only once this is "approved"; before that it is pending verification. */
+    receipt_approval_status?: "pending_verification" | "verified" | "approved" | "rejected" | null;
     created_at?: string;
     updated_at?: string;
 }
@@ -55,6 +58,12 @@ export interface PaymentScheduleItemCreate {
 
 // ── Transaction types ────────────────────────────────────────────────────────
 
+export type TransactionApprovalStatus =
+    | "pending_verification"
+    | "verified"
+    | "approved"
+    | "rejected";
+
 export interface Transaction {
     id: string;
     opportunity_id: string;
@@ -69,8 +78,23 @@ export interface Transaction {
     destination?: string;
     note?: string;
     payment_schedule_item_id?: string;
+    // Sales → Accounts approval workflow
+    approval_status: TransactionApprovalStatus;
+    verified_by?: string;
+    verified_at?: string;
+    approved_by?: string;
+    approved_at?: string;
+    rejected_by?: string;
+    rejected_at?: string;
+    rejection_reason?: string;
     created_at?: string;
     updated_at?: string;
+}
+
+/** A queue row: a transaction plus its opportunity context (accounts approval queue). */
+export interface TransactionQueueItem extends Transaction {
+    opportunity_name?: string;
+    owner_name?: string;
 }
 
 export interface TransactionCreate {
@@ -215,6 +239,47 @@ export const financialService = {
         const res = await apiClient.put<Transaction>(
             `${BASE}/${opportunityId}/transactions/${txnId}`,
             data
+        );
+        return res.data;
+    },
+
+    // ── Approval workflow (accounts team) ─────────────────────────────────────
+    getApprovalQueue: async (status?: string): Promise<TransactionQueueItem[]> => {
+        const res = await apiClient.get<TransactionQueueItem[]>(
+            `${BASE}/transactions/approval-queue`,
+            { params: status ? { status } : undefined }
+        );
+        return res.data;
+    },
+
+    verifyTransaction: async (
+        opportunityId: string,
+        txnId: string
+    ): Promise<Transaction> => {
+        const res = await apiClient.post<Transaction>(
+            `${BASE}/${opportunityId}/transactions/${txnId}/verify`
+        );
+        return res.data;
+    },
+
+    approveTransaction: async (
+        opportunityId: string,
+        txnId: string
+    ): Promise<Transaction> => {
+        const res = await apiClient.post<Transaction>(
+            `${BASE}/${opportunityId}/transactions/${txnId}/approve`
+        );
+        return res.data;
+    },
+
+    rejectTransaction: async (
+        opportunityId: string,
+        txnId: string,
+        reason?: string
+    ): Promise<Transaction> => {
+        const res = await apiClient.post<Transaction>(
+            `${BASE}/${opportunityId}/transactions/${txnId}/reject`,
+            { reason }
         );
         return res.data;
     },

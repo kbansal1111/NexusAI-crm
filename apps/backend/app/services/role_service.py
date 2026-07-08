@@ -31,6 +31,9 @@ CORE_PERMISSIONS = [
     # Opportunity permissions
     "view_opportunity", "create_opportunity", "edit_opportunity", "delete_opportunity",
     "lock_opportunity", "unlock_opportunity",
+    # Opportunity finance (accounts team) — verify then give final approval on
+    # ledger transactions (amounts) entered by sales.
+    "verify_opportunity_transaction", "approve_opportunity_transaction",
 
     # Task permissions
     "view_task", "create_task", "edit_task", "delete_task",
@@ -104,15 +107,11 @@ CORE_PERMISSIONS = [
     # stored role docs don't break.  They map to hierarchy ops now.
     "view_department", "create_department", "edit_department", "delete_department",
 
-    # BD Panel (universal across industries) — territory-based field ops
-    "view_bd_panel", "manage_bd_panel",
-    "view_bd_visit", "create_bd_visit", "edit_bd_visit", "delete_bd_visit",
-    "approve_bd_visit", "check_in_bd_visit",
-    "view_expense", "create_expense", "edit_expense", "delete_expense",
-    "approve_expense", "reimburse_expense",
-    "view_live_tracking", "manage_live_tracking",
+    # BD Panel (universal across industries) — territory-scoped sales cockpit.
+    # view_bd_panel gates the panel UI; territory-based opportunity visibility is
+    # driven by the is_bd_user flag + user.territory_ids (see visibility_scope).
+    "view_bd_panel",
     "manage_territory",
-    "manage_automation_rules",
 ]
 
 # Travel-only permissions — destinations, itineraries, packages

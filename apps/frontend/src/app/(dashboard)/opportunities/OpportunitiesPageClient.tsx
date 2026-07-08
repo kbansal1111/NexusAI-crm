@@ -68,6 +68,7 @@ import { LoadingTable } from "@/components/ui/loading";
 import { ListCountHeader } from "@/features/views/ListCountHeader";
 import { ListViewFilterButton } from "@/features/views/ListViewFilterButton";
 import { buildLookupOptions, standardFieldByKey } from "@/features/views/accountFields";
+import { usePicklist } from "@/hooks/use-picklist";
 import { buildEntityColumns, type ViewLookups } from "@/features/views/accountColumnFactory";
 import { DynamicListTable } from "@/features/views/DynamicListTable";
 import { customFieldsService } from "@/lib/api/services/field-registry.service";
@@ -158,11 +159,20 @@ export default function OpportunitiesPageClient() {
     const destinationOptions: { id: string; name: string }[] =
         destinationsData?.destinations?.map((d) => ({ id: d.id, name: d.name })) || [];
 
+    // Picklist options for the filter value pickers (Opportunity Type, Source,
+    // Account Type). Without these the corresponding filters render an empty list.
+    const { items: opportunityTypes } = usePicklist("opportunity_type");
+    const { items: sources } = usePicklist("source");
+    const { items: accountTypes } = usePicklist("account_type");
+
     // field_key → value options for the Edit List Filters dropdowns.
     const lookupOptions = buildLookupOptions("opportunity", {
         users: owners,
         sales_stages: normalizedStages.map((s: any) => ({ id: s.id, name: s.name })),
         destinations: destinationOptions,
+        opportunity_types: opportunityTypes.map((t) => ({ id: t.id, name: t.name })),
+        sources: sources.map((s) => ({ id: s.id, name: s.name })),
+        account_types: accountTypes.map((t) => ({ id: t.id, name: t.name })),
     });
 
     // Dynamic "Select Fields to display" columns for the flat list view.

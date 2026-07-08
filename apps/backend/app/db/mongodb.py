@@ -36,6 +36,7 @@ from app.models.consolidated_settings import (
     UserAssignmentRule, CountryUserAssignment, DepartmentMapping, AgentConnection
 )
 from app.models.tag import Tag
+from app.models.assistant import AssistantConversation, AssistantAction
 from app.models.notification import Notification
 from app.models.comment import Comment
 from app.models.reminder import Reminder
@@ -53,7 +54,6 @@ from app.models.consolidated_picklists import (
     AccountType, Industry, AccountSource, AccountCategory, SupplierServicePicklist,
     Salutation, TaskStatus, TaskPriority,
     Inclusion, ItineraryInclusion, SupplierType, DestinationPicklist,
-    BDActivityType, ExpenseCategory,
 )
 from app.models.user_account_view import UserAccountView
 from app.models.user_contact_view import UserContactView
@@ -144,11 +144,6 @@ from app.models.manufacturing.product_catalog import ManufacturingProduct
 from app.models.manufacturing.quality_inspection import QualityInspection
 
 from app.models.lead_custom_fields import UserLeadView
-from app.models.bd_visit import BDVisit
-from app.models.expense import Expense
-from app.models.location_ping import LocationPing
-from app.models.bd_visit_route import BDVisitRoute
-from app.models.automation_rule import AutomationRule
 from app.models.opportunity_custom_fields import UserOpportunityView
 from app.models.opportunity_picklists import OpportunityHistory, OpportunityLock
 from app.models.tenant_counter import TenantCounter
@@ -237,6 +232,9 @@ async def init_db():
             AgentConnection,
             # Tags
             Tag,
+            # AI Assistant
+            AssistantConversation,
+            AssistantAction,
             # Relations (consolidated - single collection)
 
 
@@ -336,8 +334,6 @@ async def init_db():
             ItineraryInclusion,
             SupplierType,
             DestinationPicklist,
-            BDActivityType,
-            ExpenseCategory,
             # Phase 6 — Opportunity workflow documents
             Voucher,
             Departure,
@@ -346,12 +342,6 @@ async def init_db():
             HandoverRequest,
             ExternalLead,
             OpportunityPaymentSchedule,
-            # BD Panel — visits + expenses + live tracking + route summary + automation
-            BDVisit,
-            Expense,
-            LocationPing,
-            BDVisitRoute,
-            AutomationRule,
             # Entity Views (required for frontend page loads)
             EntityView,
             EntityColumn,

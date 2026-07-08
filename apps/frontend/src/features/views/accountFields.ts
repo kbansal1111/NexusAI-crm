@@ -149,6 +149,12 @@ export const OPPORTUNITY_STANDARD_FIELDS: ViewFieldDef[] = [
   { key: "industry_data.destination_ids", label: "Destination(s)", type: "lookup" },
   { key: "industry_data.no_of_pax", label: "No. of Pax", type: "number" },
   { key: "custom_fields.starting_city", label: "Starting City", type: "string" },
+  // Account-attribute filters — resolved through the linked account server-side.
+  { key: "account.acc_type_id", label: "Account Type", type: "lookup" },
+  { key: "account.billing_city", label: "Account City", type: "string" },
+  { key: "account.billing_state", label: "Account State", type: "string" },
+  { key: "account.billing_street", label: "Account Street", type: "string" },
+  { key: "account.billing_zip", label: "Account Zip", type: "string" },
   ...AUDIT_FIELDS,
   { key: "id", label: "Opportunity ID", type: "string" },
 ];
@@ -296,6 +302,7 @@ const LOOKUP_OPTIONS_KEY_BY_ENTITY: Record<string, Record<string, string>> = {
     owner_id: "users", created_by: "users", last_modified_by_id: "users",
     sales_stage_id: "sales_stages", opportunity_type_id: "opportunity_types",
     source_id: "sources", "industry_data.destination_ids": "destinations",
+    "account.acc_type_id": "account_types",
   },
   supplier: {
     owner_id: "users", created_by: "users", supplier_type: "supplier_types",

@@ -34,7 +34,6 @@ from app.models.consolidated_picklists import (
     Experience, OpportunityTag, LeadStatus, Source,
     Salutation, TaskStatus, TaskPriority,
     Inclusion, ItineraryInclusion, SupplierType, DestinationPicklist,
-    BDActivityType, ExpenseCategory,
 )
 
 router = APIRouter()
@@ -61,9 +60,6 @@ PICKLIST_MAP: Dict[str, Type[Document]] = {
     "supplier_type": SupplierType,
     "destination": DestinationPicklist,
     "itinerary_inclusion": ItineraryInclusion,
-    # BD panel
-    "bd_activity_type": BDActivityType,
-    "expense_category": ExpenseCategory,
 }
 
 
@@ -104,15 +100,6 @@ class PicklistItemResponse(BaseModel):
     probability: Optional[int] = None
     is_won: Optional[bool] = None
     is_lost: Optional[bool] = None
-    # BD activity type extras
-    requires_field_meeting: Optional[bool] = None
-    requires_check_in: Optional[bool] = None
-    requires_approval: Optional[bool] = None
-    expected_duration_min: Optional[int] = None
-    # Expense category extras
-    requires_receipt: Optional[bool] = None
-    max_amount: Optional[float] = None
-    auto_approve_under: Optional[float] = None
 
 
 class PicklistSortItem(BaseModel):

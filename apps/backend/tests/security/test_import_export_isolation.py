@@ -72,9 +72,21 @@ async def run() -> bool:
         b = await _login(client, "B")
 
         # ---------------- I1: imports as Tenant A ----------------
+        # Travel-tenant lead create requires city/state/country, travel date,
+        # plus a Source and Destination that exist in the tenant's picklists —
+        # resolve those dynamically so the fixture doesn't rot.
+        src_resp = await client.get(f"{BASE_URL}/picklists/source", headers=a["headers"])
+        src_items = src_resp.json() if src_resp.status_code == 200 else []
+        source_name = next((s["name"] for s in src_items if s.get("is_active")), None)
+        dest_resp = await client.get(f"{BASE_URL}/picklists/destination", headers=a["headers"])
+        dest_items = dest_resp.json() if dest_resp.status_code == 200 else []
+        dest_name = next((d["name"] for d in dest_items if d.get("is_active")), None)
+        if not source_name or not dest_name:
+            check("I1 lead import (A)", False, "tenant is missing Source/Destination picklist values")
         lead_csv = (
-            "First Name,Last Name,Email\n"
-            f"{MARKER}Lead,Isolation,{MARKER.lower()}.lead@example.com\n"
+            "First Name,Last Name,Email,City,State,Country,Source,Travel Date,Destinations\n"
+            f"{MARKER}Lead,Isolation,{MARKER.lower()}.lead@example.com,"
+            f"Delhi,Delhi,India,{source_name},2027-01-15,{dest_name}\n"
         )
         resp = await client.post(f"{BASE_URL}/leads/import", headers=a["headers"],
                                  files=_csv_upload("leads.csv", lead_csv))

@@ -40,7 +40,8 @@ FULL_PERMS = (
     ["manage_sales_stages", "manage_sales_targets", "manage_incentives"] +
     ["manage_settings", "manage_system", "manage_tenants", "manage_billing", "manage_notifications"] +
     ["manage_package_pricing", "feature_package"] +
-    ["lock_opportunity", "owner_change"]
+    ["lock_opportunity", "owner_change"] +
+    ["verify_opportunity_transaction", "approve_opportunity_transaction"]
 )
 
 # ---------------------------------------------------------------------------
@@ -141,7 +142,9 @@ PROFILES = [
             ["view_note", "create_note"] +
             ["view_email", "create_email", "send_email"] +
             ["view_file", "upload_file", "download_file"] +
-            ["view_reports", "view_report", "view_dashboard"]
+            ["view_reports", "view_report", "view_dashboard"] +
+            # Accounts head: verify AND give final approval on opportunity amounts.
+            ["verify_opportunity_transaction", "approve_opportunity_transaction"]
         ),
     },
     {
@@ -158,7 +161,9 @@ PROFILES = [
             ["view_note", "create_note"] +
             ["view_email", "create_email", "send_email"] +
             ["view_file", "upload_file"] +
-            ["view_dashboard"]
+            ["view_dashboard"] +
+            # Accounts team: verify and give final approval on opportunity amounts.
+            ["verify_opportunity_transaction", "approve_opportunity_transaction"]
         ),
     },
     {

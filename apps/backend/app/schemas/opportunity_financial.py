@@ -83,6 +83,10 @@ class PaymentScheduleItemResponse(BaseModel):
     notes: Optional[str] = None
     paid_at: Optional[datetime] = None
     transaction_id: Optional[str] = None
+    # Approval state of the linked Receive transaction (None until the
+    # milestone is marked Received). The UI shows the milestone as "Received"
+    # only once this is "approved"; before that it is pending verification.
+    receipt_approval_status: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -117,6 +121,11 @@ class TransactionUpdate(BaseModel):
     note: Optional[str] = None
 
 
+class TransactionReject(BaseModel):
+    """Schema for rejecting a transaction (accounts team)"""
+    reason: Optional[str] = None
+
+
 class TransactionResponse(BaseModel):
     """Schema for transaction response"""
     id: str
@@ -132,8 +141,23 @@ class TransactionResponse(BaseModel):
     destination: Optional[str] = None
     note: Optional[str] = None
     payment_schedule_item_id: Optional[str] = None
+    # Sales → Accounts approval workflow
+    approval_status: str = "pending_verification"
+    verified_by: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    rejected_by: Optional[str] = None
+    rejected_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class TransactionQueueItem(TransactionResponse):
+    """A transaction plus its opportunity context, for the accounts approval queue."""
+    opportunity_name: Optional[str] = None
+    owner_name: Optional[str] = None

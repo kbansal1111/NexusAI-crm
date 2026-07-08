@@ -82,8 +82,8 @@ class OpportunityService(ActivityMixin):
         tenant_id: ObjectId,
         current_user_id: ObjectId,
     ):
-        """Re-run automatic BD resolution for an existing opportunity (from
-        account billing address, then lead address as fallback)."""
+        """Re-run automatic territory resolution for an existing opportunity
+        from the linked account's billing address."""
         from app.services.bd_assignment_service import bd_assignment_service
         opp = await self.get_opportunity(opportunity_id, tenant_id)
         if not opp:
@@ -94,11 +94,6 @@ class OpportunityService(ActivityMixin):
             acct = await Account.find_one({"_id": opp.account_id, "tenant_id": tenant_id, "deleted_at": None})
             if acct:
                 country, state, zip_code = acct.billing_country, acct.billing_state, acct.billing_zip
-        if not (country or state or zip_code) and opp.lead_id:
-            from app.models.lead import Lead
-            ld = await Lead.find_one({"_id": opp.lead_id, "tenant_id": tenant_id})
-            if ld:
-                country, state, zip_code = ld.country, ld.state, ld.zip
         if not (country or state or zip_code):
             return opp
         assignment = await bd_assignment_service.resolve_for_address(
@@ -175,9 +170,9 @@ class OpportunityService(ActivityMixin):
                 import logging as _l
                 _l.getLogger(__name__).warning("opportunity_number assignment failed", exc_info=True)
 
-            # BD triple auto-resolution. Source the address from the linked
-            # account's billing fields (most opportunities have one); fall back
-            # to the converting lead's address when called via convert_lead.
+            # Territory auto-resolution from the linked account's billing
+            # address. Opportunities without an account (or with no matching
+            # territory) stay unstamped — a BD user still sees ones they own.
             try:
                 from app.services.bd_assignment_service import bd_assignment_service
                 country = state = zip_code = None
@@ -190,26 +185,6 @@ class OpportunityService(ActivityMixin):
                         country = acct.billing_country
                         state = acct.billing_state
                         zip_code = acct.billing_zip
-                if not (country or state or zip_code) and opportunity.lead_id:
-                    from app.models.lead import Lead
-                    src_lead = await Lead.find_one(
-                        {"_id": opportunity.lead_id, "tenant_id": tenant_id}
-                    )
-                    if src_lead:
-                        # If the lead already has the triple resolved, just inherit it.
-                        if src_lead.territory_id:
-                            opportunity.territory_id = src_lead.territory_id
-                            opportunity.region_id = src_lead.region_id
-                            opportunity.bd_owner_id = src_lead.bd_owner_id
-                            opportunity.reporting_manager_id = src_lead.reporting_manager_id
-                            opportunity.territory_match_source = src_lead.territory_match_source
-                            from datetime import datetime as _dt
-                            opportunity.territory_assigned_at = _dt.utcnow()
-                            await opportunity.save()
-                        else:
-                            country = src_lead.country
-                            state = src_lead.state
-                            zip_code = src_lead.zip
 
                 if (country or state or zip_code) and not opportunity.territory_id:
                     assignment = await bd_assignment_service.resolve_for_address(
@@ -561,12 +536,14 @@ class OpportunityService(ActivityMixin):
         owner_id: Optional[ObjectId] = None,
         sales_stage_id: Optional[ObjectId] = None,
         cursor: Optional[str] = None,
+        bd_territory_ids: Optional[List[ObjectId]] = None,
         **kwargs
     ) -> Tuple[List[Opportunity], Optional[int], Optional[str], bool]:
         """Get opportunities for a tenant with pagination.
 
         Returns (opportunities, total, next_cursor, has_more). `cursor` switches
-        to keyset "load more" (total is None, COUNT skipped).
+        to keyset "load more" (total is None, COUNT skipped). `bd_territory_ids`
+        widens results to a BD user's territories (see repository).
         """
         return await self.repository.get_filtered_opportunities(
             tenant_id=tenant_id,
@@ -575,6 +552,7 @@ class OpportunityService(ActivityMixin):
             owner_id=owner_id,
             sales_stage_id=sales_stage_id,
             cursor=cursor,
+            bd_territory_ids=bd_territory_ids,
             **kwargs
         )
     

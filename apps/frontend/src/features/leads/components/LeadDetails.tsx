@@ -50,7 +50,6 @@ import { useAllDestinations } from "@/hooks/use-destinations";
 import { toast } from "sonner";
 import { formatDateTime } from "@/lib/format";
 import { useIndustry, useIndustryLabels } from "@/lib/industry-labels";
-import { VisitsByParentSection } from "@/features/bd/visits/components/VisitsByParentSection";
 import { FileUploader } from "@/features/files/components/file-uploader";
 import { FileList } from "@/features/files/components/file-list";
 

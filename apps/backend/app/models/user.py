@@ -58,6 +58,14 @@ class User(BaseDocument):
     assigned_countries: List[str] = Field(default_factory=list)
     assigned_destinations: List[PydanticObjectId] = Field(default_factory=list)
     not_assigned_countries: List[str] = Field(default_factory=list)
+
+    # BD panel — territory-based sales cockpit.
+    # is_bd_user drives territory-scoped opportunity visibility (see
+    # visibility_scope.bd_territory_ids); territory_ids is the authoritative
+    # per-user territory assignment, kept in sync with Territory.users by
+    # user_service.sync_user_territories.
+    is_bd_user: bool = False
+    territory_ids: List[PydanticObjectId] = Field(default_factory=list)
     
     # Monthly targets
     monthly_revenue_target: float = 0.0

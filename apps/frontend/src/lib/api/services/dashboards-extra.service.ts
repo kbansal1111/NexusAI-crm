@@ -86,8 +86,42 @@ export interface DeptIncentiveResponse {
   groups: DeptIncentiveGroup[];
 }
 
+export interface BDDashboardSummary {
+  closed: number;
+  open: number;
+  target: number;
+}
+
+export interface BDRevenuePoint {
+  day: number;
+  sale_this_month: number;
+  sale_last_month: number;
+  target: number;
+}
+
+export interface BDStage {
+  stage: string;
+  count: number;
+  value: number;
+  percentage: number;
+}
+
+export interface BDStageBreakdown {
+  stages: BDStage[];
+  total_count: number;
+  total_value: number;
+}
+
 export const dashboardsExtraService = {
   summary: async () => (await apiClient.get(`${BASE}/summary`)).data,
+
+  // BD panel dashboard (territory-scoped)
+  bdSummary: async (): Promise<BDDashboardSummary> =>
+    (await apiClient.get(`${BASE}/bd/summary`)).data,
+  bdRevenueChart: async (): Promise<BDRevenuePoint[]> =>
+    (await apiClient.get(`${BASE}/bd/revenue-chart`)).data,
+  bdStageBreakdown: async (): Promise<BDStageBreakdown> =>
+    (await apiClient.get(`${BASE}/bd/stage-breakdown`)).data,
   userActivities: async () => (await apiClient.get(`${BASE}/user-activities`)).data,
   leaderboard: async (period = "current_month"): Promise<LeaderboardResponse> =>
     (await apiClient.get(`${BASE}/leaderboard`, { params: { period } })).data,
@@ -100,13 +134,6 @@ export const dashboardsExtraService = {
 
   oppDashboardAll: async () => (await apiClient.get(`${BASE}/opportunity/all`)).data,
   oppDashboardMine: async () => (await apiClient.get(`${BASE}/opportunity/mine`)).data,
-
-  bdSummary: async () => (await apiClient.get(`${BASE}/bd/summary`)).data,
-  bdToday: async () => (await apiClient.get(`${BASE}/bd/today-opportunities`)).data,
-  bdTodayRevenue: async () => (await apiClient.get(`${BASE}/bd/today-revenue`)).data,
-  bdTomorrowDepartures: async () => (await apiClient.get(`${BASE}/bd/tomorrow-departures`)).data,
-  bdGraphPerformance: async () => (await apiClient.get(`${BASE}/bd/graph-performance`)).data,
-  bdStagePercentage: async () => (await apiClient.get(`${BASE}/bd/stage-percentage`)).data,
 
   oppGraphPerformance: async () => (await apiClient.get(`${BASE}/opportunity/graph-performance`)).data,
   stagePercentage: async () => (await apiClient.get(`${BASE}/opportunity/stage-percentage`)).data,

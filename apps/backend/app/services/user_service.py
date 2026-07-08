@@ -62,7 +62,7 @@ class UserService(ActivityMixin):
         user = User(
             **user_data.model_dump(
                 exclude_unset=True,
-                exclude={'password', 'role_ids', 'assigned_destinations', 'smtp_password'}
+                exclude={'password', 'role_ids', 'assigned_destinations', 'territory_ids', 'smtp_password'}
             ),
             password=hashed_password,
             role_ids=role_ids,
@@ -83,8 +83,14 @@ class UserService(ActivityMixin):
 
         from app.core.entity_required_fields import validate_user_record
         validate_user_record(user, is_create=True)
-        
+
         await user.insert()
+
+        # BD panel: assign territories (validated to this tenant) and reconcile
+        # Territory.users membership so the territory admin UI stays consistent.
+        if user_data.territory_ids:
+            await self.sync_user_territories(user, user_data.territory_ids, tenant_id)
+            await user.save()
 
         # PERF: a new user widens the active-user directory and can widen a
         # manager's visible scope — clear the tenant's cached lookups + scopes.
@@ -206,7 +212,7 @@ class UserService(ActivityMixin):
                 raise ValueError(f"User with email {user_data.email} already exists")
         
         # Update fields
-        update_data = user_data.model_dump(exclude_unset=True, exclude={'assigned_destinations', 'role_ids'})
+        update_data = user_data.model_dump(exclude_unset=True, exclude={'assigned_destinations', 'territory_ids', 'role_ids'})
         for field, value in update_data.items():
             if field == 'password':
                 # Hash the password if it's being updated
@@ -248,7 +254,13 @@ class UserService(ActivityMixin):
             old_values['assigned_destinations'] = [str(did) for did in user.assigned_destinations]
             user.assigned_destinations = [ObjectId(did) for did in user_data.assigned_destinations]
             updated_fields['assigned_destinations'] = user_data.assigned_destinations
-        
+
+        # Handle BD territory assignment (validated + reconciled with Territory.users)
+        if user_data.territory_ids is not None:
+            old_values['territory_ids'] = [str(t) for t in user.territory_ids]
+            await self.sync_user_territories(user, user_data.territory_ids, tenant_id)
+            updated_fields['territory_ids'] = user_data.territory_ids
+
         from app.core.entity_required_fields import validate_user_record
         validate_user_record(user)
 
@@ -273,7 +285,53 @@ class UserService(ActivityMixin):
         )
 
         return user
-    
+
+    async def sync_user_territories(
+        self,
+        user: User,
+        territory_id_strs: List[str],
+        tenant_id: ObjectId,
+    ) -> None:
+        """Assign the given territories to a BD user.
+
+        SECURITY: every territory id is validated to belong to the caller's
+        tenant before any write — a forged/cross-tenant id is rejected, so a
+        user can never be scoped to another tenant's territory.
+
+        `user.territory_ids` is the authoritative per-user assignment (read on
+        every scoped request); `Territory.users` is kept in sync so the
+        territory admin UI and bd_assignment round-robin stay consistent. The
+        caller is responsible for saving the user document (the field is set
+        here in-memory; Territory.users membership is reconciled directly).
+        """
+        from app.models.territory import Territory
+
+        new_ids = [ObjectId(t) for t in (territory_id_strs or []) if t]
+        if new_ids:
+            valid = await Territory.find(
+                {"_id": {"$in": new_ids}, "tenant_id": tenant_id}
+            ).to_list()
+            valid_ids = {t.id for t in valid}
+            if valid_ids != set(new_ids):
+                raise ValueError(
+                    "One or more territory_ids are invalid or do not belong to this tenant"
+                )
+
+        old_ids = set(user.territory_ids or [])
+        new_set = set(new_ids)
+        user.territory_ids = new_ids
+
+        to_add = new_set - old_ids
+        to_remove = old_ids - new_set
+        if to_add:
+            await Territory.find(
+                {"_id": {"$in": list(to_add)}, "tenant_id": tenant_id}
+            ).update({"$addToSet": {"users": user.id}})
+        if to_remove:
+            await Territory.find(
+                {"_id": {"$in": list(to_remove)}, "tenant_id": tenant_id}
+            ).update({"$pull": {"users": user.id}})
+
     async def update_password(
         self,
         user_id: str,
