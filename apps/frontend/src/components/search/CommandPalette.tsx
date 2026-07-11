@@ -33,6 +33,7 @@ const moduleIcons: Record<string, React.ReactNode> = {
     opportunities: <Briefcase className="h-4 w-4" />,
     person_accounts: <UserCircle className="h-4 w-4" />,
     suppliers: <Truck className="h-4 w-4" />,
+    supplier_contacts: <Users className="h-4 w-4" />,
     files: <FileText className="h-4 w-4" />,
 };
 
@@ -43,6 +44,7 @@ const moduleColors: Record<string, string> = {
     opportunities: "text-amber-500",
     person_accounts: "text-purple-500",
     suppliers: "text-orange-500",
+    supplier_contacts: "text-orange-400",
     files: "text-muted-foreground",
 };
 
@@ -57,6 +59,7 @@ export function CommandPalette() {
     // Map backend module keys → industry-aware display labels
     const groupLabelOverrides: Record<string, string> = {
         suppliers: labels.suppliers,
+        supplier_contacts: `${labels.suppliers} Contacts`,
         leads: labels.leads,
         opportunities: labels.opportunities,
         accounts: labels.accounts,

@@ -9,7 +9,11 @@ import { decompressPermissions } from "@/lib/permissions-compression";
  * Protects routes that require auth (session from backend /api/v1/auth/login).
  * All API calls from the app already use NEXT_PUBLIC_API_URL (env) which includes /api/v1.
  *
- * SECURITY: this middleware enforces BOTH auth and permission/module checks
+ * NOTE: this is the Next.js "proxy" file convention (formerly "middleware",
+ * renamed in Next.js 16). Same request/response APIs — only the file and the
+ * exported function name changed.
+ *
+ * SECURITY: this proxy enforces BOTH auth and permission/module checks
  * server-side. Doing the check only on the client (component code) is
  * bypassable by direct URL navigation — a user with `view_lead` could
  * navigate to `/admin/users` and see the page render until API calls fail.
@@ -33,7 +37,7 @@ function withCookieCleanup(req: NextRequest, res: NextResponse): NextResponse {
     return res;
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
     // Allow NextAuth API and static/Next internals

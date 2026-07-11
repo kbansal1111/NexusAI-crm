@@ -15,6 +15,31 @@ from app.api.deps import get_current_user, check_permission
 
 router = APIRouter()
 
+
+def _contact_response(c) -> SupplierContactResponse:
+    """Map a SupplierContact document to its API response (id -> str)."""
+    return SupplierContactResponse(
+        id=str(c.id),
+        name=c.name,
+        designation=c.designation,
+        department=c.department,
+        email=c.email,
+        phone=c.phone,
+        mobile=c.mobile,
+        is_primary=c.is_primary,
+        notes=c.notes,
+        created_at=c.created_at,
+        updated_at=c.updated_at,
+    )
+
+
+async def _response_with_contacts(service, supplier, tenant_id) -> SupplierResponse:
+    """Build a SupplierResponse and populate `contacts` from the collection."""
+    resp = SupplierResponse.from_orm(supplier)
+    contacts = await service.list_contacts(supplier.id, tenant_id)
+    resp.contacts = [_contact_response(c) for c in contacts]
+    return resp
+
 @router.get("/form-data")
 async def get_supplier_form_data(current_user: User = Depends(get_current_user)):
     """Get metadata for supplier creation/editing forms (industry-aware)"""
@@ -129,7 +154,7 @@ async def create_supplier(
         custom_fields=getattr(supplier_data, "custom_fields", None),
     )
 
-    return SupplierResponse.from_orm(supplier)
+    return await _response_with_contacts(service, supplier, current_user.tenant_id)
 
 
 @router.get("/", response_model=SupplierListResponse)
@@ -174,9 +199,20 @@ async def get_suppliers(
     )
     
     pages = (total + per_page - 1) // per_page
-    
+
+    # Batch-fetch contacts for every supplier on this page in ONE query (no N+1),
+    # then attach them to each response (tenant-scoped inside the service).
+    contacts_map = await service.get_contacts_for_suppliers(
+        [s.id for s in suppliers], current_user.tenant_id
+    )
+    supplier_responses = []
+    for s in suppliers:
+        resp = SupplierResponse.from_orm(s)
+        resp.contacts = [_contact_response(c) for c in contacts_map.get(str(s.id), [])]
+        supplier_responses.append(resp)
+
     return SupplierListResponse(
-        suppliers=[SupplierResponse.from_orm(s) for s in suppliers],
+        suppliers=supplier_responses,
         total=total,
         page=page,
         per_page=per_page,
@@ -220,7 +256,7 @@ async def get_supplier(
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
-    resp = SupplierResponse.from_orm(supplier)
+    resp = await _response_with_contacts(service, supplier, current_user.tenant_id)
     # Sprint D — populate custom_fields
     try:
         from app.services import field_registry_service
@@ -250,8 +286,8 @@ async def update_supplier(
     
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
-    
-    return SupplierResponse.from_orm(supplier)
+
+    return await _response_with_contacts(service, supplier, current_user.tenant_id)
 
 
 @router.delete("/{supplier_id}")
@@ -383,26 +419,26 @@ async def change_supplier_owner(
     return {
         "error": False,
         "message": "Supplier ownership updated successfully",
-        "supplier": SupplierResponse.from_orm(supplier)
+        "supplier": await _response_with_contacts(service, supplier, current_user.tenant_id)
     }
 
 
-# ==================== Supplier Contacts (embedded) ====================
+# ==================== Supplier Contacts (supplier_contacts collection) ====================
 
 @router.get("/{supplier_id}/contacts")
 async def get_supplier_contacts(
     supplier_id: str,
     current_user: User = Depends(check_permission("view_supplier"))
 ):
-    """Get all contacts embedded on a supplier."""
+    """Get all contacts for a supplier (from the supplier_contacts collection)."""
     service = SupplierService()
     supplier = await service.get_supplier(supplier_id, current_user.tenant_id)
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
-    contacts = sorted(supplier.contacts, key=lambda c: (not c.is_primary, c.name.lower()))
+    contacts = await service.list_contacts(supplier.id, current_user.tenant_id)
     return {
-        "contacts": [SupplierContactResponse.model_validate(c.model_dump()) for c in contacts],
+        "contacts": [_contact_response(c) for c in contacts],
         "total": len(contacts),
     }
 
@@ -418,7 +454,7 @@ async def create_supplier_contact(
     contact = await service.add_contact(supplier_id, data, current_user.id, current_user.tenant_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Supplier not found")
-    return SupplierContactResponse.model_validate(contact.model_dump())
+    return _contact_response(contact)
 
 
 @router.put("/{supplier_id}/contacts/{contact_id}", response_model=SupplierContactResponse)
@@ -435,7 +471,7 @@ async def update_supplier_contact(
     )
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
-    return SupplierContactResponse.model_validate(contact.model_dump())
+    return _contact_response(contact)
 
 
 @router.delete("/{supplier_id}/contacts/{contact_id}")

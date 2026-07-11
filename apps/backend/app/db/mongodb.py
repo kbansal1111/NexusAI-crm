@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
 from app.core.config import settings
@@ -8,6 +10,58 @@ logger = logging.getLogger(__name__)
 
 # Global database client singleton
 mongodb_client = None
+
+
+def _needs_tls(url: str) -> bool:
+    """Decide whether the Mongo connection should use TLS.
+
+    Atlas (mongodb+srv://) and any explicit tls/ssl=true connection strings
+    require TLS. A plain local MongoDB (mongodb://localhost) does NOT support
+    TLS by default, so forcing it there breaks the connection. This lets the
+    same code run against local dev Mongo and production Atlas unchanged.
+    """
+    if not url:
+        return False
+    if url.startswith("mongodb+srv://"):
+        return True
+    lowered = url.lower()
+    if "tls=true" in lowered or "ssl=true" in lowered:
+        return True
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        host = ""
+    # Loopback / unresolved host -> local dev, no TLS.
+    if host in ("", "localhost", "127.0.0.1", "::1"):
+        return False
+    # Any other remote host: default to TLS (safe).
+    return True
+
+
+def _build_client_kwargs() -> dict:
+    """Common AsyncIOMotorClient kwargs, with TLS toggled by the URL."""
+    kwargs = dict(
+        maxPoolSize=50,
+        minPoolSize=5,
+        maxIdleTimeMS=60000,
+        connectTimeoutMS=10000,
+        socketTimeoutMS=45000,
+        serverSelectionTimeoutMS=5000,
+        # Survive transient Atlas/network blips: auto-retry a read or write
+        # once on a recoverable network error instead of surfacing it to the
+        # caller. (The periodic NetworkTimeout seen in logs is the driver's
+        # own connection monitor recovering from a brief reachability loss.)
+        retryReads=True,
+        retryWrites=True,
+    )
+    if _needs_tls(settings.MONGODB_URL):
+        kwargs.update(
+            ssl=True,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            tlsAllowInvalidCertificates=False,
+        )
+    return kwargs
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.account import Account
@@ -127,7 +181,7 @@ from app.models.file_extras import FileShare
 from app.models.role import RoleHierarchy
 
 # Missing Industry Models
-from app.models.supplier import OpportunitySupplier
+from app.models.supplier import OpportunitySupplier, SupplierContact
 from app.models.education.admission import Admission
 from app.models.education.enrollment import Course, Enrollment, Faculty, AcademicTerm, Scholarship
 from app.models.education.program import Program
@@ -153,29 +207,11 @@ async def init_db():
     global mongodb_client
     
     if mongodb_client is None:
-        mongodb_client = AsyncIOMotorClient(
-            settings.MONGODB_URL,
-            ssl=True,
-            tls=True,
-            tlsCAFile=certifi.where(),
-            tlsAllowInvalidCertificates=False,
-            maxPoolSize=50,
-            minPoolSize=5,
-            maxIdleTimeMS=60000,
-            connectTimeoutMS=10000,
-            socketTimeoutMS=45000,
-            serverSelectionTimeoutMS=5000,
-            # Survive transient Atlas/network blips: auto-retry a read or write
-            # once on a recoverable network error instead of surfacing it to the
-            # caller. (The periodic NetworkTimeout seen in logs is the driver's
-            # own connection monitor recovering from a brief reachability loss.)
-            retryReads=True,
-            retryWrites=True,
-        )
-    
+        mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL, **_build_client_kwargs())
+
     try:
         await mongodb_client.admin.command('ismaster')
-        logger.info(f"[OK] Connected to MongoDB Atlas: {settings.MONGODB_DB_NAME}")
+        logger.info(f"[OK] Connected to MongoDB ({settings.MONGODB_DB_NAME})")
     except Exception as e:
         logger.error(f"[ERROR] Initial connection test failed: {e}")
     
@@ -253,6 +289,7 @@ async def init_db():
             
             # Missing Industry Models
             OpportunitySupplier,
+            SupplierContact,
             Admission, Course, Enrollment, Faculty, AcademicTerm, Scholarship, Program,
             Appointment, CarePlan, InsuranceVerification, Patient, Provider, Referral,
             BOMItem, BillOfMaterials, Warehouse, InventoryItem, InventoryTransaction, ProductionOrder, WorkOrder, ManufacturingProduct, QualityInspection,
@@ -377,24 +414,6 @@ async def get_database():
     global mongodb_client
     if mongodb_client is None:
         logger.warning("Database client requested before init_db, initializing now...")
-        mongodb_client = AsyncIOMotorClient(
-            settings.MONGODB_URL,
-            ssl=True,
-            tls=True,
-            tlsCAFile=certifi.where(),
-            tlsAllowInvalidCertificates=False,
-            maxPoolSize=50,
-            minPoolSize=5,
-            maxIdleTimeMS=60000,
-            connectTimeoutMS=10000,
-            socketTimeoutMS=45000,
-            serverSelectionTimeoutMS=5000,
-            # Survive transient Atlas/network blips: auto-retry a read or write
-            # once on a recoverable network error instead of surfacing it to the
-            # caller. (The periodic NetworkTimeout seen in logs is the driver's
-            # own connection monitor recovering from a brief reachability loss.)
-            retryReads=True,
-            retryWrites=True,
-        )
+        mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL, **_build_client_kwargs())
     return mongodb_client[settings.MONGODB_DB_NAME]
 

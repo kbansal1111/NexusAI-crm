@@ -36,21 +36,23 @@ class SupplierService(ActivityMixin):
         )
         validate_supplier_record(supplier)
 
-        # Seed the primary contact from the contact person captured on creation.
-        # The form supplies contact_person_name plus the supplier's own phone/email,
-        # so fall back to those for the contact's number/email.
-        if not supplier.contacts and supplier.contact_person_name:
-            supplier.contacts = [
-                SupplierContact(
-                    name=supplier.contact_person_name,
-                    email=supplier.contact_person_email or supplier.email,
-                    phone=supplier.contact_person_phone or supplier.phone,
-                    mobile=supplier.mobile,
-                    is_primary=True,
-                )
-            ]
-
         await supplier.insert()
+
+        # Seed the primary contact from the contact person captured on creation.
+        # Contacts now live in the supplier_contacts collection (1 row per
+        # contact); the form supplies contact_person_name plus the supplier's
+        # own phone/email, so fall back to those for the contact's number/email.
+        if supplier.contact_person_name:
+            await SupplierContact(
+                supplier_id=supplier.id,
+                tenant_id=tenant_id,
+                owner_id=user_id,
+                name=supplier.contact_person_name,
+                email=str(supplier.contact_person_email or supplier.email or "") or None,
+                phone=supplier.contact_person_phone or supplier.phone,
+                mobile=supplier.mobile,
+                is_primary=True,
+            ).insert()
 
         # Custom fields write (Phase 1 §A)
         if custom_fields:
@@ -392,7 +394,58 @@ class SupplierService(ActivityMixin):
 
         return supplier
 
-    # ==================== Embedded Contacts ====================
+    # ==================== Contacts (supplier_contacts collection) ====================
+
+    async def list_contacts(
+        self,
+        supplier_id: ObjectId,
+        tenant_id: ObjectId,
+    ) -> List[SupplierContact]:
+        """All active contacts for a supplier, primary first then by name."""
+        contacts = await SupplierContact.find({
+            "supplier_id": supplier_id,
+            "tenant_id": tenant_id,
+            "deleted_at": None,
+        }).to_list()
+        return sorted(contacts, key=lambda c: (not c.is_primary, (c.name or "").lower()))
+
+    async def get_contacts_for_suppliers(
+        self,
+        supplier_ids: List[ObjectId],
+        tenant_id: ObjectId,
+    ) -> dict:
+        """Batch-fetch contacts for many suppliers in ONE query (avoids N+1 on
+        the list endpoint). Returns ``{supplier_id_str: [SupplierContact, ...]}``,
+        each list sorted primary-first."""
+        if not supplier_ids:
+            return {}
+        contacts = await SupplierContact.find({
+            "supplier_id": {"$in": supplier_ids},
+            "tenant_id": tenant_id,
+            "deleted_at": None,
+        }).to_list()
+        grouped: dict = {}
+        for c in contacts:
+            grouped.setdefault(str(c.supplier_id), []).append(c)
+        for sid in grouped:
+            grouped[sid].sort(key=lambda c: (not c.is_primary, (c.name or "").lower()))
+        return grouped
+
+    async def _demote_other_primaries(
+        self, supplier_id: ObjectId, tenant_id: ObjectId, keep_id: Optional[ObjectId] = None
+    ) -> None:
+        """Clear is_primary on every active contact of this supplier except keep_id."""
+        q = {
+            "supplier_id": supplier_id,
+            "tenant_id": tenant_id,
+            "deleted_at": None,
+            "is_primary": True,
+        }
+        if keep_id is not None:
+            q["_id"] = {"$ne": keep_id}
+        await SupplierContact.get_motor_collection().update_many(
+            q, {"$set": {"is_primary": False, "updated_at": datetime.utcnow()}}
+        )
 
     async def add_contact(
         self,
@@ -401,23 +454,31 @@ class SupplierService(ActivityMixin):
         user_id: ObjectId,
         tenant_id: ObjectId,
     ) -> Optional[SupplierContact]:
-        """Add a contact to a supplier's embedded contacts list."""
+        """Add a contact to a supplier (supplier_contacts collection)."""
         supplier = await self.get_supplier(supplier_id, tenant_id)
         if not supplier:
             return None
 
-        contact = SupplierContact(**data.model_dump())
+        has_existing = await SupplierContact.find({
+            "supplier_id": supplier.id, "tenant_id": tenant_id, "deleted_at": None,
+        }).count()
 
         # The first contact is always primary; an explicit primary unsets others.
-        if contact.is_primary or not supplier.contacts:
-            for c in supplier.contacts:
-                c.is_primary = False
-            contact.is_primary = True
+        make_primary = bool(data.is_primary) or has_existing == 0
+        if make_primary and has_existing:
+            await self._demote_other_primaries(supplier.id, tenant_id)
 
-        supplier.contacts.append(contact)
+        contact = SupplierContact(
+            **data.model_dump(),
+            supplier_id=supplier.id,
+            tenant_id=tenant_id,
+            owner_id=supplier.owner_id,
+        )
+        contact.is_primary = make_primary
+        await contact.insert()
+
         supplier.last_modified_by_id = user_id
         await supplier.save()
-
         return contact
 
     async def update_contact(
@@ -428,12 +489,17 @@ class SupplierService(ActivityMixin):
         user_id: ObjectId,
         tenant_id: ObjectId,
     ) -> Optional[SupplierContact]:
-        """Update a single embedded contact, scoped to tenant + supplier."""
+        """Update a single contact, scoped to tenant + supplier."""
         supplier = await self.get_supplier(supplier_id, tenant_id)
-        if not supplier:
+        if not supplier or not ObjectId.is_valid(contact_id):
             return None
 
-        contact = next((c for c in supplier.contacts if c.id == contact_id), None)
+        contact = await SupplierContact.find_one({
+            "_id": ObjectId(contact_id),
+            "supplier_id": supplier.id,
+            "tenant_id": tenant_id,
+            "deleted_at": None,
+        })
         if not contact:
             return None
 
@@ -441,17 +507,14 @@ class SupplierService(ActivityMixin):
 
         # Promoting to primary demotes the others.
         if update_data.get("is_primary"):
-            for c in supplier.contacts:
-                if c.id != contact_id:
-                    c.is_primary = False
+            await self._demote_other_primaries(supplier.id, tenant_id, keep_id=contact.id)
 
         for key, value in update_data.items():
             setattr(contact, key, value)
-        contact.updated_at = datetime.utcnow()
+        await contact.save()  # BaseDocument.save() bumps updated_at
 
         supplier.last_modified_by_id = user_id
         await supplier.save()
-
         return contact
 
     async def delete_contact(
@@ -461,24 +524,34 @@ class SupplierService(ActivityMixin):
         user_id: ObjectId,
         tenant_id: ObjectId,
     ) -> bool:
-        """Remove an embedded contact; promote a new primary if needed."""
+        """Soft-delete a contact; promote a new primary if the deleted one was it."""
         supplier = await self.get_supplier(supplier_id, tenant_id)
-        if not supplier:
+        if not supplier or not ObjectId.is_valid(contact_id):
             return False
 
-        contact = next((c for c in supplier.contacts if c.id == contact_id), None)
+        contact = await SupplierContact.find_one({
+            "_id": ObjectId(contact_id),
+            "supplier_id": supplier.id,
+            "tenant_id": tenant_id,
+            "deleted_at": None,
+        })
         if not contact:
             return False
 
         was_primary = contact.is_primary
-        supplier.contacts = [c for c in supplier.contacts if c.id != contact_id]
+        await contact.soft_delete()
 
         # Keep a primary contact if any remain.
-        if was_primary and supplier.contacts and not any(c.is_primary for c in supplier.contacts):
-            supplier.contacts[0].is_primary = True
+        if was_primary:
+            remaining = await SupplierContact.find({
+                "supplier_id": supplier.id, "tenant_id": tenant_id, "deleted_at": None,
+            }).to_list()
+            if remaining and not any(c.is_primary for c in remaining):
+                promote = sorted(remaining, key=lambda c: (c.name or "").lower())[0]
+                promote.is_primary = True
+                await promote.save()
 
         supplier.last_modified_by_id = user_id
         await supplier.save()
-
         return True
 

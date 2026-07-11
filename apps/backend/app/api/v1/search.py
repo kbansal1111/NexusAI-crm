@@ -12,7 +12,7 @@ from app.models.lead import Lead
 from app.models.account import Account
 from app.models.contact import Contact
 from app.models.opportunity import Opportunity
-from app.models.supplier import Supplier
+from app.models.supplier import Supplier, SupplierContact
 from app.models.file import File
 from app.api.deps import get_current_user
 from app.core.rate_limiter import limiter
@@ -21,7 +21,7 @@ router = APIRouter()
 
 VALID_MODULES = [
     "accounts", "contacts", "files", "leads",
-    "opportunities", "person_accounts", "suppliers"
+    "opportunities", "person_accounts", "suppliers", "supplier_contacts"
 ]
 
 
@@ -386,6 +386,55 @@ async def search_by_module(
         ]
         return {"module": "suppliers", "label": "Suppliers", "query": q, "items": items, "skip": skip, "limit": limit}
 
+    # ── Supplier Contacts (cross-supplier, from supplier_contacts collection) ──
+    if module == "supplier_contacts":
+        query = {
+            "tenant_id": tenant_id,
+            "deleted_at": None,
+            "$or": [
+                {"name": {"$regex": pattern}},
+                {"email": {"$regex": pattern}},
+                {"phone": {"$regex": pattern}},
+                {"mobile": {"$regex": pattern}},
+                {"designation": {"$regex": pattern}},
+            ],
+        }
+        if visible_owner_ids is not None:
+            query["owner_id"] = {"$in": visible_owner_ids}
+
+        docs = await SupplierContact.find(query).sort("name").skip(skip).limit(limit).to_list()
+        docs = _relevance_sort(docs, q, ["name", "email"])
+
+        owner_map = await _get_owner_map([d.owner_id for d in docs if d.owner_id], tenant_id)
+
+        # Resolve parent supplier names (tenant-scoped batch fetch).
+        sup_ids = list({str(d.supplier_id): d.supplier_id for d in docs if d.supplier_id}.values())
+        sup_map: Dict[str, str] = {}
+        if sup_ids:
+            sups = await Supplier.find(
+                {"_id": {"$in": sup_ids}, "tenant_id": tenant_id, "deleted_at": None}
+            ).to_list()
+            sup_map = {str(s.id): s.name or "" for s in sups}
+
+        items = [
+            {
+                "id": str(d.id),
+                "name": d.name or "",
+                "designation": d.designation or "",
+                "email": d.email or "",
+                "phone": d.phone or "",
+                "mobile": d.mobile or "",
+                "is_primary": bool(d.is_primary),
+                "supplier_name": sup_map.get(str(d.supplier_id), ""),
+                "supplier_id": str(d.supplier_id) if d.supplier_id else "",
+                "owner": owner_map.get(str(d.owner_id), "") if d.owner_id else "",
+                "url": f"/suppliers/{d.supplier_id}",
+                "updated_at": d.updated_at.isoformat() if d.updated_at else None,
+            }
+            for d in docs
+        ]
+        return {"module": "supplier_contacts", "label": "Supplier Contacts", "query": q, "items": items, "skip": skip, "limit": limit}
+
     # ── Files ─────────────────────────────────────────────────────────────────
     if module == "files":
         query = {
@@ -441,7 +490,7 @@ async def global_search(
     visible_owner_ids = await get_visible_owner_ids(current_user)
     owner_match = {"$in": visible_owner_ids} if visible_owner_ids is not None else {"$exists": True}
 
-    leads, accounts, person_accounts, contacts, opportunities, suppliers, files = await asyncio.gather(
+    leads, accounts, person_accounts, contacts, opportunities, suppliers, supplier_contacts, files = await asyncio.gather(
         Lead.find({
             "tenant_id": tenant_id,
             "deleted_at": None,
@@ -506,6 +555,18 @@ async def global_search(
                 {"name": {"$regex": pattern}},
                 {"email": {"$regex": pattern}},
                 {"phone": {"$regex": pattern}},
+            ]
+        }).limit(limit).to_list(),
+
+        SupplierContact.find({
+            "tenant_id": tenant_id,
+            "deleted_at": None,
+            "owner_id": owner_match,
+            "$or": [
+                {"name": {"$regex": pattern}},
+                {"email": {"$regex": pattern}},
+                {"phone": {"$regex": pattern}},
+                {"mobile": {"$regex": pattern}},
             ]
         }).limit(limit).to_list(),
 
@@ -607,6 +668,29 @@ async def global_search(
                     "url": f"/suppliers/{s.id}",
                 }
                 for s in suppliers
+            ]
+        })
+
+    if supplier_contacts:
+        # Parent supplier names for the subtitle (tenant-scoped batch fetch).
+        _sc_sup_ids = list({str(sc.supplier_id): sc.supplier_id for sc in supplier_contacts if sc.supplier_id}.values())
+        _sc_sup_map: Dict[str, str] = {}
+        if _sc_sup_ids:
+            _sc_sups = await Supplier.find(
+                {"_id": {"$in": _sc_sup_ids}, "tenant_id": tenant_id, "deleted_at": None}
+            ).to_list()
+            _sc_sup_map = {str(s.id): s.name or "" for s in _sc_sups}
+        results["results"].append({
+            "module": "supplier_contacts",
+            "label": "Supplier Contacts",
+            "items": [
+                {
+                    "id": str(sc.id),
+                    "title": sc.name or "Unnamed Contact",
+                    "subtitle": _sc_sup_map.get(str(sc.supplier_id), "") or sc.email,
+                    "url": f"/suppliers/{sc.supplier_id}",
+                }
+                for sc in supplier_contacts
             ]
         })
 

@@ -60,9 +60,19 @@ async def get_users(
     is_active: Optional[bool] = None,
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(check_permission("view_user"))
+    current_user: User = Depends(get_current_user)
 ):
-    """Get all users with filters"""
+    """Get all users with filters.
+
+    BASELINE (no permission gate): the tenant user directory powers
+    owner/assignee dropdowns, change-owner dialogs and owner-name rendering on
+    EVERY module page, so every authenticated user needs it regardless of role
+    (same posture as /users/directory in users_extra). Gating it on `view_user`
+    made all detail pages toast "Access Denied" for any role without the User
+    admin module. Admin user-management operations (create/edit/delete/detail/
+    performance/team) remain gated by view_user/edit_user/etc. below.
+    Tenant-scoped: only returns users of current_user's tenant.
+    """
     service = UserService()
     
     users = await service.get_users_by_tenant(
@@ -95,9 +105,14 @@ async def search_users(
     query: str,
     skip: int = 0,
     limit: int = 50,
-    current_user: User = Depends(check_permission("view_user"))
+    current_user: User = Depends(get_current_user)
 ):
-    """Search users"""
+    """Search users.
+
+    BASELINE (no permission gate) — same rationale as GET /users/: user
+    typeahead is required by assignee/owner pickers on every module page.
+    Tenant-scoped via the service.
+    """
     service = UserService()
     
     users = await service.search_users(

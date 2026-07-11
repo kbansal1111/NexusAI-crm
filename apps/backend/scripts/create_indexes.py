@@ -109,6 +109,12 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     # index on name lets Mongo walk index keys instead of fetching documents
     ("cities", [("name", ASCENDING)]),
     ("cities", [("is_popular", ASCENDING)]),
+
+    # --- supplier_contacts: standalone collection (migrated from embedded
+    #     supplier.contacts). Per-supplier load on every supplier detail page
+    #     + global search by name across the tenant. ---
+    ("supplier_contacts", [("tenant_id", ASCENDING), ("supplier_id", ASCENDING), ("deleted_at", ASCENDING)]),
+    ("supplier_contacts", [("tenant_id", ASCENDING), ("name", ASCENDING)]),
 ]
 
 

@@ -10,12 +10,15 @@ from beanie import PydanticObjectId
 from app.models.base import BaseDocument
 
 
-class SupplierContact(BaseModel):
-    """Contact person embedded on a Supplier document.
+class EmbeddedSupplierContact(BaseModel):
+    """LEGACY embedded contact shape (pre-collection).
 
-    Embedded (rather than a standalone collection) so contacts load with the
-    supplier in a single read — no extra query or join. The contact person
-    captured at supplier creation becomes the primary contact.
+    Supplier contacts used to live embedded on the Supplier document as an
+    array. They now live in the standalone ``supplier_contacts`` collection
+    (see ``SupplierContact`` below) so they can be searched globally and owned
+    /assigned independently across suppliers. This class is retained ONLY so the
+    one-off migration (``migrate_supplier_contacts_to_collection``) can still
+    parse any old embedded arrays. Do not write new code against it.
     """
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
@@ -65,8 +68,9 @@ class Supplier(BaseDocument):
     contact_person_email: Optional[EmailStr] = None
     contact_person_phone: Optional[str] = None
 
-    # Contact persons (embedded; first/primary seeded from contact_person_* on create)
-    contacts: List[SupplierContact] = Field(default_factory=list)
+    # NOTE: Contact persons now live in the standalone `supplier_contacts`
+    # collection (SupplierContact document), not embedded here. The API still
+    # exposes them on SupplierResponse.contacts, populated from that collection.
 
     # Finance
     credit_limit: Optional[float] = None
@@ -93,6 +97,38 @@ class Supplier(BaseDocument):
         # [("tenant_id", 1), ("name", 1)],
             # [("tenant_id", 1), ("supplier_type", 1)],
         # ]
+
+
+class SupplierContact(BaseDocument):
+    """Contact person for a supplier — one row per contact in its own collection.
+
+    Standalone (rather than embedded on the supplier) so contacts can be:
+      - searched globally / cross-supplier from the universal search, and
+      - owned / assigned independently of the parent supplier.
+
+    Exactly one supplier per contact (1→N): ``supplier_id`` points to the owner
+    supplier. Tenant isolation via ``tenant_id`` (every query MUST scope by it).
+    Soft-deleted via ``deleted_at`` (inherited from BaseDocument).
+    """
+    supplier_id: Indexed(PydanticObjectId)
+    tenant_id: Indexed(PydanticObjectId)
+    owner_id: Optional[PydanticObjectId] = None
+
+    name: str
+    designation: Optional[str] = None
+    department: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    mobile: Optional[str] = None
+    is_primary: bool = False
+    notes: Optional[str] = None
+
+    class Settings:
+        name = "supplier_contacts"
+        # Indexes are created out-of-band via scripts/create_indexes.py
+        # (model-level indexes are disabled project-wide). Recommended:
+        #   [("tenant_id", 1), ("supplier_id", 1), ("deleted_at", 1)]
+        #   [("tenant_id", 1), ("name", 1)]  -- global search
 
 
 class OpportunitySupplier(BaseDocument):

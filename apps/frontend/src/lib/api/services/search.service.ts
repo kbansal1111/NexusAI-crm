@@ -113,6 +113,21 @@ export interface SupplierSearchItem {
     updated_at: string | null;
 }
 
+export interface SupplierContactSearchItem {
+    id: string;
+    name: string;
+    designation: string;
+    email: string;
+    phone: string;
+    mobile: string;
+    is_primary: boolean;
+    supplier_name: string;
+    supplier_id: string;
+    owner: string;
+    url: string;
+    updated_at: string | null;
+}
+
 export type AnySearchItem =
     | AccountSearchItem
     | ContactSearchItem
@@ -120,7 +135,8 @@ export type AnySearchItem =
     | LeadSearchItem
     | OpportunitySearchItem
     | PersonAccountSearchItem
-    | SupplierSearchItem;
+    | SupplierSearchItem
+    | SupplierContactSearchItem;
 
 export interface ModuleSearchResponse<T = AnySearchItem> {
     module: string;
@@ -141,6 +157,7 @@ export const SEARCH_MODULES = [
     { value: "opportunities", label: "Opportunities" },
     { value: "person_accounts", label: "Person Accounts" },
     { value: "suppliers", label: "Suppliers" },
+    { value: "supplier_contacts", label: "Supplier Contacts" },
 ] as const;
 
 /**
@@ -156,6 +173,7 @@ export function getSearchModulesForIndustry(labels: IndustryLabelMap) {
         { value: "opportunities", label: labels.opportunities },
         { value: "person_accounts", label: "Person Accounts" },
         { value: "suppliers", label: labels.suppliers },
+        { value: "supplier_contacts", label: `${labels.suppliers} Contacts` },
     ];
 }
 

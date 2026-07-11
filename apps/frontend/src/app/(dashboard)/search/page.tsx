@@ -15,6 +15,7 @@ import {
     OpportunitySearchItem,
     PersonAccountSearchItem,
     SupplierSearchItem,
+    SupplierContactSearchItem,
     SearchModuleValue,
 } from "@/lib/api/services/search.service";
 import { Button } from "@/components/ui/button";
@@ -318,6 +319,44 @@ function SuppliersTable({ items }: { items: SupplierSearchItem[] }) {
     );
 }
 
+function SupplierContactsTable({ items }: { items: SupplierContactSearchItem[] }) {
+    return (
+        <table className="w-full">
+            <thead>
+                <tr className="bg-muted/30">
+                    <Th>Name</Th>
+                    <Th>Designation</Th>
+                    <Th>Email</Th>
+                    <Th>Phone</Th>
+                    <Th>Mobile</Th>
+                    <Th>Supplier</Th>
+                    <Th>Owner</Th>
+                </tr>
+            </thead>
+            <tbody>
+                {items.map((row) => (
+                    <tr key={row.id} className="hover:bg-muted/20 transition-colors">
+                        <Td>
+                            <ResultLink href={row.url}>{row.name}</ResultLink>
+                            {row.is_primary && (
+                                <span className="ml-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-300">
+                                    ★ Primary
+                                </span>
+                            )}
+                        </Td>
+                        <Td>{row.designation || "-"}</Td>
+                        <Td>{row.email || "-"}</Td>
+                        <Td>{row.phone || "-"}</Td>
+                        <Td>{row.mobile || "-"}</Td>
+                        <Td><ResultLink href={row.url}>{row.supplier_name || "-"}</ResultLink></Td>
+                        <Td>{row.owner || "-"}</Td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+}
+
 // ─── Results Content ──────────────────────────────────────────────────────────
 
 function SearchResultsContent() {
@@ -404,6 +443,9 @@ function SearchResultsContent() {
                             )}
                             {module === "suppliers" && (
                                 <SuppliersTable items={allItems as SupplierSearchItem[]} />
+                            )}
+                            {module === "supplier_contacts" && (
+                                <SupplierContactsTable items={allItems as SupplierContactSearchItem[]} />
                             )}
                         </div>
                         {hasNextPage && (
