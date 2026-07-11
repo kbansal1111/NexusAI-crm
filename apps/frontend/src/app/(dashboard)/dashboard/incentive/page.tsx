@@ -161,7 +161,7 @@ export default function IncentivePage() {
         {/* Departments Incentive Records — 1/3 width */}
         <div className="space-y-4">
           {/* Blue header bar */}
-          <div className="rounded-t-xl bg-blue-600 px-6 py-3">
+          <div className="rounded-t-xl bg-primary px-6 py-3">
             <h2 className="text-base font-bold text-white">Departments Incentive Records</h2>
           </div>
 

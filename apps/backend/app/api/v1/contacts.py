@@ -59,7 +59,6 @@ def contact_to_response(contact: Contact) -> ContactResponse:
         created_by_name=created_by_name,
         last_modified_by_id=str(contact.last_modified_by_id) if contact.last_modified_by_id else None,
         last_modified_by_name=last_modified_by_name,
-        view_count=contact.view_count,
         is_favorite=contact.is_favorite,
         created_at=contact.created_at,
         updated_at=contact.updated_at,
@@ -366,16 +365,6 @@ async def get_contact(
         current_user.tenant_id
     )
     
-    # Increment view count — tenant-scoped lookup
-    try:
-        _cid = ObjectId(contact_id)
-        contact = await Contact.find_one(
-            {"_id": _cid, "tenant_id": current_user.tenant_id, "deleted_at": None}
-        )
-    except Exception:
-        contact = None
-    if contact:
-        await contact.increment_view_count()
 
     # Sprint D — populate custom_fields
     try:

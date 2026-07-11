@@ -280,7 +280,7 @@ function TravelLeadFields({ form, availableDestinations = [], handleDestinationS
             <div className="grid gap-3 grid-cols-2">
                 <FormField control={form.control as any} name="travel_date" render={({ field }) => (
                     <FormItem className="col-span-2">
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Travel Date <span className="text-red-500">*</span></FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Travel Date <span className="text-red-500">*</span></FormLabel>
                         {/* No native min: the form has no noValidate, so min={today}
                             blocked saving leads whose travel date is already in the
                             past (e.g. migrated/imported data). The zod schema is the
@@ -296,7 +296,7 @@ function TravelLeadFields({ form, availableDestinations = [], handleDestinationS
                     name="destinations"
                     render={() => (
                         <FormItem className="col-span-2">
-                            <FormLabel className="text-[10px] font-bold uppercase text-slate-400">
+                            <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">
                                 Destinations <span className="text-red-500">*</span>
                             </FormLabel>
                             <FormControl>
@@ -314,28 +314,28 @@ function TravelLeadFields({ form, availableDestinations = [], handleDestinationS
 
                 <FormField control={form.control as any} name="no_of_nights" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Nights</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Nights</FormLabel>
                         <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="no_of_adults" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Adults</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Adults</FormLabel>
                         <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="no_of_childs" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Children</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Children</FormLabel>
                         <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="no_of_infants" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Infants</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Infants</FormLabel>
                         <FormControl><Input type="number" min={0} className="h-8 bg-background text-xs" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
@@ -366,19 +366,19 @@ function HealthcareLeadFields({ form }: IndustryFieldsProps) {
         <div>
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-emerald-500/40">
                 <Stethoscope className="h-4 w-4 text-emerald-600" />
-                <h3 className="text-sm font-semibold text-slate-200">Clinical Details</h3>
+                <h3 className="text-sm font-semibold text-foreground">Clinical Details</h3>
             </div>
             <div className="grid gap-3 grid-cols-2">
                 <FormField control={form.control as any} name="industry_data.chief_complaint" render={({ field }) => (
                     <FormItem className="col-span-2">
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Chief Complaint</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Chief Complaint</FormLabel>
                         <FormControl><Textarea className="bg-background text-xs min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.urgency" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Urgency</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Urgency</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value ?? ""}>
                             <FormControl>
                                 <SelectTrigger className="h-8 bg-background text-xs">
@@ -396,7 +396,7 @@ function HealthcareLeadFields({ form }: IndustryFieldsProps) {
                 )} />
                 <FormField control={form.control as any} name="industry_data.patient_type" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Patient Type</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Patient Type</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || "new"}>
                             <FormControl>
                                 <SelectTrigger className="h-8 bg-background text-xs">
@@ -413,28 +413,28 @@ function HealthcareLeadFields({ form }: IndustryFieldsProps) {
                 )} />
                 <FormField control={form.control as any} name="industry_data.referral_source" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Referral Source</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Referral Source</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.insurance_provider" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Insurance Provider</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Insurance Provider</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.insurance_policy_number" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Policy Number</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Policy Number</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.preferred_appointment_date" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Preferred Appointment Date</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Preferred Appointment Date</FormLabel>
                         <FormControl><Input type="date" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} min={new Date().toISOString().split('T')[0]} /></FormControl>
                         <FormMessage />
                     </FormItem>
@@ -452,40 +452,40 @@ function EducationLeadFields({ form }: IndustryFieldsProps) {
         <div>
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-violet-500/40">
                 <GraduationCap className="h-4 w-4 text-violet-600" />
-                <h3 className="text-sm font-semibold text-slate-200">Academic Details</h3>
+                <h3 className="text-sm font-semibold text-foreground">Academic Details</h3>
             </div>
             <div className="grid gap-3 grid-cols-2">
                 <FormField control={form.control as any} name="industry_data.highest_qualification" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Highest Qualification</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Highest Qualification</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.gpa" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">GPA (0–10)</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">GPA (0–10)</FormLabel>
                         <FormControl><Input type="number" step="0.1" min={0} max={10} className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.preferred_start_date" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Preferred Start Date</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Preferred Start Date</FormLabel>
                         <FormControl><Input type="date" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} min={new Date().toISOString().split('T')[0]} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.nationality" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Nationality</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Nationality</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.sponsorship_type" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Sponsorship Type</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Sponsorship Type</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value ?? ""}>
                             <FormControl>
                                 <SelectTrigger className="h-8 bg-background text-xs">
@@ -520,33 +520,33 @@ function ManufacturingLeadFields({ form }: IndustryFieldsProps) {
         <div>
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-orange-500/40">
                 <Factory className="h-4 w-4 text-orange-600" />
-                <h3 className="text-sm font-semibold text-slate-200">Production Requirements</h3>
+                <h3 className="text-sm font-semibold text-foreground">Production Requirements</h3>
             </div>
             <div className="grid gap-3 grid-cols-2">
                 <FormField control={form.control as any} name="industry_data.rfq_number" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">RFQ Number</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">RFQ Number</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.product_category" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Product Category</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Product Category</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.estimated_quantity" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Estimated Quantity</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Estimated Quantity</FormLabel>
                         <FormControl><Input type="number" min={1} className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.unit_of_measure" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Unit of Measure</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Unit of Measure</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value ?? ""}>
                             <FormControl>
                                 <SelectTrigger className="h-8 bg-background text-xs">
@@ -568,21 +568,21 @@ function ManufacturingLeadFields({ form }: IndustryFieldsProps) {
                 )} />
                 <FormField control={form.control as any} name="industry_data.target_delivery_date" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Target Delivery Date</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Target Delivery Date</FormLabel>
                         <FormControl><Input type="date" className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} min={new Date().toISOString().split('T')[0]} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.budget_range" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Budget Range</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Budget Range</FormLabel>
                         <FormControl><Input className="h-8 bg-background text-xs" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control as any} name="industry_data.technical_specs" render={({ field }) => (
                     <FormItem className="col-span-2">
-                        <FormLabel className="text-[10px] font-bold uppercase text-slate-400">Technical Specifications</FormLabel>
+                        <FormLabel className="text-[10px] font-bold uppercase text-muted-foreground">Technical Specifications</FormLabel>
                         <FormControl><Textarea className="bg-background text-xs min-h-[60px]" {...field} value={field.value ?? ""} /></FormControl>
                         <FormMessage />
                     </FormItem>
@@ -630,7 +630,7 @@ export function IndustryLeadFields(props: IndustryFieldsProps) {
     }
 
     return (
-        <div className="[&_[data-slot=form-label]]:!text-foreground/85 [&_input]:text-foreground [&_textarea]:text-foreground [&_[data-slot=select-trigger]]:text-foreground [&_.text-slate-200]:!text-foreground [&_.text-slate-400]:!text-foreground/80 [&_.bg-white]:!bg-background">
+        <div className="[&_[data-slot=form-label]]:!text-foreground/85 [&_input]:text-foreground [&_textarea]:text-foreground [&_[data-slot=select-trigger]]:text-foreground [&_.text-foreground]:!text-foreground [&_.text-muted-foreground]:!text-foreground/80 [&_.bg-white]:!bg-background">
             {content}
         </div>
     );

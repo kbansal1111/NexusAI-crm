@@ -21,7 +21,18 @@ export interface DashboardStats {
     today_checkout: number;
     tomorrow_departures: number;
     today_revenue: number;
+
+    // Real sales-header figures (computed server-side, visibility-scoped)
+    open_pipeline_value: number;
+    monthly_target: number;
+    // Admin sees the whole tenant — the My/Team toggle is hidden for them.
+    viewer_is_admin: boolean;
 }
+
+/** Which records a dashboard number covers: strictly the user's own, or
+ *  everything they're allowed to see (tenant for admin, territory for BD,
+ *  own+subordinates otherwise). */
+export type DashboardScope = "my" | "team";
 
 export interface RecentSale {
     id: string;
@@ -57,6 +68,22 @@ export interface SalesChartPoint {
     sale_last_month?: number;
     sale_this_month?: number;
     target?: number;
+}
+
+/** One salesperson's row in the Team Sales breakdown (legacy-CRM parity). */
+export interface TeamSalesMember {
+    user_id: string;
+    name: string;
+    closed: number;
+    open: number;
+    target: number;
+}
+
+export interface TeamSales {
+    members: TeamSalesMember[];
+    closed: number;
+    open: number;
+    target: number;
 }
 
 /** User activity entry for timeline */
@@ -102,6 +129,9 @@ const emptyDashboardData: DashboardData = {
         today_checkout: 0,
         tomorrow_departures: 0,
         today_revenue: 0,
+        open_pipeline_value: 0,
+        monthly_target: 0,
+        viewer_is_admin: false,
     },
     recent_sales: [],
     revenue_chart: [],
@@ -120,23 +150,27 @@ export function getLeaderBoardKPIs(data: DashboardData): LeaderBoardKPIs {
         b2b_direct_open_opportunities: s?.b2b_direct_open_opportunities ?? 0,
         today_checkout: s?.today_checkout ?? 0,
         tomorrow_departures: s?.tomorrow_departures ?? 0,
-        today_revenue: s?.today_revenue ?? s?.total_revenue ?? 0,
+        // Never substitute the month's revenue for today's — 0 means 0.
+        today_revenue: s?.today_revenue ?? 0,
     };
+}
+
+/** Map a raw revenue-chart array from the backend into chart points. */
+export function mapChartPoints(chart: any[]): SalesChartPoint[] {
+    if (!Array.isArray(chart) || chart.length === 0) return [];
+    return chart.map((p: any, i: number) => ({
+        day: i + 1,
+        sale_last_month: p.sale_last_month ?? p.last_month,
+        sale_this_month: p.sale_this_month ?? p.this_month,
+        // Never invent a target — 0 means "no target set" and hides the line.
+        target: p.target ?? 0,
+    }));
 }
 
 /** Build chart data from backend. If no data yet, return empty and let UI show an empty state. */
 export function getSalesChartData(data: DashboardData): SalesChartPoint[] {
-    const chart = data?.revenue_chart;
-    if (Array.isArray(chart) && chart.length > 0) {
-        return chart.map((p: any, i: number) => ({
-            day: i + 1,
-            sale_last_month: p.sale_last_month ?? p.last_month,
-            sale_this_month: p.sale_this_month ?? p.this_month,
-            target: p.target ?? 100000000,
-        }));
-    }
     // No chart data from backend yet – return empty so graph is not faked
-    return [];
+    return mapChartPoints(data?.revenue_chart ?? []);
 }
 
 export function getUserActivities(data: DashboardData): UserActivity[] {
@@ -160,8 +194,8 @@ export const dashboardService = {
         }
     },
 
-    getStats: async (): Promise<DashboardStats> => {
-        const { data } = await apiClient.get<any>(`${BASE_URL}/stats`);
+    getStats: async (scope: DashboardScope = "team"): Promise<DashboardStats> => {
+        const { data } = await apiClient.get<any>(`${BASE_URL}/stats`, { params: { scope } });
 
         // Map backend AnalyticsSummary to frontend DashboardStats
         return {
@@ -184,7 +218,15 @@ export const dashboardService = {
             today_checkout: data.today_checkout || 0,
             tomorrow_departures: data.tomorrow_departures || 0,
             today_revenue: data.today_revenue || 0,
+            open_pipeline_value: data.open_pipeline_value || 0,
+            monthly_target: data.monthly_target || 0,
+            viewer_is_admin: data.viewer_is_admin || false,
         };
+    },
+
+    getTeamSales: async (): Promise<TeamSales> => {
+        const { data } = await apiClient.get<TeamSales>(`${BASE_URL}/team-sales`);
+        return data;
     },
 
     getRecentSales: async (limit: number = 10) => {
@@ -194,9 +236,9 @@ export const dashboardService = {
         return data;
     },
 
-    getRevenueChart: async (period: 'week' | 'month' | 'year' = 'month') => {
+    getRevenueChart: async (period: 'week' | 'month' | 'year' = 'month', scope: DashboardScope = "team") => {
         const { data } = await apiClient.get<any[]>(`${BASE_URL}/revenue-chart`, {
-            params: { period }
+            params: { period, scope }
         });
         return data;
     },

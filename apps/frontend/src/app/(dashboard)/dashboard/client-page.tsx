@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import {
     dashboardService,
     getLeaderBoardKPIs,
-    getSalesChartData,
+    mapChartPoints,
     type DashboardData,
 } from "@/features/dashboard/services/dashboardService";
 import { LeaderBoardKPIs } from "@/features/dashboard/components/LeaderBoardKPIs";
@@ -35,26 +35,31 @@ export default function DashboardClientPage() {
     const { data: queryData, isLoading: loading, error } = useQuery({
         queryKey: ["dashboard", "overview", session?.user?.id ?? "anon"],
         queryFn: async () => {
-            const [data, stats, activityLogs, deals, tasks, pipeline, chart] = await Promise.all([
+            // Everything is a real server-side, visibility-scoped aggregation —
+            // never a client-side estimate. "My Sales" = the cumulative chart
+            // over everything the user can see; "Team Sales" = the same scope
+            // broken down per salesperson (legacy-CRM semantics).
+            const [data, statsTeam, teamSales, activityLogs, deals, tasks, pipeline, chartTeam] = await Promise.all([
                 dashboardService.getDashboardData(),
-                dashboardService.getStats(),
+                dashboardService.getStats("team"),
+                dashboardService.getTeamSales().catch(() => ({ members: [], closed: 0, open: 0, target: 0 })),
                 dashboardService.getActivityLogs(),
                 dashboardService.getKeyDeals().catch(() => []),
                 dashboardService.getTaskSummary().catch(() => ({ missed_count: 0, payment_reminder_count: 0 })),
                 dashboardService.getOpportunitiesByStage().catch(() => []),
-                dashboardService.getRevenueChart('month').catch(() => [])
+                dashboardService.getRevenueChart('month', 'team').catch(() => [])
             ]);
 
             // Merge real-time stats into the dashboard data if available
-            if (data && stats) {
-                data.stats = { ...data.stats, ...stats };
-            }
-            if (data && chart) {
-                data.revenue_chart = chart;
+            if (data && statsTeam) {
+                data.stats = { ...data.stats, ...statsTeam };
             }
 
             return {
                 dashboardData: data,
+                statsTeam,
+                teamSales,
+                chartTeam,
                 activities: activityLogs,
                 keyDeals: deals,
                 taskSummary: tasks || { missed_count: 0, payment_reminder_count: 0 },
@@ -110,7 +115,7 @@ export default function DashboardClientPage() {
         );
     }
 
-    const { dashboardData, activities, keyDeals, taskSummary, pipelineStages } = queryData || {};
+    const { dashboardData, statsTeam, teamSales, chartTeam, activities, keyDeals, taskSummary, pipelineStages } = queryData || {};
 
     if (!dashboardData) {
         return (
@@ -126,9 +131,13 @@ export default function DashboardClientPage() {
     }
 
     const kpis = getLeaderBoardKPIs(dashboardData);
-    const chartData = getSalesChartData(dashboardData);
-    const closedAmount = dashboardData.stats?.total_revenue ?? 0;
-    const openAmount = (dashboardData.stats?.active_opportunities ?? 0) * 10000;
+    // Real figures from the backend: closed = won revenue this month, open =
+    // true sum of open-deal amounts, target = configured revenue targets —
+    // all over the user's visibility (admin = whole company).
+    const salesChartData = mapChartPoints(chartTeam ?? []);
+    const closedAmount = statsTeam?.total_revenue ?? 0;
+    const openAmount = statsTeam?.open_pipeline_value ?? 0;
+    const targetAmount = statsTeam?.monthly_target ?? 0;
 
     const safeActivities = activities || [];
     const safeKeyDeals = keyDeals || [];
@@ -153,9 +162,11 @@ export default function DashboardClientPage() {
             <div className="grid gap-4 lg:grid-cols-1 xl:grid-cols-3">
                 <div className="xl:col-span-2">
                     <SalesChart
-                        data={chartData}
+                        data={salesChartData}
                         closedAmount={closedAmount}
                         openAmount={openAmount}
+                        target={targetAmount}
+                        teamMembers={teamSales?.members ?? []}
                     />
                 </div>
                 <div className="space-y-4">

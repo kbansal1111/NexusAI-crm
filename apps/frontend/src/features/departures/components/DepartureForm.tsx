@@ -76,7 +76,7 @@ export function DepartureForm({ departure, onClose }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between bg-blue-600 px-5 py-4">
+                <div className="flex items-center justify-between bg-primary px-5 py-4">
                     <h2 className="text-base font-semibold text-white">
                         {isEdit ? "Edit Departure" : "New Departure"}
                     </h2>
@@ -242,7 +242,7 @@ export function DepartureForm({ departure, onClose }: Props) {
                         <Button
                             type="submit"
                             disabled={pending}
-                            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[100px]"
+                            className="bg-primary hover:bg-primary/90 text-white min-w-[100px]"
                         >
                             {pending ? "Saving…" : isEdit ? "Save Changes" : "Create"}
                         </Button>

@@ -6,15 +6,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
     Bell,
-    Check,
     CheckCheck,
-    Trash2,
-    User,
     Briefcase,
-    Building2,
     FileText,
+    Receipt,
     Mail,
-    Calendar,
+    CalendarDays,
+    ClipboardList,
+    CreditCard,
+    Target,
+    UserPlus,
+    UserRound,
+    Users,
     Loader2,
 } from "lucide-react";
 
@@ -35,20 +38,33 @@ import {
     Notification,
 } from "@/lib/api/services/notifications.service";
 
+// Module icons — kept in sync with the dashboard activity stream so the same
+// entity always has the same icon everywhere (lead=UserPlus, account=Briefcase,
+// opportunity=Target, …). Covers every entity_type the backend notifies about.
 const getNotificationIcon = (type?: string, entityType?: string) => {
     const iconClass = "h-4 w-4";
 
-    switch (entityType) {
+    switch ((entityType || "").toLowerCase()) {
         case "lead":
-            return <User className={cn(iconClass, "text-blue-500")} />;
+            return <UserPlus className={cn(iconClass, "text-amber-500")} />;
         case "opportunity":
-            return <Briefcase className={cn(iconClass, "text-amber-500")} />;
+            return <Target className={cn(iconClass, "text-violet-500")} />;
+        case "opportunity_transaction":
+            return <CreditCard className={cn(iconClass, "text-violet-500")} />;
         case "account":
-            return <Building2 className={cn(iconClass, "text-indigo-500")} />;
+            return <Briefcase className={cn(iconClass, "text-emerald-500")} />;
+        case "personal_account":
+            return <UserRound className={cn(iconClass, "text-emerald-500")} />;
+        case "contact":
+            return <Users className={cn(iconClass, "text-sky-500")} />;
         case "quote":
-            return <FileText className={cn(iconClass, "text-green-500")} />;
+            return <FileText className={cn(iconClass, "text-cyan-600")} />;
+        case "invoice":
+            return <Receipt className={cn(iconClass, "text-cyan-600")} />;
         case "task":
-            return <Calendar className={cn(iconClass, "text-purple-500")} />;
+            return <ClipboardList className={cn(iconClass, "text-primary")} />;
+        case "event":
+            return <CalendarDays className={cn(iconClass, "text-rose-500")} />;
         case "email":
             return <Mail className={cn(iconClass, "text-red-500")} />;
         default:
@@ -154,7 +170,7 @@ export function NotificationBell() {
                                 key={notification.id}
                                 className={cn(
                                     "flex items-start gap-3 p-3 cursor-pointer",
-                                    !notification.is_read && "bg-blue-50/50 dark:bg-blue-950/20"
+                                    !notification.is_read && "bg-primary/5 dark:bg-primary/10"
                                 )}
                                 onClick={() => handleNotificationClick(notification)}
                             >
@@ -177,7 +193,7 @@ export function NotificationBell() {
                                 </div>
                                 {!notification.is_read && (
                                     <div className="flex-shrink-0">
-                                        <div className="h-2 w-2 rounded-full bg-blue-500" />
+                                        <div className="h-2 w-2 rounded-full bg-primary" />
                                     </div>
                                 )}
                             </DropdownMenuItem>

@@ -40,7 +40,7 @@ const getNotificationIcon = (type?: string, entityType?: string) => {
 
     switch (entityType) {
         case "lead":
-            return <User className={cn(iconClass, "text-blue-500")} />;
+            return <User className={cn(iconClass, "text-primary")} />;
         case "opportunity":
             return <Briefcase className={cn(iconClass, "text-amber-500")} />;
         case "account":
@@ -184,7 +184,7 @@ export default function NotificationsPage() {
                                     key={notification.id}
                                     className={cn(
                                         "flex items-start gap-4 p-4 hover:bg-muted/50 cursor-pointer transition-colors",
-                                        !notification.is_read && "bg-blue-50/50 dark:bg-blue-950/20"
+                                        !notification.is_read && "bg-primary/5 dark:bg-primary/10"
                                     )}
                                     onClick={() => handleNotificationClick(notification)}
                                 >
@@ -211,7 +211,7 @@ export default function NotificationsPage() {
                                             </div>
                                             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                                 {!notification.is_read && (
-                                                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500 flex-shrink-0" />
+                                                    <div className="h-2.5 w-2.5 rounded-full bg-primary flex-shrink-0" />
                                                 )}
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>

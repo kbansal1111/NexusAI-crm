@@ -252,9 +252,9 @@ export function ImportDataDialog({
         <Dialog open={open} onOpenChange={(val) => { if (!isImporting) { if (!val) handleReset(); onOpenChange(val); } }}>
             <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-hidden p-0 border-none flex flex-col bg-card shadow-2xl rounded-xl">
                 {/* Header */}
-                <DialogHeader className="p-6 border-b border-border bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+                <DialogHeader className="p-6 border-b border-border bg-gradient-to-r from-primary/5 to-chart-5/5">
                     <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-primary">
-                        <Upload className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <Upload className="h-6 w-6 text-primary dark:text-primary" />
                         Import {entityLabel} in Bulk
                     </DialogTitle>
                     <DialogDescription className="text-muted-foreground mt-1">
@@ -265,23 +265,23 @@ export function ImportDataDialog({
                 {/* Progress Indicators */}
                 <div className="px-6 py-3 bg-muted/40 border-b border-border flex items-center justify-between text-xs font-semibold text-muted-foreground">
                     <div className="flex items-center gap-6">
-                        <div className={`flex items-center gap-2 ${step >= 1 ? "text-blue-600 dark:text-blue-400" : ""}`}>
-                            <span className={`h-5 w-5 rounded-full flex items-center justify-center border text-[10px] ${step >= 1 ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-950/80 dark:border-blue-900" : ""}`}>1</span>
+                        <div className={`flex items-center gap-2 ${step >= 1 ? "text-primary dark:text-primary" : ""}`}>
+                            <span className={`h-5 w-5 rounded-full flex items-center justify-center border text-[10px] ${step >= 1 ? "bg-primary/10 border-primary/40 text-primary dark:bg-primary/15 dark:border-primary/30" : ""}`}>1</span>
                             Upload File
                         </div>
                         <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-                        <div className={`flex items-center gap-2 ${step >= 2 ? "text-blue-600 dark:text-blue-400" : ""}`}>
-                            <span className={`h-5 w-5 rounded-full flex items-center justify-center border text-[10px] ${step >= 2 ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-950/80 dark:border-blue-900" : "border-muted"}`}>2</span>
+                        <div className={`flex items-center gap-2 ${step >= 2 ? "text-primary dark:text-primary" : ""}`}>
+                            <span className={`h-5 w-5 rounded-full flex items-center justify-center border text-[10px] ${step >= 2 ? "bg-primary/10 border-primary/40 text-primary dark:bg-primary/15 dark:border-primary/30" : "border-muted"}`}>2</span>
                             Preview & Validate
                         </div>
                         <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-                        <div className={`flex items-center gap-2 ${step >= 3 ? "text-blue-600 dark:text-blue-400" : ""}`}>
-                            <span className={`h-5 w-5 rounded-full flex items-center justify-center border text-[10px] ${step >= 3 ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-950/80 dark:border-blue-900" : "border-muted"}`}>3</span>
+                        <div className={`flex items-center gap-2 ${step >= 3 ? "text-primary dark:text-primary" : ""}`}>
+                            <span className={`h-5 w-5 rounded-full flex items-center justify-center border text-[10px] ${step >= 3 ? "bg-primary/10 border-primary/40 text-primary dark:bg-primary/15 dark:border-primary/30" : "border-muted"}`}>3</span>
                             Import Status
                         </div>
                     </div>
                     {file && (
-                        <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-900/30">
+                        <div className="flex items-center gap-1.5 bg-primary/5 dark:bg-primary/15 text-primary dark:text-primary px-2 py-0.5 rounded-full border border-primary/20 dark:border-primary/25">
                             <FileText className="h-3 w-3" />
                             <span className="max-w-[150px] truncate">{file.name}</span>
                         </div>
@@ -298,7 +298,7 @@ export function ImportDataDialog({
                                 onDragOver={handleDragOver}
                                 onDrop={handleDrop}
                                 onClick={() => fileInputRef.current?.click()}
-                                className="border-2 border-dashed border-muted-foreground/25 hover:border-blue-500/50 hover:bg-blue-50/5 dark:hover:bg-blue-950/5 rounded-xl p-10 text-center cursor-pointer transition-all duration-200 group flex flex-col items-center justify-center space-y-4"
+                                className="border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/15/5 rounded-xl p-10 text-center cursor-pointer transition-all duration-200 group flex flex-col items-center justify-center space-y-4"
                             >
                                 <input
                                     type="file"
@@ -307,7 +307,7 @@ export function ImportDataDialog({
                                     accept=".csv,.xlsx,.xls"
                                     className="hidden"
                                 />
-                                <div className="h-16 w-16 rounded-full bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform duration-200 shadow-sm border border-blue-100 dark:border-blue-900/30">
+                                <div className="h-16 w-16 rounded-full bg-primary/5 dark:bg-primary/15 flex items-center justify-center text-primary dark:text-primary group-hover:scale-110 transition-transform duration-200 shadow-sm border border-primary/20 dark:border-primary/25">
                                     <Upload className="h-8 w-8" />
                                 </div>
                                 <div className="space-y-1">
@@ -323,7 +323,7 @@ export function ImportDataDialog({
 
                             <div className="flex items-center justify-between p-4 bg-muted/40 rounded-xl border border-border">
                                 <div className="flex items-start gap-3">
-                                    <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 mt-0.5">
+                                    <div className="h-9 w-9 rounded-lg bg-primary/10 dark:bg-primary/15 flex items-center justify-center text-primary dark:text-primary mt-0.5">
                                         <Info className="h-5 w-5" />
                                     </div>
                                     <div className="space-y-0.5">
@@ -354,9 +354,9 @@ export function ImportDataDialog({
                     {/* Step 2: Preview & Validation */}
                     {step === 2 && (
                         <div className="space-y-5 my-auto flex flex-col h-full">
-                            <div className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                            <div className="flex items-center justify-between bg-primary/5 dark:bg-primary/10 p-4 rounded-xl border border-primary/20 dark:border-primary/25">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 bg-blue-100 dark:bg-blue-950 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                    <div className="h-10 w-10 bg-primary/10 dark:bg-primary/15 rounded-lg flex items-center justify-center text-primary dark:text-primary">
                                         <FileText className="h-6 w-6" />
                                     </div>
                                     <div>
@@ -435,8 +435,8 @@ export function ImportDataDialog({
                             {isImporting ? (
                                 <div className="space-y-4 flex flex-col items-center justify-center py-6">
                                     <div className="relative flex items-center justify-center">
-                                        <div className="h-16 w-16 rounded-full border-4 border-blue-100 dark:border-blue-950 flex items-center justify-center"></div>
-                                        <Loader2 className="absolute h-16 w-16 animate-spin text-blue-600 dark:text-blue-400 stroke-[2.5]" />
+                                        <div className="h-16 w-16 rounded-full border-4 border-primary/20 dark:border-primary/25 flex items-center justify-center"></div>
+                                        <Loader2 className="absolute h-16 w-16 animate-spin text-primary dark:text-primary stroke-[2.5]" />
                                     </div>
                                     <div className="space-y-1">
                                         <h3 className="font-semibold text-lg">Importing {entityLabel}...</h3>
@@ -540,7 +540,7 @@ export function ImportDataDialog({
                                         <Button
                                             onClick={handleImport}
                                             disabled={!file}
-                                            className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5"
+                                            className="h-9 px-4 bg-primary hover:bg-primary/90 text-white flex items-center gap-1.5"
                                         >
                                             Start Import
                                             <ChevronRight className="h-4 w-4" />
@@ -551,7 +551,7 @@ export function ImportDataDialog({
                                 <Button
                                     onClick={handleClose}
                                     disabled={isImporting}
-                                    className="h-9 px-5 bg-blue-600 hover:bg-blue-700 text-white"
+                                    className="h-9 px-5 bg-primary hover:bg-primary/90 text-white"
                                 >
                                     Close
                                 </Button>

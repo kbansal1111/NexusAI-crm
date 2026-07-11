@@ -155,7 +155,7 @@ export function SearchableSelect({
                                             <div className="flex items-center gap-2 truncate">
                                                 <Check
                                                     className={cn(
-                                                        "h-4 w-4 text-blue-600",
+                                                        "h-4 w-4 text-primary",
                                                         value === option.value ? "opacity-100" : "opacity-0"
                                                     )}
                                                 />

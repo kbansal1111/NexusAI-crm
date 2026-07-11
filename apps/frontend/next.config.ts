@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns", "recharts", "@tanstack/react-table"],
+  },
   // Keep browser-only heavy libraries (jspdf) out of the server bundle so the
   // Cloudflare Worker stays under the size limit. These are only ever invoked
   // inside client event handlers, never during SSR.

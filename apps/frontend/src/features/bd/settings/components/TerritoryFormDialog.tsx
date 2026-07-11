@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -8,14 +8,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { territoryService, type Territory, type Region } from "@/lib/api/services/territory.service";
-import { usersExtraService } from "@/lib/api/services/users-extra.service";
+import { territoryService, type Territory } from "@/lib/api/services/territory.service";
+import { destinationsService, type Destination } from "@/lib/api/services/destinations.service";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { locationService, type Country as GeoCountry, type State as GeoState } from "@/lib/api/services/locations.service";
 
@@ -23,43 +18,43 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   territory?: Territory | null;
-  regions: Region[];
   onSaved: () => void;
 }
 
-const EMPTY: Omit<Territory, "id" | "region_name"> = {
-  name: "",
-  code: "",
-  description: "",
-  region_id: "",
-  parent_territory_id: null,
-  countries: [],
-  states: [],
-  postal_codes: [],
-  manager_id: null,
-  assignment_type: "geographic",
-  is_active: true,
-};
-
-function csv(value: string): string[] {
-  return value
-    .split(/[,\n]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+// Simplified single-form territory (mirrors the client's legacy CRM):
+// Name + Countries + States + Destinations. The BD user who owns a territory
+// is assigned on the Admin → Users form (single assignment path).
+// Legacy fields (code, region, postal codes, manager, description) are
+// preserved on existing records by only sending the fields this form manages.
+interface FormState {
+  name: string;
+  countries: string[];
+  states: string[];
+  destinations: string[];
 }
 
-export function TerritoryFormDialog({ open, onOpenChange, territory, regions, onSaved }: Props) {
-  const [form, setForm] = useState<typeof EMPTY>(EMPTY);
-  const [users, setUsers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
+const EMPTY: FormState = {
+  name: "",
+  countries: [],
+  states: [],
+  destinations: [],
+};
+
+export function TerritoryFormDialog({ open, onOpenChange, territory, onSaved }: Props) {
+  const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
 
   // Country/State are picked from the SAME canonical location source the Account
   // form uses (values stored by NAME), so a territory's countries/states match
   // an account's billing_country/billing_state exactly — no case/spelling drift.
   const [countryOpts, setCountryOpts] = useState<GeoCountry[]>([]);
-  const [stateOpts, setStateOpts] = useState<GeoState[]>([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
   const [loadingStates, setLoadingStates] = useState(false);
+  // States are grouped per selected country so the State dropdown never offers
+  // a state outside the territory's countries (proper country → state cascade,
+  // same rule as the Lead/Account address forms).
+  const [statesByCountry, setStatesByCountry] = useState<Record<string, GeoState[]>>({});
+  const [allDestinations, setAllDestinations] = useState<Destination[]>([]);
   // name -> Country, accumulated across popular + searches, to resolve the id
   // needed to load a country's states.
   const countryByName = useRef<Map<string, GeoCountry>>(new Map());
@@ -69,13 +64,6 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
     setCountryOpts((prev) => {
       const map = new Map(prev.map((c) => [c.name, c]));
       for (const c of list) map.set(c.name, c);
-      return Array.from(map.values());
-    });
-  };
-  const mergeStates = (list: GeoState[]) => {
-    setStateOpts((prev) => {
-      const map = new Map(prev.map((s) => [s.name, s]));
-      for (const s of list) map.set(s.name, s);
       return Array.from(map.values());
     });
   };
@@ -89,41 +77,21 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
       .catch(() => {})
       .finally(() => setLoadingCountries(false));
   };
-  const handleStateSearch = (q: string, signal?: AbortSignal) => {
-    if (!q) return;
-    const sel = form.countries || [];
-    const countryId = sel.length === 1 ? countryByName.current.get(sel[0])?.id : undefined;
-    setLoadingStates(true);
-    locationService
-      .searchStates(q, countryId, signal)
-      .then((r) => mergeStates(r.states))
-      .catch(() => {})
-      .finally(() => setLoadingStates(false));
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    usersExtraService
-      .getAllActive()
-      .then((data: any) => {
-        const arr = Array.isArray(data) ? data : data?.users || [];
-        setUsers(
-          arr.map((u: any) => ({ id: u.id || u._id, name: u.name, email: u.email }))
-        );
-      })
-      .catch(() => {});
-  }, [open]);
 
   useEffect(() => {
     if (territory) {
-      const { id: _id, region_name: _rn, ...rest } = territory;
-      setForm({ ...EMPTY, ...rest });
+      setForm({
+        name: territory.name || "",
+        countries: territory.countries || [],
+        states: territory.states || [],
+        destinations: territory.destinations || [],
+      });
     } else {
       setForm(EMPTY);
     }
   }, [territory, open]);
 
-  // Seed the country dropdown with the popular list when the dialog opens.
+  // Seed the country dropdown (popular list) + destination picklist on open.
   useEffect(() => {
     if (!open) return;
     setLoadingCountries(true);
@@ -132,20 +100,30 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
       .then((r) => mergeCountries(r.countries))
       .catch(() => {})
       .finally(() => setLoadingCountries(false));
+    destinationsService
+      .getDestinations()
+      .then((r) => setAllDestinations(r.destinations))
+      .catch(() => {});
   }, [open]);
 
-  // Load the states belonging to every selected country so the State dropdown
-  // only offers states that actually sit inside the territory's countries.
+  // Load each selected country's states; drop entries for deselected countries
+  // so the State options always reflect exactly the selected countries.
   const selectedCountriesKey = (form.countries || []).join(",");
   useEffect(() => {
     if (!open) return;
     const names = form.countries || [];
-    if (names.length === 0) return;
+    setStatesByCountry((prev) => {
+      const kept: Record<string, GeoState[]> = {};
+      for (const n of names) if (prev[n]) kept[n] = prev[n];
+      return kept;
+    });
+    const missing = names.filter((n) => !(n in statesByCountry));
+    if (missing.length === 0) return;
     let cancelled = false;
     (async () => {
       setLoadingStates(true);
       try {
-        for (const name of names) {
+        for (const name of missing) {
           let c = countryByName.current.get(name);
           if (!c) {
             const res = await locationService.searchCountries(name);
@@ -154,7 +132,9 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
           }
           if (c && !cancelled) {
             const st = await locationService.getStates(c.id);
-            if (!cancelled) mergeStates(st.states);
+            if (!cancelled) {
+              setStatesByCountry((prev) => ({ ...prev, [name]: st.states }));
+            }
           }
         }
       } catch {
@@ -169,16 +149,77 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, selectedCountriesKey]);
 
+  // State options = union of the selected countries' states, deduped by name.
+  const stateOpts = useMemo(() => {
+    const map = new Map<string, GeoState>();
+    for (const country of form.countries) {
+      for (const s of statesByCountry[country] || []) map.set(s.name, s);
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [form.countries, statesByCountry]);
+
+  // Destination options: only destinations mapped to a selected country (ones
+  // with no country mapping stay available), deduped by name so repeated
+  // seed rows (e.g. two "Wellington"s) don't produce duplicate React keys.
+  const destOpts = useMemo(() => {
+    const selected = new Set(form.countries);
+    const map = new Map<string, string>(); // name -> label
+    for (const d of allDestinations) {
+      if (selected.size > 0 && d.country_name && !selected.has(d.country_name)) continue;
+      if (!map.has(d.name)) {
+        map.set(d.name, d.country_name && selected.size === 0 ? `${d.name} (${d.country_name})` : d.name);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [allDestinations, form.countries]);
+
+  // Country change prunes selected states/destinations that belonged to a
+  // removed country (values we can't map — legacy data — are left alone).
+  const onCountriesChange = (vals: string[]) => {
+    setForm((prev) => {
+      const keep = new Set<string>();
+      for (const country of vals) {
+        for (const s of statesByCountry[country] || []) keep.add(s.name);
+      }
+      const known = new Set<string>();
+      for (const list of Object.values(statesByCountry)) {
+        for (const s of list) known.add(s.name);
+      }
+      const destByName = new Map(allDestinations.map((d) => [d.name, d.country_name]));
+      const countrySet = new Set(vals);
+      return {
+        ...prev,
+        countries: vals,
+        states: prev.states.filter((s) => keep.has(s) || !known.has(s)),
+        destinations:
+          vals.length === 0
+            ? prev.destinations
+            : prev.destinations.filter((name) => {
+                const c = destByName.get(name);
+                return !c || countrySet.has(c);
+              }),
+      };
+    });
+  };
+
   const submit = async () => {
     if (!form.name.trim()) return toast.error("Name is required");
-    if (!form.region_id) return toast.error("Region is required");
+    if (form.countries.length === 0) return toast.error("Select at least one country");
     setSaving(true);
     try {
       if (territory) {
+        // Send only what this form manages so legacy fields on old records
+        // (manager, code, region, postal codes, …) are left untouched.
         await territoryService.updateTerritory(territory.id, form);
         toast.success("Territory updated");
       } else {
-        await territoryService.createTerritory(form);
+        await territoryService.createTerritory({
+          ...form,
+          assignment_type: "geographic",
+          is_active: true,
+        });
         toast.success("Territory created");
       }
       onSaved();
@@ -192,152 +233,56 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{territory ? "Edit Territory" : "Create Territory"}</DialogTitle>
+          <DialogTitle>{territory ? "Edit Territory" : "Add Territory"}</DialogTitle>
           <DialogDescription>
-            Territories are geo-matched to leads via postal code → state → country in that priority.
-            Wildcards like &ldquo;56*&rdquo; match any postal code starting with 56.
+            New opportunities are matched to a territory by the customer&apos;s state, then
+            country. Assign this territory to its BD user on the Admin → Users form.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="tname">Name *</Label>
-              <Input
-                id="tname"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="tcode">Code</Label>
-              <Input
-                id="tcode"
-                value={form.code || ""}
-                onChange={(e) => setForm({ ...form, code: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Region *</Label>
-              <Select
-                value={form.region_id}
-                onValueChange={(v) => setForm({ ...form, region_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select region" />
-                </SelectTrigger>
-                <SelectContent>
-                  {regions.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Assignment Type</Label>
-              <Select
-                value={form.assignment_type || "geographic"}
-                onValueChange={(v) =>
-                  setForm({ ...form, assignment_type: v as Territory["assignment_type"] })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="geographic">Geographic</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="rule_based">Rule-based</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="tname">Name *</Label>
+            <Input
+              id="tname"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Usually the BD user's name"
+            />
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Countries</Label>
+            <Label>Country *</Label>
             <MultiSelect
               options={countryOpts.map((c) => ({ label: c.name, value: c.name }))}
-              selected={form.countries || []}
-              onChange={(vals) => setForm({ ...form, countries: vals })}
+              selected={form.countries}
+              onChange={onCountriesChange}
               onSearch={handleCountrySearch}
               isLoading={loadingCountries}
-              placeholder="Search and select countries"
+              placeholder="Select countries"
             />
-            <p className="text-xs text-muted-foreground">
-              Picked from the shared location list so values match an account&apos;s billing country exactly.
-            </p>
           </div>
+
           <div className="grid gap-1.5">
-            <Label>States</Label>
+            <Label>State(s)</Label>
             <MultiSelect
               options={stateOpts.map((s) => ({ label: s.name, value: s.name }))}
-              selected={form.states || []}
+              selected={form.states}
               onChange={(vals) => setForm({ ...form, states: vals })}
-              onSearch={handleStateSearch}
               isLoading={loadingStates}
-              placeholder={(form.countries || []).length ? "Search and select states" : "Select a country first"}
-              disabled={(form.countries || []).length === 0}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="tpc">Postal codes (comma-separated; use * for wildcards)</Label>
-            <Input
-              id="tpc"
-              placeholder="560001, 56*, 700*"
-              value={(form.postal_codes || []).join(", ")}
-              onChange={(e) => setForm({ ...form, postal_codes: csv(e.target.value) })}
+              placeholder={form.countries.length ? "Search state" : "Select a country first"}
+              disabled={form.countries.length === 0}
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Territory Manager (BD User)</Label>
-              <Select
-                value={form.manager_id || "__none__"}
-                onValueChange={(v) =>
-                  setForm({ ...form, manager_id: v === "__none__" ? null : v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                The one person who owns this territory — sees every opportunity in it
-                (country/state/region).
-              </p>
-            </div>
-            <div className="flex items-center gap-2 pt-7">
-              <Switch
-                id="tactive"
-                checked={form.is_active ?? true}
-                onCheckedChange={(v) => setForm({ ...form, is_active: v })}
-              />
-              <Label htmlFor="tactive" className="cursor-pointer">Active</Label>
-            </div>
-          </div>
-
           <div className="grid gap-1.5">
-            <Label htmlFor="tdesc">Description</Label>
-            <Textarea
-              id="tdesc"
-              rows={2}
-              value={form.description || ""}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            <Label>Destination(s)</Label>
+            <MultiSelect
+              options={destOpts}
+              selected={form.destinations}
+              onChange={(vals) => setForm({ ...form, destinations: vals })}
+              placeholder="Select destinations"
             />
           </div>
         </div>
@@ -347,7 +292,7 @@ export function TerritoryFormDialog({ open, onOpenChange, territory, regions, on
           </Button>
           <Button onClick={submit} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-            {territory ? "Save Changes" : "Create"}
+            {territory ? "Save" : "Add"}
           </Button>
         </DialogFooter>
       </DialogContent>

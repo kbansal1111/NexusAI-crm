@@ -35,11 +35,11 @@ const getActivityIcon = (action: string, entityType: string) => {
     if (action.includes("create")) return <PlusCircle className="h-4 w-4 text-green-500" />;
     if (action.includes("update")) return <Edit2 className="h-4 w-4 text-amber-500" />;
     if (action.includes("delete")) return <Trash2 className="h-4 w-4 text-red-500" />;
-    if (action.includes("login")) return <Shield className="h-4 w-4 text-blue-500" />;
+    if (action.includes("login")) return <Shield className="h-4 w-4 text-primary" />;
 
     // Fallback to entity type
     switch (entityType) {
-        case "user": return <User className="h-4 w-4 text-blue-500" />;
+        case "user": return <User className="h-4 w-4 text-primary" />;
         case "lead": case "contact": return <User className="h-4 w-4 text-emerald-500" />;
         case "opportunity": case "quote": return <FileText className="h-4 w-4 text-amber-500" />;
         case "email": return <Mail className="h-4 w-4 text-purple-500" />;

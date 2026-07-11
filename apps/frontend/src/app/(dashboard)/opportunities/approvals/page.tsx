@@ -57,7 +57,7 @@ export default function TransactionApprovalsPage() {
                         onClick={() => setFilter(f)}
                         className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                             filter.key === f.key
-                                ? "bg-blue-600 text-white"
+                                ? "bg-primary text-white"
                                 : "bg-muted text-muted-foreground hover:bg-muted/70"
                         }`}
                     >
@@ -68,7 +68,7 @@ export default function TransactionApprovalsPage() {
 
             {isLoading ? (
                 <div className="flex items-center justify-center py-16">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     <span className="ml-2 text-sm text-muted-foreground">Loading queue...</span>
                 </div>
             ) : rows.length === 0 ? (
@@ -103,7 +103,7 @@ export default function TransactionApprovalsPage() {
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <Link
                                                 href={`/opportunities/${txn.opportunity_id}`}
-                                                className="text-blue-600 dark:text-blue-400 hover:underline"
+                                                className="text-primary dark:text-primary hover:underline"
                                             >
                                                 {txn.opportunity_name || "Opportunity"}
                                             </Link>
@@ -129,7 +129,7 @@ export default function TransactionApprovalsPage() {
                                                     <button
                                                         onClick={() => verify.mutate({ opportunityId: txn.opportunity_id, txnId: txn.id })}
                                                         disabled={verify.isPending}
-                                                        className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                                                        className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:text-primary hover:bg-primary/15 transition-colors disabled:opacity-50"
                                                     >
                                                         <Check className="h-3 w-3" /> Verify
                                                     </button>

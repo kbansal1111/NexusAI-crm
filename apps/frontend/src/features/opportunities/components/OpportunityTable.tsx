@@ -69,7 +69,7 @@ export const columns: ColumnDef<Opportunity>[] = [
         cell: ({ row }) => {
             const opp = row.original;
             return (
-                <Link href={`/opportunities/${opp.id}`} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
+                <Link href={`/opportunities/${opp.id}`} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
                     {opp.name}
                 </Link>
             );
@@ -91,7 +91,7 @@ export const columns: ColumnDef<Opportunity>[] = [
             return (
                 <Link
                     href={`/accounts/${opp.account_id}`}
-                    className="text-sm font-medium text-blue-600 hover:underline"
+                    className="text-sm font-medium text-primary hover:underline"
                 >
                     {opp.account_name || "Account"}
                 </Link>
@@ -114,11 +114,11 @@ export const columns: ColumnDef<Opportunity>[] = [
                             ? "border-green-200 bg-green-50 text-green-700"
                             : isLost
                             ? "border-red-200 bg-red-50 text-red-600"
-                            : "border-blue-200 bg-blue-50 text-blue-700"
+                            : "border-primary/30 bg-primary/5 text-primary"
                     }`}
                 >
                     <span className={`mr-1.5 h-1.5 w-1.5 rounded-full inline-block ${
-                        isWon ? "bg-green-500" : isLost ? "bg-red-500" : "bg-blue-500"
+                        isWon ? "bg-green-500" : isLost ? "bg-red-500" : "bg-primary"
                     }`} />
                     {stageName}
                 </Badge>

@@ -176,7 +176,6 @@ class OpportunityResponse(BaseModel):
     # Metadata
     is_locked: bool = False
     locked_by: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    view_count: int = 0
 
     # Sequential human-readable display ID (per-tenant, zero-padded to 10 digits on frontend)
     opportunity_number: Optional[int] = None

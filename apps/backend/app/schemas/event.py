@@ -52,7 +52,6 @@ class EventResponse(EventBase):
     
     status: str = "Planned"
     reminder_sent: bool = False
-    view_count: int = 0
     
     created_at: datetime
     updated_at: datetime

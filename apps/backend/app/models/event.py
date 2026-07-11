@@ -49,7 +49,6 @@ class Event(BaseDocument):
     last_modified_by_id: Optional[PydanticObjectId] = None
     
     # Metadata
-    view_count: int = 0
     is_recurring: bool = False
     recurrence_pattern: Optional[str] = None
     
@@ -100,7 +99,3 @@ class Event(BaseDocument):
         self.last_modified_by_id = user_id
         await self.save()
     
-    async def increment_view_count(self):
-        # """Increment view count"""
-        self.view_count += 1
-        await self.save()

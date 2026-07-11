@@ -1,30 +1,72 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Building2, Lightbulb, UserPlus, Users, Briefcase } from "lucide-react";
+import {
+    ClipboardList, Building2, Target, UserPlus, Users, Briefcase, UserRound,
+    FileText, Receipt, CreditCard, ShieldCheck, UserCog, Truck, CalendarDays,
+} from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import type { ActivityLog } from "@/features/dashboard/services/dashboardService";
 
+// One icon per module — keys are lowercase; lookups normalize the stored
+// entity_type (services log both "Task" and "task", etc.). Keep this in sync
+// with the entity_type values emitted by the backend ActivityMixin callers.
 const typeIcons: Record<string, React.ReactNode> = {
-    task: <ClipboardList className="h-4 w-4 text-blue-500" />,
-    personal_account: <Building2 className="h-4 w-4 text-muted-foreground" />,
-    opportunity: <Lightbulb className="h-4 w-4 text-violet-500" />,
-    lead: <UserPlus className="h-4 w-4 text-amber-500" />,
-    contact: <Users className="h-4 w-4 text-sky-500" />,
+    task: <ClipboardList className="h-4 w-4 text-primary" />,
     account: <Briefcase className="h-4 w-4 text-emerald-500" />,
-    event: <ClipboardList className="h-4 w-4 text-rose-500" />,
+    personal_account: <UserRound className="h-4 w-4 text-emerald-500" />,
+    contact: <Users className="h-4 w-4 text-sky-500" />,
+    lead: <UserPlus className="h-4 w-4 text-amber-500" />,
+    opportunity: <Target className="h-4 w-4 text-violet-500" />,
+    opportunity_transaction: <CreditCard className="h-4 w-4 text-violet-500" />,
+    payment: <CreditCard className="h-4 w-4 text-emerald-500" />,
+    invoice: <Receipt className="h-4 w-4 text-cyan-600" />,
+    quote: <FileText className="h-4 w-4 text-cyan-600" />,
+    supplier: <Truck className="h-4 w-4 text-orange-500" />,
+    event: <CalendarDays className="h-4 w-4 text-rose-500" />,
+    user: <UserCog className="h-4 w-4 text-muted-foreground" />,
+    user_roles: <ShieldCheck className="h-4 w-4 text-muted-foreground" />,
+    role: <ShieldCheck className="h-4 w-4 text-muted-foreground" />,
 };
 
+const typeLabels: Record<string, string> = {
+    personal_account: "Person Account",
+    opportunity_transaction: "Transaction",
+    user_roles: "User Roles",
+};
+
+function titleCase(s: string): string {
+    return s
+        .split(/[_\s]+/)
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+}
+
 function formatActivityTitle(action: string, entityType: string): string {
-    const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
-    const entityLabel = entityType.charAt(0).toUpperCase() + entityType.slice(1).replace("_", " ");
+    const type = (entityType || "").toLowerCase();
+    const entityLabel = typeLabels[type] || titleCase(type);
+    const a = (action || "").toLowerCase();
 
-    // Custom labels for common actions
-    if (action === "create") return `Created ${entityLabel}`;
-    if (action === "update") return `Updated ${entityLabel}`;
-    if (action === "delete") return `Deleted ${entityLabel}`;
+    if (a === "create" || a === "created") return `Created ${entityLabel}`;
+    if (a === "update" || a === "updated") return `Updated ${entityLabel}`;
+    if (a === "delete" || a === "deleted") return `Deleted ${entityLabel}`;
+    // Compound actions like "task_created" already name what happened —
+    // "Task Created" reads better than "Task_created Lead".
+    if (a.includes("_")) return titleCase(a);
+    return `${titleCase(a)} ${entityLabel}`;
+}
 
-    return `${actionLabel} ${entityLabel}`;
+/** The detail line under the title. Backend descriptions often repeat the
+ *  title ("Created lead: Acme") — strip that boilerplate so the stream reads
+ *  "Admin User – Acme" instead of "Admin User – [Acme] Created lead: Acme". */
+function formatActivityDetail(activity: ActivityLog): string {
+    const desc = (activity.description || "").trim();
+    const name = (activity.entity_name || "").trim();
+    if (!desc) return name;
+    const m = desc.match(/^(created|updated|deleted|converted)\s+[\w ]+:\s*(.+)$/i);
+    if (m) return m[2];
+    return desc;
 }
 
 export function UserActivities({ activities }: { activities: ActivityLog[] }) {
@@ -79,13 +121,13 @@ export function UserActivities({ activities }: { activities: ActivityLog[] }) {
                             return (
                                 <li key={activity.id} className="relative pl-8 pb-4">
                                     <div className="absolute left-0 flex h-6 w-6 items-center justify-center rounded-full border bg-background">
-                                        {typeIcons[activity.entity_type] || <ClipboardList className="h-4 w-4 text-muted-foreground" />}
+                                        {typeIcons[(activity.entity_type || "").toLowerCase()] || <ClipboardList className="h-4 w-4 text-muted-foreground" />}
                                     </div>
                                     <p className="text-sm font-medium">
                                         {formatActivityTitle(activity.action, activity.entity_type)}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {activity.user_name} – {activity.entity_name ? `[${activity.entity_name}] ` : ""}{activity.description}
+                                        {activity.user_name} – {formatActivityDetail(activity)}
                                     </p>
                                     <p className="mt-0.5 text-xs text-muted-foreground">{dateStr}</p>
                                 </li>

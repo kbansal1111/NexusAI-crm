@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/services/files-extra.service";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, FolderOpen, FileText } from "lucide-react";
+import { formatDate } from "@/lib/format";
 
 export default function SharedFilesPage() {
   return (
@@ -66,7 +67,7 @@ function FilesTab() {
           <FileText className="h-4 w-4" />
           <span className="font-mono text-xs">{r.file_id || r.folder_id}</span>
           <span className="ml-auto text-xs text-muted-foreground">
-            {r.permission} · {new Date(r.shared_at).toLocaleDateString()}
+            {r.permission} · {formatDate(r.shared_at)}
           </span>
         </li>
       ))}

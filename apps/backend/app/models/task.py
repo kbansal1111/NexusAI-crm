@@ -42,7 +42,6 @@ class Task(BaseDocument):
     completed_by: Optional[PydanticObjectId] = None
     
     # Metadata
-    view_count: int = 0
     
     class Settings:
         name = "tasks"
@@ -95,7 +94,3 @@ class Task(BaseDocument):
         self.completed_by = user_id
         await self.save()
     
-    async def increment_view_count(self):
-        # """Increment view count"""
-        self.view_count += 1
-        await self.save()

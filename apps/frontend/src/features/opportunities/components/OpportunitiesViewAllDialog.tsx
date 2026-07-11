@@ -105,7 +105,7 @@ export function OpportunitiesViewAllDialog({
                                     <TableCell className="py-2 px-3">
                                         <Link 
                                             href={`/opportunities/${opp.id}`}
-                                            className="text-[12px] font-bold text-blue-500 hover:underline block truncate max-w-[200px]"
+                                            className="text-[12px] font-bold text-primary hover:underline block truncate max-w-[200px]"
                                             onClick={() => onOpenChange(false)}
                                         >
                                             {opp.name}

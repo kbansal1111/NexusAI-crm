@@ -190,7 +190,17 @@ class AnalyticsSummary(BaseModel):
     today_checkout: int = 0
     tomorrow_departures: int = 0
     today_revenue: float = 0.0
-    
+
+    # Real figures for the sales header — the true sum of open-deal amounts and
+    # the scope's actual revenue target (user's own, or team's summed targets).
+    open_pipeline_value: float = 0.0
+    monthly_target: float = 0.0
+
+    # True when the requesting user is an admin (sees the whole tenant). The
+    # frontend uses this to drop the My/Team toggle — "my deals" is meaningless
+    # for a pure admin account.
+    viewer_is_admin: bool = False
+
     # Industry context — tells the frontend which industry this tenant belongs to
     industry: Optional[str] = "travel"
 

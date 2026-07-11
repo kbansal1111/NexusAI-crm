@@ -70,7 +70,7 @@ function TopPerformerCard({ row }: { row: LeaderboardRow }) {
 
       <div className="grid grid-cols-3 gap-3 text-center">
         <div>
-          <p className="text-xl font-bold text-blue-400">{row.close_won}</p>
+          <p className="text-xl font-bold text-primary">{row.close_won}</p>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Close Won</p>
         </div>
         {industry === "travel" && (
@@ -210,7 +210,7 @@ export default function LeaderboardPage() {
                 {/* Metrics */}
                 <div className="hidden sm:flex items-center gap-6 text-right text-sm">
                   <div>
-                    <p className="font-bold text-blue-400">{row.close_won}</p>
+                    <p className="font-bold text-primary">{row.close_won}</p>
                     <p className="text-[10px] text-muted-foreground uppercase">Close Won</p>
                   </div>
                   {industry === "travel" && (

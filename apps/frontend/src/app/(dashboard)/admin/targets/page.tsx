@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
+import { formatNumber } from "@/lib/format";
 
 export default function TargetsPage() {
   const [rows, setRows] = useState<UserTargetRow[]>([]);
@@ -83,7 +84,7 @@ export default function TargetsPage() {
                 <tr key={r.user_id} className="border-b last:border-b-0">
                   <td className="px-3 py-2 font-medium">{r.name}</td>
                   <td className="px-3 py-2 text-muted-foreground">{r.email}</td>
-                  <td className="px-3 py-2 text-right">{r.annual_target.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right">{formatNumber(r.annual_target)}</td>
                   <td className="px-3 py-2 text-right">
                     <Input
                       type="number"

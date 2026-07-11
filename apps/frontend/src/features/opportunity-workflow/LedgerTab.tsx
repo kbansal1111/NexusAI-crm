@@ -25,6 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Loader2, Plus } from "lucide-react";
+import { formatNumber } from "@/lib/format";
 
 export function LedgerTab({ opportunityId }: { opportunityId: string }) {
   const [items, setItems] = useState<LedgerEntry[]>([]);
@@ -81,7 +82,7 @@ export function LedgerTab({ opportunityId }: { opportunityId: string }) {
         <div>
           <h2 className="text-lg font-semibold">Ledger</h2>
           <p className="text-sm text-muted-foreground">
-            Debit / credit ledger. Net: {(totalCredit - totalDebit).toLocaleString()}
+            Debit / credit ledger. Net: {formatNumber(totalCredit - totalDebit)}
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -196,7 +197,7 @@ export function LedgerTab({ opportunityId }: { opportunityId: string }) {
                       {i.entry_type}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right font-medium">{i.amount.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right font-medium">{formatNumber(i.amount)}</td>
                   <td className="px-3 py-2 text-muted-foreground">{i.currency}</td>
                   <td className="px-3 py-2">{i.counterparty || "—"}</td>
                   <td className="px-3 py-2 font-mono text-xs">{i.reference_no || "—"}</td>

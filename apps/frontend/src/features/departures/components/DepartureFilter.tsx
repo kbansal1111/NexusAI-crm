@@ -44,7 +44,7 @@ export function DepartureFilter({ filters, onApply, onClose }: Props) {
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between bg-blue-600 px-5 py-4">
+                <div className="flex items-center justify-between bg-primary px-5 py-4">
                     <h2 className="text-base font-semibold text-white">Departure Filter</h2>
                     <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
                         <X className="h-5 w-5" />
@@ -128,7 +128,7 @@ export function DepartureFilter({ filters, onApply, onClose }: Props) {
                 <div className="flex justify-end gap-3 border-t border-border px-5 py-4">
                     <Button variant="outline" onClick={handleReset}>Reset</Button>
                     <Button variant="outline" onClick={onClose}>Close</Button>
-                    <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button onClick={handleSubmit} className="bg-primary hover:bg-primary/90 text-white">
                         Submit
                     </Button>
                 </div>

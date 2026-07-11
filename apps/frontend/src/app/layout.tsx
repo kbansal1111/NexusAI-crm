@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "./error-feedback.css";
 import { Providers } from "@/lib/providers";
@@ -8,6 +8,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  weight: ["400", "500", "600", "700"],
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  weight: ["400", "500", "600"],
+});
 
 export const metadata: Metadata = {
   title: "Travel CRM",
@@ -37,7 +47,11 @@ export default async function RootLayout({
     // `data-new-gr-c-s-check-loaded` into the document before React hydrates.
     // This is a known and accepted pattern — see
     // https://nextjs.org/docs/messages/react-hydration-error
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="font-sans antialiased" suppressHydrationWarning>
         {process.env.NODE_ENV === "development" && (
           // Dev-only: download-manager/form-filler extensions (FDM/IDM) stamp
@@ -48,7 +62,7 @@ export default async function RootLayout({
           // this shim is not shipped there.
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function(){var A="fdprocessedid";var s=function(){document.querySelectorAll("["+A+"]").forEach(function(e){e.removeAttribute(A)})};s();var o=new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName===A)x.target.removeAttribute(A)})});o.observe(document.documentElement,{attributes:true,subtree:true,attributeFilter:[A]});window.addEventListener("load",function(){setTimeout(function(){o.disconnect()},5000)})})();`,
+              __html: `(function(){var AS=["fdprocessedid","bis_skin_checked","bis_register","__processed"];var sa=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){if(AS.indexOf(n)!==-1)return;return sa.call(this,n,v)};var s=function(){AS.forEach(function(A){document.querySelectorAll("["+A+"]").forEach(function(e){e.removeAttribute(A)})})};s();var o=new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName&&AS.indexOf(x.attributeName)!==-1)x.target.removeAttribute(x.attributeName)})});o.observe(document.documentElement,{attributes:true,subtree:true,attributeFilter:AS})})();`,
             }}
           />
         )}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { OwnerPopover } from "@/components/shared/OwnerPopover";
 import type { EntityType } from "@/lib/api/services/field-registry.service";
+import { formatDate } from "@/lib/format";
 import { defaultColumnsFor } from "./accountFields";
 
 /** sourceName (users, sales_stages, …) → (id → name) map, built by each table. */
@@ -87,11 +88,9 @@ const DATE_FIELDS = new Set(["created_at", "updated_at", "close_date", "due_date
 function prettify(key: string): string {
   return key.replace(/_id$/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-function fmtDate(v: any): string {
-  if (!v) return "-";
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
-}
+// Shared cached Intl formatter (IST, "17 Apr 2026") instead of constructing a
+// locale formatter per cell.
+const fmtDate = (v: any): string => formatDate(v);
 
 function makeColumn(key: string, labels: Map<string, string>, ctx: ColumnFactoryCtx): ColumnDef<any> {
   const header = labels.get(key) || prettify(key);

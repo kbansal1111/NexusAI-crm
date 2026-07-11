@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { subscriptionService } from "@/lib/api/services/subscription.service";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { formatNumber } from "@/lib/format";
 
 export default function BillingPage() {
   const [status, setStatus] = useState<any>(null);
@@ -95,7 +96,7 @@ export default function BillingPage() {
               <div key={p.id} className="rounded border p-3">
                 <div className="font-semibold">{p.name}</div>
                 <div className="mt-1 text-2xl">
-                  {p.amount?.toLocaleString() || 0}
+                  {p.amount != null ? formatNumber(p.amount) : 0}
                   <span className="ml-1 text-sm text-muted-foreground">/ {p.interval || "month"}</span>
                 </div>
               </div>
@@ -123,7 +124,7 @@ export default function BillingPage() {
                   <td className="px-2 py-1 text-muted-foreground">
                     {i.issued_at?.slice(0, 10) || "—"}
                   </td>
-                  <td className="px-2 py-1 text-right">{i.amount?.toLocaleString() || "—"}</td>
+                  <td className="px-2 py-1 text-right">{i.amount != null ? formatNumber(i.amount) : "—"}</td>
                   <td className="px-2 py-1">{i.status || "—"}</td>
                 </tr>
               ))}

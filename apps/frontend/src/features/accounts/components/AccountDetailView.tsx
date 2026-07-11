@@ -102,7 +102,7 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
     });
 
     return (
-        <div className="container mx-auto max-w-7xl px-4 py-6 [&_.bg-white]:!bg-card [&_.border-slate-100]:!border-border [&_.border-slate-200]:!border-border [&_.border-slate-300]:!border-border [&_.text-slate-800]:!text-foreground [&_.text-slate-700]:!text-foreground [&_.text-slate-600]:!text-foreground/90 [&_.text-slate-500]:!text-muted-foreground [&_.text-slate-400]:!text-muted-foreground [&_.text-slate-300]:!text-muted-foreground">
+        <div className="container mx-auto max-w-7xl px-4 py-6">
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogContent>
@@ -117,7 +117,7 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                         <AlertDialogAction
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="bg-red-500 hover:bg-red-600 text-white"
+                            className="bg-destructive text-white hover:bg-destructive/90"
                         >
                             {isDeleting ? "Deleting..." : "Delete"}
                         </AlertDialogAction>
@@ -148,19 +148,19 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                         <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-11 p-0 gap-8 max-w-full overflow-x-auto flex-nowrap scrollbar-hide">
                             <TabsTrigger
                                 value="related"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Related
                             </TabsTrigger>
                             <TabsTrigger
                                 value="details"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Details
                             </TabsTrigger>
                             <TabsTrigger
                                 value="attachments"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Attachments
                             </TabsTrigger>
@@ -172,13 +172,13 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                 {!isB2C && (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between border-b pb-2">
-                                            <h2 className="text-sm text-slate-400 font-medium flex items-center gap-2">
+                                            <h2 className="text-sm text-muted-foreground font-medium flex items-center gap-2">
                                                 <div className="h-6 w-6 rounded-full bg-orange-500 flex items-center justify-center text-white">
                                                     <UserIcon className="h-3 w-3" />
                                                 </div>
                                                 Contact ({account.related_contacts?.length || 0})
                                                 <span 
-                                                    className="text-blue-500 text-xs hover:underline cursor-pointer ml-1"
+                                                    className="text-primary text-xs hover:underline cursor-pointer ml-1"
                                                     onClick={() => setIsContactsViewAllOpen(true)}
                                                 >
                                                     View All
@@ -188,7 +188,7 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                                 variant="default" 
                                                 size="sm" 
                                                 onClick={() => setIsNewContactDrawerOpen(true)}
-                                                className="h-7 text-xs bg-blue-500 hover:bg-blue-600"
+                                                className="h-7 text-xs bg-primary hover:bg-primary/90"
                                             >
                                                 New
                                             </Button>
@@ -196,11 +196,11 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                                             {account.related_contacts?.map((contact) => (
                                                 <Link href={`/contacts/${contact.id}`} key={contact.id} className="block">
-                                                    <Card className="h-full rounded-lg border-border bg-card transition-all hover:border-blue-400/60 hover:shadow-md">
+                                                    <Card className="h-full rounded-lg border-border bg-card transition-all hover:border-primary/60 hover:shadow-md">
                                                         <CardContent className="p-3">
                                                             <div className="flex items-start gap-2.5">
                                                                 <div className="space-y-1 w-full">
-                                                                    <p className="truncate text-[13px] font-bold leading-tight text-blue-500 hover:underline">
+                                                                    <p className="truncate text-[13px] font-bold leading-tight text-primary hover:underline">
                                                                         {contact.first_name} {contact.last_name}
                                                                     </p>
                                                                     
@@ -237,13 +237,13 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                 {/* Related Opportunities */}
                                 <div className="space-y-4 pt-4 border-t">
                                         <div className="flex items-center justify-between border-b pb-2">
-                                            <h2 className="text-sm text-slate-400 font-medium flex items-center gap-2">
+                                            <h2 className="text-sm text-muted-foreground font-medium flex items-center gap-2">
                                                 <div className="h-6 w-6 rounded-full bg-orange-500 flex items-center justify-center text-white pb-[1px]">
                                                     <Briefcase className="h-[10px] w-[10px]" />
                                                 </div>
                                                 Opportunities({account.related_opportunities?.length || 0})
                                                 <span 
-                                                    className="text-blue-500 text-xs hover:underline cursor-pointer ml-1"
+                                                    className="text-primary text-xs hover:underline cursor-pointer ml-1"
                                                     onClick={() => setIsViewAllOpen(true)}
                                                 >
                                                     View All
@@ -253,7 +253,7 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                                 variant="default" 
                                                 size="sm" 
                                                 onClick={() => setIsNewOppDrawerOpen(true)}
-                                                className="h-7 text-xs bg-blue-500 hover:bg-blue-600"
+                                                className="h-7 text-xs bg-primary hover:bg-primary/90"
                                             >
                                                 New
                                             </Button>
@@ -271,31 +271,31 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                     <Card className="border-border bg-card">
                                         <CardHeader className="border-b border-border bg-muted/40 pb-3">
                                             <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                                <Building2 className="h-4 w-4 text-blue-600" />
+                                                <Building2 className="h-4 w-4 text-primary" />
                                                 Account Information
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account Name</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account Name</p>
                                                 <p className="text-sm font-medium text-foreground">{account.name}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Website</p>
-                                                <p className="text-sm font-medium text-blue-400 underline">{account.website || "-"}</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Website</p>
+                                                <p className="text-sm font-medium text-primary underline">{account.website || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</p>
-                                                <p className="text-sm font-medium text-blue-400 underline">{account.email || "-"}</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email</p>
+                                                <p className="text-sm font-medium text-primary underline">{account.email || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Phone</p>
                                                 <p className="text-sm font-medium text-foreground">{account.phone || "-"}</p>
                                             </div>
 
                                             {isB2C && (
                                                 <div className="space-y-1">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mobile</p>
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mobile</p>
                                                     <p className="text-sm font-medium text-foreground">{account.mobile || "-"}</p>
                                                 </div>
                                             )}
@@ -303,26 +303,26 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                             {!isB2C && (
                                                 <>
                                                     <div className="space-y-1">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Industry</p>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Industry</p>
                                                         <p className="text-sm font-medium text-foreground">{account.industry_name || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account Type</p>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account Type</p>
                                                         <p className="text-sm font-medium text-foreground">{account.account_type_name || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Category</p>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Category</p>
                                                         <p className="text-sm font-medium text-foreground">{account.category_name || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Parent Account</p>
-                                                        <p className="text-sm font-medium text-blue-400 underline">{account.parent_account_name || "-"}</p>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Parent Account</p>
+                                                        <p className="text-sm font-medium text-primary underline">{account.parent_account_name || "-"}</p>
                                                     </div>
                                                 </>
                                             )}
 
                                             <div className="space-y-1 md:col-span-2">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Description</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Description</p>
                                                 <p className="text-sm font-medium text-foreground whitespace-pre-wrap break-words">{account.description || "-"}</p>
                                             </div>
                                         </CardContent>
@@ -336,23 +336,23 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                     >
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Billing Street</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Billing Street</p>
                                                 <p className="text-sm font-medium text-foreground">{account.billing_street || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Billing City</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Billing City</p>
                                                 <p className="text-sm font-medium text-foreground">{account.billing_city || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Billing State/Province</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Billing State/Province</p>
                                                 <p className="text-sm font-medium text-foreground">{account.billing_state || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Billing Zip/Postal Code</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Billing Zip/Postal Code</p>
                                                 <p className="text-sm font-medium text-foreground">{account.billing_zip || "-"}</p>
                                             </div>
                                             <div className="space-y-1 md:col-span-2">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Billing Country</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Billing Country</p>
                                                 <p className="text-sm font-medium text-foreground">{account.billing_country || "-"}</p>
                                             </div>
                                         </div>
@@ -366,17 +366,17 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
                                     >
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created By</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Created By</p>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{account.created_by_name || "Unknown"}</p>
-                                                    <span className="text-slate-400 text-xs">at {formatDateTime(account.created_at)}</span>
+                                                    <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{account.created_by_name || "Unknown"}</p>
+                                                    <span className="text-muted-foreground text-xs">at {formatDateTime(account.created_at)}</span>
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Last Modified By</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Last Modified By</p>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{account.last_modified_by_name || account.created_by_name || "Unknown"}</p>
-                                                    <span className="text-slate-400 text-xs">at {formatDateTime(account.updated_at)}</span>
+                                                    <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{account.last_modified_by_name || account.created_by_name || "Unknown"}</p>
+                                                    <span className="text-muted-foreground text-xs">at {formatDateTime(account.updated_at)}</span>
                                                 </div>
                                             </div>
                                         </div>

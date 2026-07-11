@@ -65,12 +65,13 @@ class TerritoryBase(BaseModel):
     name: str
     code: Optional[str] = None
     description: Optional[str] = None
-    region_id: str
+    region_id: Optional[str] = None
     parent_territory_id: Optional[str] = None
     assignment_type: str = "manual"
     countries: List[str] = Field(default_factory=list)
     states: List[str] = Field(default_factory=list)
     postal_codes: List[str] = Field(default_factory=list)
+    destinations: List[str] = Field(default_factory=list)
     manager_id: Optional[str] = None  # the territory's single manager (BD user)
     is_active: bool = True
 
@@ -91,6 +92,7 @@ class TerritoryUpdate(BaseModel):
     countries: Optional[List[str]] = None
     states: Optional[List[str]] = None
     postal_codes: Optional[List[str]] = None
+    destinations: Optional[List[str]] = None
     manager_id: Optional[str] = None
     is_active: Optional[bool] = None
 

@@ -45,7 +45,6 @@ export interface Account {
     last_modified_by_name?: string;
 
     // Metadata
-    view_count: number;
     is_favorite: boolean;
     created_at: string;
     updated_at: string;

@@ -67,6 +67,12 @@ const SPECIAL_PRESETS_BY_ENTITY: Record<string, ViewPreset[]> = {
 };
 
 // Select a saved view (view_id) and clear any active preset (view).
+// Clearing (id=null) sets an explicit `view=all` marker instead of a bare URL:
+// useDefaultViewBoot treats a bare URL as a fresh page load and re-applies the
+// pinned/default view, and its one-shot guard is component state that resets
+// whenever the list remounts (e.g. while a loading skeleton swaps the table
+// out) — without the marker, "All records" bounced back to the default on the
+// first click.
 function useSelectView() {
   const router = useRouter();
   const pathname = usePathname();
@@ -74,9 +80,13 @@ function useSelectView() {
   return React.useCallback(
     (id: string | null) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (id) params.set("view_id", id);
-      else params.delete("view_id");
-      params.delete("view");
+      if (id) {
+        params.set("view_id", id);
+        params.delete("view");
+      } else {
+        params.delete("view_id");
+        params.set("view", "all");
+      }
       params.delete("page");
       router.push(`${pathname}?${params.toString()}`);
     },
@@ -122,7 +132,9 @@ export function ListViewSelector({
   const specialPresets = SPECIAL_PRESETS_BY_ENTITY[entity] || [];
 
   const currentPreset = searchParams.get("view");
-  const hasExplicit = !!(activeViewId || currentPreset);
+  // `view=all` is the explicit "All records" marker — for the UI it counts as
+  // the cleared state (highlight "All records", hide the × button).
+  const hasExplicit = !!(activeViewId || (currentPreset && currentPreset !== "all"));
   const selectPreset = (value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set("view", value);
@@ -262,6 +274,7 @@ export function ListViewSelector({
               : "Open a saved view to pin it"
         }
         aria-label="Pin view"
+        suppressHydrationWarning
       >
         <Pin className={cn("h-4 w-4", activeIsPinned && "fill-current")} />
       </button>

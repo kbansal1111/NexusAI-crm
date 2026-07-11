@@ -79,18 +79,17 @@ export function EmailEditor({ value, onChange, placeholder }: EmailEditorProps) 
                 <ToolbarButton icon={<X className="h-4 w-4" />} onClick={() => execCommand("removeFormat")} title="Clear Formatting" />
             </div>
 
-            {/* Content Area */}
+            {/* Content Area — placeholder is rendered by CSS only while the
+                editable is truly empty, so it can never escape the editor
+                or linger after typing. */}
             <div
                 ref={editorRef}
                 contentEditable
                 onInput={handleInput}
-                className="flex-1 p-4 outline-none text-sm min-h-[250px] prose prose-sm max-w-none relative"
+                data-placeholder={placeholder}
+                className="flex-1 p-4 outline-none text-sm min-h-[250px] prose prose-sm max-w-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none"
+                suppressHydrationWarning
             />
-            {!value && editorRef.current?.innerHTML === "" && (
-                <div className="absolute top-[85px] left-4 text-muted-foreground text-sm pointer-events-none">
-                    {placeholder}
-                </div>
-            )}
         </div>
     );
 }
@@ -113,7 +112,7 @@ function ToolbarButton({
             size="icon"
             className={cn(
                 "h-7 w-7 rounded-sm hover:bg-accent",
-                active && "bg-blue-500/20 text-blue-600 dark:text-blue-300"
+                active && "bg-primary/15 text-primary dark:text-primary"
             )}
             onClick={(e) => {
                 e.preventDefault();

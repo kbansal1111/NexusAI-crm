@@ -161,7 +161,10 @@ async def list_territories(
     # Enrich with region names for response
     response_list = []
     for t in territories:
-        region = await territory_service.get_region(t.region_id, current_user.tenant_id)
+        region = (
+            await territory_service.get_region(t.region_id, current_user.tenant_id)
+            if t.region_id else None
+        )
         response_list.append(
             TerritoryResponse(
                 id=str(t.id),
@@ -206,8 +209,11 @@ async def get_territory(
     territory = await territory_service.get_territory(territory_id, current_user.tenant_id)
     if not territory:
         raise HTTPException(status_code=404, detail="Territory not found")
-        
-    region = await territory_service.get_region(territory.region_id, current_user.tenant_id)
+
+    region = (
+        await territory_service.get_region(territory.region_id, current_user.tenant_id)
+        if territory.region_id else None
+    )
     
     return TerritoryResponse(
         id=str(territory.id),
@@ -329,7 +335,9 @@ async def get_regions_by_country(
     code = country.code if country else country_id
     name = country.name if country else None
     for t in territories:
-        if (code and code in (t.countries or [])) or (name and name in (t.countries or [])):
+        if t.region_id and (
+            (code and code in (t.countries or [])) or (name and name in (t.countries or []))
+        ):
             region_ids.add(t.region_id)
     if not region_ids:
         return []
@@ -374,7 +382,7 @@ async def list_bd_report(
         {
             "territory_id": str(t.id),
             "name": t.name,
-            "region_id": str(t.region_id),
+            "region_id": str(t.region_id) if t.region_id else None,
             "manager_id": str(t.manager_id) if t.manager_id else None,
         }
         for t in territories
@@ -400,7 +408,7 @@ async def post_bd_report_details(
             {
                 "territory_id": str(t.id),
                 "name": t.name,
-                "region_id": str(t.region_id),
+                "region_id": str(t.region_id) if t.region_id else None,
                 "manager_id": str(t.manager_id) if t.manager_id else None,
                 "countries": t.countries,
                 "states": t.states,

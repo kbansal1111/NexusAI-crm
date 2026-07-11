@@ -60,12 +60,12 @@ export function RelatedOpportunitiesCards({ opportunities, onNewClick }: Related
     return (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {opportunities.map((opp) => (
-                <Card key={opp.id} className="group overflow-hidden rounded-lg border-border bg-card shadow-sm transition-all hover:border-blue-400/60 hover:shadow-md">
+                <Card key={opp.id} className="group overflow-hidden rounded-lg border-border bg-card shadow-sm transition-all hover:border-primary/60 hover:shadow-md">
                     <CardContent className="p-3">
                         <div className="mb-0.5">
                             <Link
                                 href={`/opportunities/${opp.id}`}
-                                className="text-[13px] text-blue-500 hover:underline block truncate font-bold leading-tight"
+                                className="text-[13px] text-primary hover:underline block truncate font-bold leading-tight"
                             >
                                 {opp.name}
                             </Link>
@@ -98,7 +98,7 @@ export function RelatedOpportunitiesCards({ opportunities, onNewClick }: Related
                                 <Target className="h-[13px] w-[13px] shrink-0 text-muted-foreground" />
                                 <span className={cn(
                                     "text-[11px] font-bold",
-                                    opp.sales_stage_name?.toLowerCase().includes('lost') ? "text-red-500" : "text-blue-500"
+                                    opp.sales_stage_name?.toLowerCase().includes('lost') ? "text-red-500" : "text-primary"
                                 )}>
                                     {opp.sales_stage_name || "RECEIVED"}
                                 </span>

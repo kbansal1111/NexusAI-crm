@@ -445,7 +445,7 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                                             name="accountType"
                                             checked={!isPersonAccount}
                                             readOnly
-                                            className="h-4 w-4 accent-blue-600 cursor-not-allowed"
+                                            className="h-4 w-4 accent-primary cursor-not-allowed"
                                         />
                                         <label
                                             htmlFor="account-type-company"
@@ -464,7 +464,7 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                                             name="accountType"
                                             checked={isPersonAccount}
                                             readOnly
-                                            className="h-4 w-4 accent-blue-600 cursor-not-allowed"
+                                            className="h-4 w-4 accent-primary cursor-not-allowed"
                                         />
                                         <label
                                             htmlFor="account-type-person"

@@ -71,7 +71,6 @@ class TaskResponse(TaskBase):
     
     completed_at: Optional[datetime] = None
     completed_by: Optional[str] = None
-    view_count: int = 0
     
     created_at: datetime
     updated_at: datetime

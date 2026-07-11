@@ -94,7 +94,7 @@ export function ContactsViewAllDialog({
                                     <TableCell className="py-2 px-3">
                                         <Link 
                                             href={`/contacts/${contact.id}`}
-                                            className="text-[12px] font-bold text-blue-500 hover:underline block truncate"
+                                            className="text-[12px] font-bold text-primary hover:underline block truncate"
                                             onClick={() => onOpenChange(false)}
                                         >
                                             {contact.first_name} {contact.last_name}

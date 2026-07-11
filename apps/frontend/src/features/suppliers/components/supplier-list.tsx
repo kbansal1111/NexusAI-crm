@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import * as React from "react";
 import Link from "next/link";
-import { Pencil, Check, Loader2, RefreshCw } from "lucide-react";
+import { Pencil, Check, Loader2, RefreshCw, Truck } from "lucide-react";
 import { toast } from "sonner";
 import {
     Table,
@@ -187,7 +187,7 @@ export function SupplierList() {
 
     const toolbar = (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <ListCountHeader label="Suppliers" count={response?.total ?? suppliers.length}>
+            <ListCountHeader label="Suppliers" count={response?.total ?? suppliers.length} icon={Truck}>
                 <ListViewSelector entity={entity} presetLabel="All records" />
             </ListCountHeader>
             <div className="flex items-center gap-2">

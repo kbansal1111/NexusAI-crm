@@ -14,7 +14,7 @@ const APPROVAL_BADGE: Record<
     verified: {
         label: "Verified",
         className:
-            "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
+            "bg-primary/15 text-primary dark:text-primary border-primary/30",
     },
     approved: {
         label: "Approved",

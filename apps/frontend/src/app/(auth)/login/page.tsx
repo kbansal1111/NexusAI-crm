@@ -14,7 +14,7 @@ export default function LoginPage() {
     return (
         <div className="grid min-h-screen lg:grid-cols-2">
             <div className="relative hidden overflow-hidden border-r border-border/40 lg:flex">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-slate-900" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary via-indigo-600 to-slate-900" />
                 <div className="absolute -left-20 top-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl" />
                 <div className="absolute -right-20 bottom-20 h-72 w-72 rounded-full bg-violet-300/20 blur-3xl" />
 

@@ -1146,7 +1146,7 @@ export function LeadForm({
                         <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={isLoading}>
                             Close
                         </Button>
-                        <LoadingButton type="submit" isLoading={isLoading} className="bg-blue-600 hover:bg-blue-700 h-8 px-3 text-sm">
+                        <LoadingButton type="submit" isLoading={isLoading} className="bg-primary hover:bg-primary/90 h-8 px-3 text-sm">
                             {leadId ? "Update" : "Add"}
                         </LoadingButton>
                     </div>

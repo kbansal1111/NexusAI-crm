@@ -51,15 +51,27 @@ class ActivityLogService:
         action: Optional[str] = None,
         days: int = 30,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        visible_user_ids: Optional[List[ObjectId]] = None,
     ) -> List[ActivityLog]:
-        """Get activity logs with filters"""
+        """Get activity logs with filters.
+
+        `visible_user_ids` (from visibility_scope.get_visible_owner_ids) limits
+        the feed to activity by those users; None means unrestricted (admin).
+        An explicit `user_id` filter is intersected with it, so a non-admin can
+        never request another user's feed by passing ?user_id=.
+        """
         query = {
             "tenant_id": tenant_id,
             "created_at": {"$gte": datetime.utcnow() - timedelta(days=days)}
         }
+        if visible_user_ids is not None:
+            query["user_id"] = {"$in": visible_user_ids}
         if user_id:
-            query["user_id"] = ObjectId(user_id)
+            requested = ObjectId(user_id)
+            if visible_user_ids is not None and requested not in visible_user_ids:
+                return []
+            query["user_id"] = requested
         if entity_type:
             # Case-insensitive exact match so "Account"/"account" etc. all match,
             # regardless of how a given service stored the entity_type.

@@ -49,7 +49,7 @@ export function GlobalSearchBar() {
                 <button
                     type="button"
                     onClick={() => setDropdownOpen((o) => !o)}
-                    className="flex items-center gap-1.5 h-9 pl-4 pr-3 text-sm font-medium text-white whitespace-nowrap bg-[#1a6bb0] hover:bg-[#1a5fa0] transition-colors border-r border-white/10 rounded-l-full"
+                    className="flex items-center gap-1.5 h-9 pl-4 pr-3 text-sm font-medium text-white whitespace-nowrap bg-primary hover:bg-primary/90 transition-colors border-r border-white/10 rounded-l-full"
                 >
                     {currentLabel}
                     <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", dropdownOpen && "rotate-180")} />
@@ -67,7 +67,7 @@ export function GlobalSearchBar() {
                                 }}
                                 className={cn(
                                     "w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-accent transition-colors",
-                                    m.value === module && "bg-blue-500/20 text-[#1a6bb0] font-medium"
+                                    m.value === module && "bg-primary/15 text-primary font-medium"
                                 )}
                             >
                                 {m.label}

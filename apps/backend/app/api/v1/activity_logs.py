@@ -31,8 +31,15 @@ async def get_activity_logs(
     limit: int = 100,
     current_user: User = Depends(get_current_user)
 ):
-    """Get activity logs with filters"""
+    """Get activity logs with filters.
+
+    Visibility-scoped: non-admin users only see activity performed by users in
+    their visible scope (own + subordinates) — the dashboard stream must not
+    reveal the whole tenant's actions to every rep.
+    """
     try:
+        from app.services.visibility_scope import get_visible_owner_ids
+        visible = await get_visible_owner_ids(current_user)
         service = ActivityLogService()
         logs = await service.get_activity_logs(
             current_user.tenant_id,
@@ -42,7 +49,8 @@ async def get_activity_logs(
             action=action,
             days=days,
             skip=skip,
-            limit=limit
+            limit=limit,
+            visible_user_ids=visible,
         )
         return ActivityLogListResponse(
             logs=[ActivityLogResponse.from_orm(l) for l in logs],

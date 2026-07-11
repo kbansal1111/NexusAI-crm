@@ -15,7 +15,7 @@ export default async function DashboardPage() {
                     <div className="text-center">
                         <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
                         <p className="text-muted-foreground mb-4">Please log in to view dashboard.</p>
-                        <a href="/login" className="text-blue-600 hover:underline">
+                        <a href="/login" className="text-primary hover:underline">
                             Go to Login
                         </a>
                     </div>

@@ -30,11 +30,15 @@ export const useInfiniteOpportunities = (filters: OpportunityFilters = {}, optio
     });
 };
 
-export const useOpportunity = (id: string) => {
+export const useOpportunity = (id: string, initialData?: any) => {
     return useQuery({
         queryKey: ["opportunities", id],
         queryFn: () => opportunitiesService.getOpportunity(id),
         enabled: !!id,
+        // Detail pages SSR the record and pass it in — seed the cache so the
+        // page doesn't immediately refetch data it already has.
+        initialData,
+        staleTime: 30_000,
     });
 };
 

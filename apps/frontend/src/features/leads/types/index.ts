@@ -49,7 +49,6 @@ export interface Lead {
     created_by_name?: string;
     last_modified_by_id?: string;
     last_modified_by_name?: string;
-    view_count: number;
     is_favorite: boolean;
     custom_fields?: Record<string, unknown>;
 

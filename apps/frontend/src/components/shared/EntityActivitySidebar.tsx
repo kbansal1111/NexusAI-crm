@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatNumber } from "@/lib/format";
 import {
     Activity,
     Calendar,
@@ -269,7 +270,9 @@ export function EntityActivitySidebar({
 }
 
 function OpportunitySummaryTable({ summary }: { summary: OpportunitySummary }) {
-    const fmtNum = (n: number) => Math.round(n).toLocaleString();
+    // Fixed en-IN locale — bare toLocaleString() renders differently on the
+    // server (Node locale) vs the browser and causes hydration mismatches.
+    const fmtNum = (n: number) => formatNumber(Math.round(n));
     const fmtPct = (n: number) => `${Number(n).toFixed(2)}%`;
 
     const rows: { label: string; metric: OpportunitySummaryMetric; isPercent?: boolean }[] = [

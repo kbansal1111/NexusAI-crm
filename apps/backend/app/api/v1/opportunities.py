@@ -354,11 +354,10 @@ async def get_opportunities(
         now = datetime.utcnow()
         stage_filter = ObjectId(sales_stage_id) if sales_stage_id else None
 
-        if view == "recent":
-            # Last 7 days
-            week_ago = now - timedelta(days=7)
-            filters["created_at"] = {"$gte": week_ago}
-        elif view == "closing_soon":
+        # NOTE: view == "recent" ("Recently Viewed") is handled by a dedicated
+        # view-ordered path at the fetch step below (ordered by the user's
+        # UserOpportunityView.updated_at), NOT a created_at window.
+        if view == "closing_soon":
              # Closing in next 7 days
              filters["close_date"] = {
                  "$gte": now,
@@ -394,17 +393,48 @@ async def get_opportunities(
                 filters, "opportunity", active_view, current_user.id, current_user.tenant_id
             )
 
-        # Get opportunities (keyset "load more" when a cursor is supplied)
-        opportunities, total, next_cursor, has_more = await service.get_opportunities_by_tenant(
-            tenant_id=current_user.tenant_id,
-            skip=(page - 1) * per_page,
-            limit=per_page,
-            owner_id=effective_owner_id,
-            sales_stage_id=stage_filter,
-            cursor=cursor,
-            bd_territory_ids=bd_terr,
-            **filters
-        )
+        if view == "recent":
+            # "Recently Viewed": order by the user's own view-recency (bounded
+            # <=200), NOT created_at — mirrors the leads recent-view path. Scope
+            # with the canonical visibility predicate so it never leaks records
+            # the user (or BD territory) can't otherwise see.
+            from app.models.opportunity_custom_fields import UserOpportunityView
+            from app.services.visibility_scope import is_opportunity_visible
+            recent_rows = await UserOpportunityView.find(
+                {"user_id": current_user.id, "tenant_id": current_user.tenant_id}
+            ).sort("-updated_at").limit(200).to_list()
+            ordered_ids = [r.opportunity_id for r in recent_rows]
+            if ordered_ids:
+                _found = await Opportunity.find(
+                    {"_id": {"$in": ordered_ids}, "tenant_id": current_user.tenant_id, "deleted_at": None}
+                ).to_list()
+                _visible = [
+                    o for o in _found
+                    if is_opportunity_visible(o.owner_id, o.territory_id, visible_owner_ids, bd_terr)
+                    and (effective_owner_id is None or o.owner_id == effective_owner_id)
+                    and (stage_filter is None or o.sales_stage_id == stage_filter)
+                ]
+                _opp_map = {o.id: o for o in _visible}
+                _all = [_opp_map[i] for i in ordered_ids if i in _opp_map]
+            else:
+                _all = []
+            total = len(_all)
+            _skip = (page - 1) * per_page
+            opportunities = _all[_skip: _skip + per_page]
+            next_cursor = None
+            has_more = _skip + per_page < total
+        else:
+            # Get opportunities (keyset "load more" when a cursor is supplied)
+            opportunities, total, next_cursor, has_more = await service.get_opportunities_by_tenant(
+                tenant_id=current_user.tenant_id,
+                skip=(page - 1) * per_page,
+                limit=per_page,
+                owner_id=effective_owner_id,
+                sales_stage_id=stage_filter,
+                cursor=cursor,
+                bd_territory_ids=bd_terr,
+                **filters
+            )
         # Get related data names
         from app.models.user import User as UserDoc
         from app.models.account import Account as AccountDoc
@@ -563,7 +593,11 @@ async def get_opportunity(
             )
             if not is_finance_reviewer:
                 raise HTTPException(status_code=404, detail="Opportunity not found")
-        
+
+        # Record the view so this opportunity surfaces in "Recently Viewed"
+        # (best-effort; never fails the read).
+        await service._track_user_view(current_user.id, opportunity.id, current_user.tenant_id)
+
         # Enrich response with related names
         from app.models.opportunity_picklists import SalesStage, OpportunityType
         from app.models.user import User as UserDoc

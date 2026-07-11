@@ -32,7 +32,7 @@ const KPI_CARDS: {
         key: "total_opportunities",
         label: "Total Opportunities",
         gradient: "from-violet-500 to-purple-600",
-        iconBg: "bg-violet-100 text-violet-600",
+        iconBg: "bg-violet-500/12 text-violet-600 dark:text-violet-400",
         icon: <Target className="h-5 w-5" />,
         href: "/opportunities?view=all",
     },
@@ -40,7 +40,7 @@ const KPI_CARDS: {
         key: "today_opportunities",
         label: "Today's Opportunities",
         gradient: "from-blue-500 to-indigo-600",
-        iconBg: "bg-blue-100 text-blue-600",
+        iconBg: "bg-blue-500/12 text-blue-600 dark:text-blue-400",
         icon: <CalendarPlus className="h-5 w-5" />,
         href: "/opportunities?view=today",
     },
@@ -48,7 +48,7 @@ const KPI_CARDS: {
         key: "open_opportunities",
         label: "Open Opportunities",
         gradient: "from-cyan-400 to-sky-500",
-        iconBg: "bg-sky-100 text-sky-600",
+        iconBg: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
         icon: <FolderOpen className="h-5 w-5" />,
         href: "/opportunities?view=today",
     },
@@ -56,7 +56,7 @@ const KPI_CARDS: {
         key: "b2c_open_opportunities",
         label: "B2C Open Opportunities",
         gradient: "from-emerald-400 to-green-500",
-        iconBg: "bg-emerald-100 text-emerald-600",
+        iconBg: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
         icon: <Users className="h-5 w-5" />,
         href: "/opportunities?view=today",
     },
@@ -64,7 +64,7 @@ const KPI_CARDS: {
         key: "b2b_open_opportunities",
         label: "B2B Open Opportunities",
         gradient: "from-rose-400 to-red-500",
-        iconBg: "bg-rose-100 text-rose-600",
+        iconBg: "bg-rose-500/12 text-rose-600 dark:text-rose-400",
         icon: <Building2 className="h-5 w-5" />,
         href: "/opportunities?view=today",
     },
@@ -72,7 +72,7 @@ const KPI_CARDS: {
         key: "b2b_direct_open_opportunities",
         label: "Corporate Open Opportunities",
         gradient: "from-orange-400 to-amber-500",
-        iconBg: "bg-orange-100 text-orange-600",
+        iconBg: "bg-orange-500/12 text-orange-600 dark:text-orange-400",
         icon: <Briefcase className="h-5 w-5" />,
         href: "/opportunities?view=today",
     },
@@ -80,7 +80,7 @@ const KPI_CARDS: {
         key: "today_checkout",
         label: "Today's Checkout",
         gradient: "from-teal-400 to-emerald-500",
-        iconBg: "bg-teal-100 text-teal-600",
+        iconBg: "bg-teal-500/12 text-teal-600 dark:text-teal-400",
         icon: <LogOut className="h-5 w-5" />,
         href: "/opportunities?view=today",
     },
@@ -88,7 +88,7 @@ const KPI_CARDS: {
         key: "tomorrow_departures",
         label: "Tomorrow's Departures",
         gradient: "from-indigo-400 to-blue-500",
-        iconBg: "bg-indigo-100 text-indigo-600",
+        iconBg: "bg-indigo-500/12 text-indigo-600 dark:text-indigo-400",
         icon: <Plane className="h-5 w-5" />,
         href: "/opportunities?view=today",
     },
@@ -96,7 +96,7 @@ const KPI_CARDS: {
         key: "today_revenue",
         label: "Today's Revenue",
         gradient: "from-amber-400 to-orange-500",
-        iconBg: "bg-amber-100 text-amber-600",
+        iconBg: "bg-amber-500/12 text-amber-600 dark:text-amber-400",
         icon: <IndianRupee className="h-5 w-5" />,
         format: "currency",
         href: "/opportunities?view=today",
@@ -179,7 +179,7 @@ export function LeaderBoardKPIs({ kpis }: { kpis: LeaderBoardKPIsType }) {
 
                                 {/* Value */}
                                 <div
-                                    className={cn("text-2xl font-bold tracking-tight md:text-3xl text-foreground")}
+                                    className={cn("font-display text-2xl font-bold tracking-tight md:text-3xl text-foreground tabular-nums")}
                                 >
                                     {display}
                                 </div>

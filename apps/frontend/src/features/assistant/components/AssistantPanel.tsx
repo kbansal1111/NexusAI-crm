@@ -72,7 +72,7 @@ export function AssistantPanel() {
                     <div className="flex items-center justify-between pr-8">
                         <div>
                             <SheetTitle className="flex items-center gap-2 text-base">
-                                <Bot className="h-4 w-4 text-blue-500" /> Assistant
+                                <Bot className="h-4 w-4 text-primary" /> Assistant
                             </SheetTitle>
                             <SheetDescription className="text-xs">
                                 Ask about opportunities, leads &amp; accounts. Changes need your approval.
@@ -94,7 +94,7 @@ export function AssistantPanel() {
                 <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
                     {messages.length === 0 && (
                         <div className="space-y-3 pt-8 text-center">
-                            <Sparkles className="mx-auto h-8 w-8 text-blue-500/60" />
+                            <Sparkles className="mx-auto h-8 w-8 text-primary/60" />
                             <p className="text-sm text-muted-foreground">
                                 Ask anything about your opportunities, leads, or accounts.
                             </p>
@@ -117,7 +117,7 @@ export function AssistantPanel() {
                             <div
                                 className={
                                     m.role === "user"
-                                        ? "max-w-[85%] rounded-2xl rounded-br-sm bg-blue-600 px-3 py-2 text-sm text-white"
+                                        ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white"
                                         : "max-w-[92%] rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-foreground"
                                 }
                             >
@@ -126,7 +126,7 @@ export function AssistantPanel() {
                                         {m.tools!.map((t, j) => (
                                             <span
                                                 key={j}
-                                                className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-300"
+                                                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary dark:text-primary"
                                             >
                                                 <Search className="h-2.5 w-2.5" />
                                                 {TOOL_LABELS[t] || t}

@@ -12,7 +12,7 @@ import type { Departure, DepartureFilters } from "@/features/departures/types";
 const STATUS_COLORS: Record<string, string> = {
     active: "text-emerald-400 bg-emerald-400/10",
     inactive: "text-muted-foreground bg-muted",
-    completed: "text-blue-400 bg-blue-400/10",
+    completed: "text-primary bg-primary/10",
     cancelled: "text-red-400 bg-red-400/10",
     scheduled: "text-amber-400 bg-amber-400/10",
     held: "text-orange-400 bg-orange-400/10",
@@ -64,7 +64,7 @@ export default function DeparturePage() {
                 <h1 className="text-2xl font-bold text-foreground">Departure Report</h1>
                 <Button
                     onClick={() => setShowCreate(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                    className="bg-primary hover:bg-primary/90 text-white gap-2"
                 >
                     <Plus className="h-4 w-4" />
                     New Departure
@@ -74,8 +74,8 @@ export default function DeparturePage() {
             {/* Stats card */}
             <div className="crm-surface p-4">
                 <div className="flex items-center gap-3 mb-1">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600/20">
-                        <Plane className="h-5 w-5 text-blue-400" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
+                        <Plane className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                         <p className="text-sm font-semibold text-foreground">Departure - Report</p>
@@ -104,7 +104,7 @@ export default function DeparturePage() {
                     <Button
                         variant={hasActiveFilters ? "default" : "outline"}
                         onClick={() => setShowFilter(true)}
-                        className={`gap-2 ${hasActiveFilters ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}`}
+                        className={`gap-2 ${hasActiveFilters ? "bg-primary hover:bg-primary/90 text-white" : ""}`}
                     >
                         <Filter className="h-4 w-4" />
                         Filter
@@ -136,7 +136,7 @@ export default function DeparturePage() {
                         {hasActiveFilters && (
                             <button
                                 onClick={() => setFilters({})}
-                                className="text-blue-400 hover:underline text-xs"
+                                className="text-primary hover:underline text-xs"
                             >
                                 Clear filters
                             </button>
@@ -196,7 +196,7 @@ export default function DeparturePage() {
                                             <td className="px-4 py-3 text-center font-medium text-foreground">{dep.total_seats}</td>
                                             <td className="px-4 py-3 text-center text-emerald-400 font-medium">{dep.booked_seats}</td>
                                             <td className="px-4 py-3 text-center text-amber-400 font-medium">{dep.held_seats}</td>
-                                            <td className="px-4 py-3 text-center text-blue-400 font-medium">{dep.available_seats}</td>
+                                            <td className="px-4 py-3 text-center text-primary font-medium">{dep.available_seats}</td>
                                             <td className="px-4 py-3 text-right font-semibold text-foreground">
                                                 {fmtPrice(dep.price_b2b)}
                                             </td>

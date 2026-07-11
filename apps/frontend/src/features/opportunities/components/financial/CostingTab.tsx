@@ -315,7 +315,7 @@ export function CostingTab({ opportunityId, destinationOptions, opportunityAmoun
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 <span className="ml-2 text-muted-foreground text-sm">Loading costing...</span>
             </div>
         );
@@ -332,13 +332,13 @@ export function CostingTab({ opportunityId, destinationOptions, opportunityAmoun
             {/* ── Summary Bar — Bug 3 fix: Opp. Amount | Total Cost | Profit | Profit % ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
                 <SummaryCard
-                    icon={<DollarSign className="h-4 w-4 text-blue-600" />}
+                    icon={<DollarSign className="h-4 w-4 text-primary" />}
                     label="Opp. Amount"
                     value={formatCurrency(opportunityAmount)}
-                    bg="bg-blue-500/10 border-blue-500/30"
-                    iconBg="bg-blue-500/15"
-                    labelColor="text-blue-700 dark:text-blue-300"
-                    valueColor="text-blue-800 dark:text-blue-200"
+                    bg="bg-primary/10 border-primary/30"
+                    iconBg="bg-primary/15"
+                    labelColor="text-primary dark:text-primary"
+                    valueColor="text-primary dark:text-primary"
                 />
                 <SummaryCard
                     icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
@@ -374,14 +374,14 @@ export function CostingTab({ opportunityId, destinationOptions, opportunityAmoun
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Add Item&apos;s</p>
                 <div className="relative" ref={dropdownRef}>
                     <div
-                        className={`flex flex-wrap items-center gap-1.5 min-h-[38px] border border-border rounded-md px-2 py-1.5 bg-card focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-500/20 ${isLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                        className={`flex flex-wrap items-center gap-1.5 min-h-[38px] border border-border rounded-md px-2 py-1.5 bg-card focus-within:border-primary focus-within:ring-1 focus-within:ring-ring/20 ${isLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                         onClick={() => !isLocked && setIsTypeDropdownOpen((v) => !v)}
                     >
                         {selectedTypes.map((type) => (
                             <Badge
                                 key={type}
                                 variant="secondary"
-                                className="bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 flex items-center gap-1 text-xs h-6 px-2"
+                                className="bg-primary/15 text-primary dark:text-primary border border-primary/40 hover:bg-primary/20 flex items-center gap-1 text-xs h-6 px-2"
                                 onClick={(e) => { e.stopPropagation(); if (!isLocked) removeItemType(type); }}
                             >
                                 {type}
@@ -414,8 +414,8 @@ export function CostingTab({ opportunityId, destinationOptions, opportunityAmoun
                                             key={type}
                                             className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
                                                 isSelected
-                                                    ? "text-blue-700 dark:text-blue-300 font-semibold bg-blue-500/20"
-                                                    : "text-foreground hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300"
+                                                    ? "text-primary dark:text-primary font-semibold bg-primary/15"
+                                                    : "text-foreground hover:bg-primary/15 hover:text-primary dark:hover:text-primary"
                                             }`}
                                             onClick={() => !isSelected && addItemType(type)}
                                         >
@@ -447,7 +447,7 @@ export function CostingTab({ opportunityId, destinationOptions, opportunityAmoun
                         {items.map((item, idx) => (
                             <tr key={item.item_type} className="hover:bg-muted/40 transition-colors">
                                 <td className="px-3 py-2.5">
-                                    <span className="text-blue-400 font-medium text-xs">{item.item_type}</span>
+                                    <span className="text-primary font-medium text-xs">{item.item_type}</span>
                                 </td>
                                 <td className="px-3 py-2">
                                     {item.supplier_id ? (
@@ -585,7 +585,7 @@ export function CostingTab({ opportunityId, destinationOptions, opportunityAmoun
                     <Button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="bg-blue-600 hover:bg-blue-700 px-8 h-9 text-sm"
+                        className="bg-primary hover:bg-primary/90 px-8 h-9 text-sm"
                     >
                         {isSaving ? (
                             <>
@@ -714,7 +714,7 @@ function DestinationMultiSelect({
     return (
         <div className="relative" ref={ref}>
             <div
-                className={`flex flex-wrap items-center gap-1 min-h-[32px] border border-border rounded-md px-2 py-1 bg-card transition-colors ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-blue-500/40"}`}
+                className={`flex flex-wrap items-center gap-1 min-h-[32px] border border-border rounded-md px-2 py-1 bg-card transition-colors ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-primary/40"}`}
                 onClick={() => !disabled && setOpen((v) => !v)}
             >
                 {selected.map((id, i) => (
@@ -741,7 +741,7 @@ function DestinationMultiSelect({
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search..."
-                            className="w-full text-xs border border-border rounded px-2 py-1 focus:outline-none focus:border-blue-400"
+                            className="w-full text-xs border border-border rounded px-2 py-1 focus:outline-none focus:border-primary"
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>
@@ -754,7 +754,7 @@ function DestinationMultiSelect({
                             filtered.map((o) => (
                                 <div
                                     key={o.value}
-                                    className="px-3 py-1.5 text-xs text-foreground hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                                    className="px-3 py-1.5 text-xs text-foreground hover:bg-primary/15 hover:text-primary dark:hover:text-primary cursor-pointer"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onToggle(o.value, o.label);

@@ -332,7 +332,6 @@ class ContactService(ActivityMixin):
             "last_modified_by_name": modifier.name if modifier else None,
             "created_by": str(contact.created_by),
             "last_modified_by_id": str(contact.last_modified_by_id) if contact.last_modified_by_id else None,
-            "view_count": contact.view_count,
             "created_at": contact.created_at,
             "updated_at": contact.updated_at,
             "related_opportunities": related_opportunities,
@@ -689,7 +688,7 @@ class ContactService(ActivityMixin):
         )
         
         if view:
-            view.view_count += 1
+            # Recency marker only — counting was removed with the view-count system
             view.updated_at = datetime.utcnow()
             await view.save()
         else:
@@ -697,7 +696,6 @@ class ContactService(ActivityMixin):
                 user_id=user_id,
                 contact_id=contact_id,
                 tenant_id=tenant_id,
-                view_count=1
             )
             await view.insert()
 

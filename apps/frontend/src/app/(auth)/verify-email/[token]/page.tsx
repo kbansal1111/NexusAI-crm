@@ -40,7 +40,7 @@ export default function VerifyEmailPage({
           <>
             <CheckCircle2 className="mx-auto h-10 w-10 text-green-600" />
             <div className="text-lg font-semibold">{message}</div>
-            <Link href="/login" className="block text-sm text-blue-600 hover:underline">
+            <Link href="/login" className="block text-sm text-primary hover:underline">
               Continue to login
             </Link>
           </>
@@ -50,7 +50,7 @@ export default function VerifyEmailPage({
             <XCircle className="mx-auto h-10 w-10 text-red-600" />
             <div className="text-lg font-semibold">Verification failed</div>
             <div className="text-sm text-muted-foreground">{message}</div>
-            <Link href="/login" className="block text-sm text-blue-600 hover:underline">
+            <Link href="/login" className="block text-sm text-primary hover:underline">
               Back to login
             </Link>
           </>

@@ -61,9 +61,19 @@ import { Opportunity } from "../types";
 import { formatDateLong, formatDateTime24h, formatDateTimeBar } from "@/lib/format";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
 import { UpdateStageDialog } from "./UpdateStageDialog";
-import { FinancialTab } from "./financial/FinancialTab";
-import { OpportunityItinerariesTab } from "@/features/itineraries/components/OpportunityItinerariesTab";
+
+// Secondary-tab content is code-split so the initial route chunk stays lean —
+// these only load when their tab (or drawer) is actually opened.
+const FinancialTab = dynamic(
+    () => import("./financial/FinancialTab").then((m) => m.FinancialTab),
+    { ssr: false, loading: () => <div className="p-6 text-sm text-muted-foreground">Loading…</div> }
+);
+const OpportunityItinerariesTab = dynamic(
+    () => import("@/features/itineraries/components/OpportunityItinerariesTab").then((m) => m.OpportunityItinerariesTab),
+    { ssr: false, loading: () => <div className="p-6 text-sm text-muted-foreground">Loading…</div> }
+);
 import { SalesStage } from "@/lib/api/services/opportunities.service";
 import { useSession } from "next-auth/react";
 import {
@@ -80,9 +90,18 @@ import {
 } from "../api/useOpportunities";
 import { ChangeOwnerDialog } from "@/components/shared/ChangeOwnerDialog";
 import { useGetUsers } from "@/features/admin/api/use-users";
-import { FileUploader } from "@/features/files/components/file-uploader";
-import { FileList } from "@/features/files/components/file-list";
-import { OpportunityFormDrawer } from "./OpportunityFormDrawer";
+const FileUploader = dynamic(
+    () => import("@/features/files/components/file-uploader").then((m) => m.FileUploader),
+    { ssr: false }
+);
+const FileList = dynamic(
+    () => import("@/features/files/components/file-list").then((m) => m.FileList),
+    { ssr: false }
+);
+const OpportunityFormDrawer = dynamic(
+    () => import("./OpportunityFormDrawer").then((m) => m.OpportunityFormDrawer),
+    { ssr: false }
+);
 import { accountService } from "@/features/accounts/services/accountService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -122,7 +141,7 @@ export function OpportunityDetails({
     const [isDeleting, setIsDeleting] = useState(false);
     const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
-    const { data: reactiveOpportunity } = useOpportunity(opportunity.id);
+    const { data: reactiveOpportunity } = useOpportunity(opportunity.id, opportunity);
     // Use reactive data if available, fallback to initial prop
     const record = reactiveOpportunity || opportunity;
 
@@ -176,6 +195,7 @@ export function OpportunityDetails({
     const [emailSubject, setEmailSubject] = useState<string>("");
     const [emailBody, setEmailBody] = useState<string>("");
     const [isLoadingData, setIsLoadingData] = useState(false);
+    const [supplierTabOpened, setSupplierTabOpened] = useState(false);
 
     // Inline Task Form State
     const { data: usersData } = useGetUsers();
@@ -214,7 +234,10 @@ export function OpportunityDetails({
         );
     };
 
+    // Supplier/template lookups only feed the Supplier tab — defer the three
+    // requests until the user actually opens it.
     useEffect(() => {
+        if (!supplierTabOpened) return;
         const fetchData = async () => {
             setIsLoadingData(true);
             try {
@@ -223,10 +246,10 @@ export function OpportunityDetails({
                     templatesService.getTemplates({ type: "email" }),
                     suppliersService.getOpportunitySuppliers(opportunity.id)
                 ]);
-                
-                setSuppliers(suppliersRes.suppliers.map(s => ({ 
-                    label: s.name, 
-                    value: s.id 
+
+                setSuppliers(suppliersRes.suppliers.map(s => ({
+                    label: s.name,
+                    value: s.id
                 })));
                 setTemplates(templatesRes.templates);
 
@@ -244,7 +267,7 @@ export function OpportunityDetails({
             }
         };
         fetchData();
-    }, []);
+    }, [supplierTabOpened, opportunity.id]);
 
     const handleTemplateChange = (templateId: string) => {
         setSelectedTemplateId(templateId);
@@ -320,7 +343,7 @@ export function OpportunityDetails({
     };
 
     return (
-        <div className="mx-auto max-w-[1400px] space-y-6 [&_.bg-white]:!bg-card [&_.bg-slate-50]:!bg-muted [&_.bg-slate-100]:!bg-muted [&_.border-slate-100]:!border-border [&_.border-slate-200]:!border-border [&_.border-slate-300]:!border-border [&_.text-slate-900]:!text-foreground [&_.text-slate-800]:!text-foreground [&_.text-slate-700]:!text-foreground [&_.text-slate-600]:!text-foreground [&_.text-slate-500]:!text-muted-foreground [&_.text-slate-400]:!text-muted-foreground [&_.text-slate-300]:!text-muted-foreground">
+        <div className="mx-auto max-w-[1400px] space-y-6">
             <UpdateStageDialog
                 opportunityId={record.id}
                 currentStageId={record.sales_stage_id}
@@ -348,7 +371,7 @@ export function OpportunityDetails({
                         <AlertDialogAction
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="bg-red-500 hover:bg-red-600 text-white"
+                            className="bg-destructive text-white hover:bg-destructive/90"
                         >
                             {isDeleting ? "Deleting..." : "Delete"}
                         </AlertDialogAction>
@@ -368,33 +391,36 @@ export function OpportunityDetails({
                 currentOwnerId={record.owner_id}
             />
 
-            {/* Header / Actions - Styled like reference UI */}
-            <div className="crm-surface rounded-lg border p-4 shadow-sm">
-                <div className="flex flex-col lg:flex-row justify-between gap-4">
+            {/* Header — identity row / meta grid / ownership strip */}
+            <div className="crm-surface overflow-hidden">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 p-5">
                     <div className="flex gap-4 min-w-0">
-                        <div className="h-12 w-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-chart-5 shadow-sm">
                             <Briefcase className="h-6 w-6 text-white" />
                         </div>
-                        <div className="space-y-1 min-w-0">
+                        <div className="min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                                <h1 className="text-xl font-semibold text-blue-600">
-                                    Opportunity <span className="text-muted-foreground font-normal">({record.is_person_account ? "Person Account" : "Account"})</span>
-                                </h1>
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                                    Opportunity
+                                </span>
+                                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                                    · {record.is_person_account ? "Person Account" : "Account"}
+                                </span>
                                 {record.creation_type && (
-                                    <Badge variant="secondary" className="bg-orange-500/20 text-orange-700 dark:text-orange-300 font-normal">
+                                    <Badge variant="secondary" className="bg-chart-4/15 text-chart-4 border border-chart-4/30 font-medium">
                                         {record.creation_type}
                                     </Badge>
                                 )}
                                 {record.is_locked ? (
                                     <div className="flex items-center gap-2">
-                                        <Badge variant="secondary" className="bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/40 flex items-center gap-1 font-normal">
+                                        <Badge variant="secondary" className="flex items-center gap-1 border border-destructive/40 bg-destructive/10 font-medium text-destructive">
                                             <Lock className="h-3 w-3" /> Locked
                                         </Badge>
                                         {canUnlock && (
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="h-6 px-2 text-xs border-red-500/40 text-red-700 dark:text-red-300 hover:bg-red-500/20 hover:text-red-800 dark:hover:text-red-200"
+                                                className="h-6 border-destructive/40 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                                                 onClick={() => unlockOpportunity(record.id)}
                                                 disabled={isUnlocking}
                                                 title="Unlock this opportunity"
@@ -407,7 +433,7 @@ export function OpportunityDetails({
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="h-6 px-2 text-xs border-border text-slate-400 hover:bg-accent hover:text-foreground flex items-center gap-1"
+                                        className="flex h-6 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
                                         onClick={() => lockOpportunity(record.id)}
                                         disabled={isLocking}
                                         title="Lock this opportunity"
@@ -417,12 +443,12 @@ export function OpportunityDetails({
                                     </Button>
                                 )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 min-w-0">
-                                <h2 className="text-lg font-medium break-words min-w-0">{record.name}</h2>
+                            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                                <h1 className="min-w-0 break-words text-xl md:text-2xl">{record.name}</h1>
                                 {record.opportunity_number != null && (
-                                    <div className="flex items-center gap-1 text-slate-400">
-                                        <span className="text-sm font-mono">
-                                            / {String(record.opportunity_number).padStart(10, '0')}
+                                    <div className="flex items-center gap-1 text-muted-foreground">
+                                        <span className="font-mono text-sm">
+                                            #{String(record.opportunity_number).padStart(10, '0')}
                                         </span>
                                         <button
                                             type="button"
@@ -432,152 +458,169 @@ export function OpportunityDetails({
                                                 setIsCopied(true);
                                                 setTimeout(() => setIsCopied(false), 1500);
                                             }}
-                                            className="p-0.5 rounded hover:text-foreground transition-colors"
+                                            className="rounded p-0.5 transition-colors hover:text-foreground"
                                         >
                                             {isCopied
-                                                ? <Check className="h-3 w-3 text-green-400" />
+                                                ? <Check className="h-3 w-3 text-success" />
                                                 : <Copy className="h-3 w-3" />
                                             }
                                         </button>
                                     </div>
                                 )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-300 pt-1">
-                                <div className="space-y-1">
-                                    {!record.is_person_account && record.account_name && (
-                                        <div className="mb-2">
-                                            <Link href={`/accounts/${record.account_id}`} className="font-medium text-blue-500 hover:underline cursor-pointer">
-                                                {record.account_name}
-                                            </Link>
-                                        </div>
-                                    )}
-                                    <p className="text-xs text-slate-400">Name</p>
-                                    {record.is_person_account ? (
-                                        <p className="font-medium text-blue-500 hover:underline cursor-pointer mt-0.5">
-                                            <Link href={`/person-accounts/${record.account_id}`}>
-                                                {record.contact_name || record.account_name || "-"}
-                                            </Link>
-                                        </p>
-                                    ) : (
-                                        <div className="flex flex-col items-start leading-tight mt-0.5">
-                                            {record.contact_name ? (
-                                                <Link
-                                                    href={record.contact_id ? `/contacts/${record.contact_id}` : "#"}
-                                                    className="font-medium text-blue-500 hover:underline cursor-pointer"
-                                                >
-                                                    {record.contact_name}
-                                                </Link>
-                                            ) : (
-                                                <span className="font-medium text-foreground">-</span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs text-slate-400">Email | Mobile</p>
-                                    <p className="font-medium text-blue-500 text-xs">
-                                        {record.contact_email || "-"} | {record.contact_phone || "-"}
-                                    </p>
-                                </div>
-                                {industry === "travel" ? (
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-slate-400">Travel Date | No of Pax</p>
-                                        <p className="font-medium text-foreground">
-                                            {record.industry_data?.travel_date
-                                                ? formatDate(record.industry_data.travel_date)
-                                                : "-"} | {record.industry_data?.no_of_pax || "-"}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-slate-400">Close Date | Amount</p>
-                                        <p className="font-medium text-foreground">
-                                            {record.close_date
-                                                ? formatDate(record.close_date)
-                                                : "-"} | {record.amount ? formatCurrency(record.amount) : "-"}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-start lg:items-end justify-between w-full lg:w-auto lg:min-w-[250px]">
-                        <div className="flex flex-wrap items-center gap-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className={cn("flex items-center justify-end gap-2 text-xs font-medium text-slate-300", record.is_locked ? "cursor-not-allowed opacity-60" : "cursor-pointer")}>
-                                    Key Deal
-                                    <Checkbox
-                                        checked={!!record.key_deal}
-                                        disabled={record.is_locked}
-                                        onCheckedChange={(v) => handleToggleFlag("key_deal", v === true)}
-                                    />
-                                </label>
-                                <label className={cn("flex items-center justify-end gap-2 text-xs font-medium text-slate-300", record.is_locked ? "cursor-not-allowed opacity-60" : "cursor-pointer")}>
-                                    Verified by Account
-                                    <Checkbox
-                                        checked={!!record.verified_by_account}
-                                        disabled={record.is_locked}
-                                        onCheckedChange={(v) => handleToggleFlag("verified_by_account", v === true)}
-                                    />
-                                </label>
-                            </div>
-                            {canEdit && (
-                                <Button
-                                    className="bg-blue-500 hover:bg-blue-600 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    size="sm"
-                                    onClick={() => !record.is_locked && setIsEditDrawerOpen(true)}
-                                    disabled={record.is_locked}
-                                    title={record.is_locked ? "Opportunity is locked" : undefined}
-                                >
-                                    {record.is_locked ? <><Lock className="h-3 w-3 mr-1" />Locked</> : "Edit"}
-                                </Button>
-                            )}
-                            {canDelete && (
-                                <Button
-                                    variant="destructive"
-                                    className="h-8 bg-red-400 hover:bg-red-500"
-                                    size="sm"
-                                    onClick={() => setIsDeleteOpen(true)}
-                                >
-                                    Delete
-                                </Button>
-                            )}
-                        </div>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        <label className={cn(
+                            "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                            record.key_deal ? "border-primary/40 bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent/50",
+                            record.is_locked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                        )}>
+                            <Checkbox
+                                checked={!!record.key_deal}
+                                disabled={record.is_locked}
+                                onCheckedChange={(v) => handleToggleFlag("key_deal", v === true)}
+                            />
+                            Key Deal
+                        </label>
+                        <label className={cn(
+                            "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                            record.verified_by_account ? "border-success/40 bg-success/10 text-success" : "text-muted-foreground hover:bg-accent/50",
+                            record.is_locked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                        )}>
+                            <Checkbox
+                                checked={!!record.verified_by_account}
+                                disabled={record.is_locked}
+                                onCheckedChange={(v) => handleToggleFlag("verified_by_account", v === true)}
+                            />
+                            Verified by Account
+                        </label>
+                        {canEdit && (
+                            <Button
+                                className="h-8"
+                                size="sm"
+                                onClick={() => !record.is_locked && setIsEditDrawerOpen(true)}
+                                disabled={record.is_locked}
+                                title={record.is_locked ? "Opportunity is locked" : undefined}
+                            >
+                                {record.is_locked ? <><Lock className="mr-1 h-3 w-3" />Locked</> : <><Edit className="mr-1 h-3.5 w-3.5" />Edit</>}
+                            </Button>
+                        )}
+                        {canDelete && (
+                            <Button
+                                variant="destructive"
+                                className="h-8"
+                                size="sm"
+                                onClick={() => setIsDeleteOpen(true)}
+                            >
+                                <Trash2 className="mr-1 h-3.5 w-3.5" />Delete
+                            </Button>
+                        )}
+                    </div>
+                </div>
 
-                        <div className="w-full mt-4 space-y-2 text-xs text-right">
-                            <div className="flex justify-between border-b pb-1">
-                                <span className="text-slate-400">Opportunity Owner</span>
-                                {canEdit ? (
-                                    <button
-                                        onClick={() => setIsOwnerDialogOpen(true)}
-                                        className="font-medium text-blue-500 flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                {/* Meta grid */}
+                <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-t px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {record.is_person_account ? (
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Name</p>
+                            <Link
+                                href={`/person-accounts/${record.account_id}`}
+                                className="mt-1 block truncate text-sm font-medium text-primary hover:underline"
+                            >
+                                {record.contact_name || record.account_name || "-"}
+                            </Link>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Account</p>
+                                {record.account_name ? (
+                                    <Link
+                                        href={`/accounts/${record.account_id}`}
+                                        className="mt-1 block truncate text-sm font-medium text-primary hover:underline"
                                     >
-                                        {record.owner_name} <UserIcon className="h-3 w-3" />
-                                    </button>
+                                        {record.account_name}
+                                    </Link>
                                 ) : (
-                                    <span className="font-medium">{record.owner_name}</span>
+                                    <p className="mt-1 text-sm font-medium">-</p>
                                 )}
                             </div>
-                            <div className="flex justify-between border-b pb-1">
-                                <span className="text-slate-400">Operation Owner</span>
-                                <span className="font-medium">{record.operation_user_name || "-"}</span>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Name</p>
+                                {record.contact_name ? (
+                                    <Link
+                                        href={record.contact_id ? `/contacts/${record.contact_id}` : "#"}
+                                        className="mt-1 block truncate text-sm font-medium text-primary hover:underline"
+                                    >
+                                        {record.contact_name}
+                                    </Link>
+                                ) : (
+                                    <p className="mt-1 text-sm font-medium">-</p>
+                                )}
                             </div>
-                            <div className="flex justify-between border-b pb-1">
-                                <span className="text-slate-400">Territory Manager</span>
-                                <span className="font-medium text-blue-500">
-                                    {record.territory_manager_name || "—"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between gap-4 pb-1">
-                                <span className="text-slate-400 whitespace-nowrap">Team Members</span>
-                                <span className="font-medium text-right">
-                                    {record.team_member_names && record.team_member_names.length > 0
-                                        ? record.team_member_names.join(", ")
-                                        : "—"}
-                                </span>
-                            </div>
+                        </>
+                    )}
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Email | Mobile</p>
+                        <p className="mt-1 truncate text-sm font-medium text-primary">
+                            {record.contact_email || "-"} | {record.contact_phone || "-"}
+                        </p>
+                    </div>
+                    {industry === "travel" ? (
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Travel Date | No of Pax</p>
+                            <p className="mt-1 text-sm font-medium tabular-nums">
+                                {record.industry_data?.travel_date
+                                    ? formatDate(record.industry_data.travel_date)
+                                    : "-"} | {record.industry_data?.no_of_pax || "-"}
+                            </p>
                         </div>
+                    ) : (
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Close Date | Amount</p>
+                            <p className="mt-1 text-sm font-medium tabular-nums">
+                                {record.close_date
+                                    ? formatDate(record.close_date)
+                                    : "-"} | {record.amount ? formatCurrency(record.amount) : "-"}
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Ownership strip */}
+                <div className="grid grid-cols-1 gap-x-6 gap-y-3 border-t bg-muted/40 px-5 py-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Opportunity Owner</p>
+                        {canEdit ? (
+                            <button
+                                onClick={() => setIsOwnerDialogOpen(true)}
+                                className="mt-0.5 flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:underline"
+                            >
+                                {record.owner_name} <UserIcon className="h-3 w-3" />
+                            </button>
+                        ) : (
+                            <p className="mt-0.5 text-sm font-medium">{record.owner_name}</p>
+                        )}
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Operation Owner</p>
+                        <p className="mt-0.5 truncate text-sm font-medium">{record.operation_user_name || "-"}</p>
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Territory Manager</p>
+                        <p className="mt-0.5 truncate text-sm font-medium text-primary">
+                            {record.territory_manager_name || "—"}
+                        </p>
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Team Members</p>
+                        <p className="mt-0.5 text-sm font-medium">
+                            {record.team_member_names && record.team_member_names.length > 0
+                                ? record.team_member_names.join(", ")
+                                : "—"}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -587,7 +630,7 @@ export function OpportunityDetails({
                 <div className="flex items-center gap-2 mb-3">
                     <h3 className="text-sm font-semibold">Sales stages</h3>
                     {record.is_locked && (
-                        <span className="flex items-center gap-1 text-xs text-red-400">
+                        <span className="flex items-center gap-1 text-xs text-destructive">
                             <Lock className="h-3 w-3" /> Stage changes are locked
                         </span>
                     )}
@@ -605,9 +648,9 @@ export function OpportunityDetails({
                                     className={cn(
                                         "relative flex-1 min-w-[110px] whitespace-nowrap py-2 px-4 text-center text-xs font-medium transition-colors border-y border-r first:border-l first:rounded-l-full last:rounded-r-full group",
                                         (record.is_locked || !canEdit) ? "cursor-not-allowed" : "cursor-pointer",
-                                        s.id === selectedStageId ? "bg-blue-500/15 border-blue-400 text-blue-700 dark:text-blue-300" :
-                                            index < currentStageIndex ? "bg-muted border-border text-slate-400 hover:bg-accent" :
-                                                "bg-card border-border text-slate-400 hover:bg-muted/40"
+                                        s.id === selectedStageId ? "bg-primary/15 border-primary/50 text-primary font-semibold" :
+                                            index < currentStageIndex ? "bg-primary/5 border-border text-muted-foreground hover:bg-accent" :
+                                                "bg-card border-border text-muted-foreground hover:bg-muted/40"
                                     )}
                                     style={{
                                         clipPath: index < orderedStages.length - 1 ?
@@ -626,7 +669,7 @@ export function OpportunityDetails({
                     </div>
                     {canEdit && !record.is_locked && selectedStageId !== record.sales_stage_id && (
                         <Button
-                            className="self-end shrink-0 sm:self-auto sm:ml-4 bg-blue-500 hover:bg-blue-600 rounded-full text-xs h-8 px-6 whitespace-nowrap"
+                            className="self-end shrink-0 sm:self-auto sm:ml-4 rounded-full text-xs h-8 px-6 whitespace-nowrap"
                             onClick={handleMarkAsCurrentStage}
                         >
                             Mark as Current Stage
@@ -639,20 +682,24 @@ export function OpportunityDetails({
 
                 {/* Main Content Area - Tabs */}
                 <div className="lg:col-span-2 min-w-0 w-full">
-                    <Tabs defaultValue="activity" className="w-full rounded-lg border bg-card shadow-sm">
+                    <Tabs
+                        defaultValue="activity"
+                        onValueChange={(v) => v === "supplier" && setSupplierTabOpened(true)}
+                        className="w-full rounded-lg border bg-card shadow-sm"
+                    >
                         <TabsList className="w-full justify-start rounded-none border-b bg-transparent h-auto p-0 max-w-full overflow-x-auto flex-nowrap scrollbar-hide">
-                            <TabsTrigger value="activity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Activity</TabsTrigger>
-                            <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Details</TabsTrigger>
-                            {industry === "travel" && <TabsTrigger value="itineraries" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Itineraries</TabsTrigger>}
-                            <TabsTrigger value="financial" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Financial</TabsTrigger>
-                            <TabsTrigger value="supplier" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">{industry === "travel" ? "Supplier" : "Vendor"}</TabsTrigger>
-                            <TabsTrigger value="attachments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:text-blue-600 px-6 py-3 font-medium text-sm">Attachments</TabsTrigger>
+                            <TabsTrigger value="activity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 font-medium text-sm">Activity</TabsTrigger>
+                            <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 font-medium text-sm">Details</TabsTrigger>
+                            {industry === "travel" && <TabsTrigger value="itineraries" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 font-medium text-sm">Itineraries</TabsTrigger>}
+                            <TabsTrigger value="financial" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 font-medium text-sm">Financial</TabsTrigger>
+                            <TabsTrigger value="supplier" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 font-medium text-sm">{industry === "travel" ? "Supplier" : "Vendor"}</TabsTrigger>
+                            <TabsTrigger value="attachments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 font-medium text-sm">Attachments</TabsTrigger>
                             {canEdit && (
                                 <span className="flex items-center px-4 py-3">
                                     <button
                                         onClick={() => !record.is_locked && setIsEditDrawerOpen(true)}
                                         disabled={record.is_locked}
-                                        className={cn("text-sm font-medium flex items-center gap-1", record.is_locked ? "text-slate-600 cursor-not-allowed" : "text-slate-400 hover:text-blue-600")}
+                                        className={cn("text-sm font-medium flex items-center gap-1", record.is_locked ? "text-muted-foreground cursor-not-allowed" : "text-muted-foreground hover:text-primary")}
                                         title={record.is_locked ? "Opportunity is locked" : undefined}
                                     >
                                         {record.is_locked ? <><Lock className="h-3.5 w-3.5" /> Locked</> : <><Edit className="h-3.5 w-3.5" /> Edit</>}
@@ -664,33 +711,41 @@ export function OpportunityDetails({
                         {/* ── ACTIVITY TAB ── */}
                         <TabsContent value="activity" className="p-4 sm:p-6 focus-visible:outline-none focus-visible:ring-0">
                             <div className="flex flex-wrap gap-2 sm:gap-4 border-b pb-4 mb-4">
-                                <Button
-                                    onClick={() => setActivitySubTab("task")}
-                                    variant={activitySubTab === "task" ? "default" : "ghost"}
-                                    className={activitySubTab === "task"
-                                        ? "bg-blue-600 hover:bg-blue-700 h-8 text-xs font-semibold rounded-sm"
-                                        : "h-8 text-xs font-semibold text-slate-400 hover:text-foreground"}
-                                >Task</Button>
-                                <Button variant="ghost" onClick={() => setActivitySubTab("call")} className={`h-8 text-xs font-semibold hover:text-foreground ${activitySubTab === "call" ? "text-blue-600" : "text-slate-400"}`}><PhoneCall className="h-3 w-3 mr-2" /> Log a Call</Button>
-                                <Button variant="ghost" onClick={() => setActivitySubTab("email")} className={`h-8 text-xs font-semibold hover:text-foreground ${activitySubTab === "email" ? "text-blue-600" : "text-slate-400"}`}><Mail className="h-3 w-3 mr-2" /> Email</Button>
-                                <Button variant="ghost" onClick={() => setActivitySubTab("whatsapp")} className={`h-8 text-xs font-semibold hover:text-foreground ${activitySubTab === "whatsapp" ? "text-blue-600" : "text-slate-400"}`}><MessageSquare className="h-3 w-3 mr-2" /> Whatsapp</Button>
+                                {([
+                                    { key: "task", label: "Task", icon: null },
+                                    { key: "call", label: "Log a Call", icon: <PhoneCall className="h-3 w-3 mr-2" /> },
+                                    { key: "email", label: "Email", icon: <Mail className="h-3 w-3 mr-2" /> },
+                                    { key: "whatsapp", label: "Whatsapp", icon: <MessageSquare className="h-3 w-3 mr-2" /> },
+                                ] as const).map(({ key, label, icon }) => (
+                                    <Button
+                                        key={key}
+                                        variant="ghost"
+                                        onClick={() => setActivitySubTab(key)}
+                                        className={cn(
+                                            "h-8 text-xs font-semibold",
+                                            activitySubTab === key
+                                                ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >{icon}{label}</Button>
+                                ))}
                             </div>
 
                             {activitySubTab === "task" && (
                             <>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 mb-6">
                                 <div className="space-y-1.5">
-                                    <label className="text-xs text-slate-400 font-medium">Subject</label>
+                                    <label className="text-xs text-muted-foreground font-medium">Subject</label>
                                     <input 
                                         type="text" 
                                         value={taskSubject}
                                         onChange={(e) => setTaskSubject(e.target.value)}
-                                        className="w-full border rounded text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500" 
+                                        className="w-full border rounded text-sm px-3 py-1.5 focus:outline-none focus:border-primary" 
                                         placeholder="e.g. Follow up with client"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs text-slate-400 font-medium">Assigned To</label>
+                                    <label className="text-xs text-muted-foreground font-medium">Assigned To</label>
                                     <SearchableSelect
                                         value={taskAssignedTo}
                                         onValueChange={setTaskAssignedTo}
@@ -704,24 +759,24 @@ export function OpportunityDetails({
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs text-slate-400 font-medium">Select Due Date</label>
+                                    <label className="text-xs text-muted-foreground font-medium">Select Due Date</label>
                                     <input
                                         type="datetime-local"
                                         value={taskDueDate}
                                         onChange={(e) => setTaskDueDate(e.target.value)}
-                                        className="w-full border rounded text-sm px-3 py-1.5 focus:outline-none focus:border-blue-500 text-slate-300"
+                                        className="w-full border rounded text-sm px-3 py-1.5 focus:outline-none focus:border-primary text-muted-foreground"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs text-slate-400 font-medium">Name</label>
-                                    <div className="w-full border rounded text-sm px-3 py-1.5 bg-muted text-blue-400 hover:underline cursor-pointer font-medium">
+                                    <label className="text-xs text-muted-foreground font-medium">Name</label>
+                                    <div className="w-full border rounded text-sm px-3 py-1.5 bg-muted text-primary hover:underline cursor-pointer font-medium">
                                         <Link href={record.is_person_account ? `/person-accounts/${record.account_id}` : `/accounts/${record.account_id}`}>
                                             {record.contact_name || record.account_name || ""}
                                         </Link>
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs text-slate-400 font-medium">Related to</label>
+                                    <label className="text-xs text-muted-foreground font-medium">Related to</label>
                                     <p className="text-sm text-foreground pt-1.5">{record.name}</p>
                                 </div>
                                 <div className="space-y-1.5 mt-2">
@@ -732,7 +787,7 @@ export function OpportunityDetails({
                                             onChange={(e) => setTaskAddReminder(e.target.checked)}
                                             className="rounded border-border"
                                         />
-                                        <span className="text-xs text-slate-300 font-medium">Add Reminder</span>
+                                        <span className="text-xs text-muted-foreground font-medium">Add Reminder</span>
                                     </label>
                                 </div>
                             </div>
@@ -740,7 +795,7 @@ export function OpportunityDetails({
                             {canCreateTask && (
                                 <div className="flex justify-end border-b pb-6 mb-6">
                                     <Button
-                                        className="bg-blue-500 hover:bg-blue-600 px-8"
+                                        className="px-8"
                                         onClick={handleCreateTask}
                                         disabled={isCreatingTask}
                                     >
@@ -757,16 +812,16 @@ export function OpportunityDetails({
                                 </div>
                                 <ul className="space-y-2">
                                     {tasks.filter(t => t.status !== "Completed").length === 0 ? (
-                                        <li className="text-sm text-slate-400 italic py-2 pl-28">No open tasks</li>
+                                        <li className="text-sm text-muted-foreground italic py-2 pl-28">No open tasks</li>
                                     ) : (
                                         tasks.filter(t => t.status !== "Completed").map(task => (
                                             <li key={task.id} className="flex items-center gap-3 pl-28 py-1 group">
-                                                <div className="h-5 w-5 rounded border border-border flex items-center justify-center cursor-pointer hover:border-blue-500">
-                                                    <CheckCircle2 className="h-3 w-3 text-transparent group-hover:text-blue-600 dark:group-hover:text-blue-200" />
+                                                <div className="h-5 w-5 rounded border border-border flex items-center justify-center cursor-pointer hover:border-primary">
+                                                    <CheckCircle2 className="h-3 w-3 text-transparent group-hover:text-primary" />
                                                 </div>
-                                                <a href="#" className="text-sm text-blue-400 hover:underline">{task.name}</a>
-                                                {task.due_date && <span className="text-xs text-slate-400">({formatDateTime24h(task.due_date)})</span>}
-                                                {task.priority === "High" && <Badge variant="secondary" className="bg-red-500/20 text-red-700 dark:text-red-300 px-1.5 py-0 text-[10px] h-4">high</Badge>}
+                                                <a href="#" className="text-sm text-primary hover:underline">{task.name}</a>
+                                                {task.due_date && <span className="text-xs text-muted-foreground">({formatDateTime24h(task.due_date)})</span>}
+                                                {task.priority === "High" && <Badge variant="secondary" className="bg-destructive/10 text-destructive px-1.5 py-0 text-[10px] h-4">high</Badge>}
                                             </li>
                                         ))
                                     )}
@@ -779,17 +834,17 @@ export function OpportunityDetails({
                                 <ul className="space-y-2">
                                     {tasks.filter(t => t.status === "Completed").map(task => (
                                         <li key={task.id} className="flex items-center gap-3 pl-28 py-1">
-                                            <div className="h-5 w-5 rounded bg-blue-500/20 text-blue-700 dark:text-blue-300 flex items-center justify-center">
+                                            <div className="h-5 w-5 rounded bg-primary/15 text-primary flex items-center justify-center">
                                                 <CheckCircle2 className="h-3 w-3" />
                                             </div>
-                                            <span className="text-sm text-slate-400 line-through">{task.name}</span>
-                                            {task.completed_at && <span className="text-xs text-slate-400">({formatDateLong(task.completed_at)})</span>}
+                                            <span className="text-sm text-muted-foreground line-through">{task.name}</span>
+                                            {task.completed_at && <span className="text-xs text-muted-foreground">({formatDateLong(task.completed_at)})</span>}
                                         </li>
                                     ))}
                                 </ul>
 
                                 <div className="flex items-center gap-4 text-sm font-semibold text-foreground mt-8">
-                                    <span className="w-24 border border-orange-500/40 bg-orange-500/20 text-orange-700 dark:text-orange-300 px-2 rounded-sm inline-flex justify-between items-center h-6">
+                                    <span className="w-24 border border-chart-4/40 bg-chart-4/15 text-chart-4 px-2 rounded-sm inline-flex justify-between items-center h-6">
                                         Email <RefreshCw className="h-3 w-3" />
                                     </span>
                                     <div className="flex-1 border-b border-dashed border-border"></div>
@@ -829,67 +884,67 @@ export function OpportunityDetails({
                                     >
                                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-4">
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Opportunity Name</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Opportunity Name</p>
                                                 <p className="text-sm font-bold text-foreground pt-1">{record.name}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Account</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Account</p>
                                                 <p className="text-sm font-semibold text-foreground pt-1">{record.account_name || record.contact_name || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Opportunity Owner</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Opportunity Owner</p>
                                                 <p className="text-sm font-semibold text-foreground pt-1">{record.owner_name || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stage</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stage</p>
                                                 <p className="text-sm font-semibold text-foreground pt-1">
                                                     {record.sales_stage_name || stages.find(s => s.id === record.sales_stage_id)?.name || "-"}
                                                 </p>
                                             </div>
                                             {record.close_lost_reason && (stage as any)?.is_lost && (
-                                                <div className="space-y-1 col-span-full bg-red-500/20 p-2 rounded border border-red-500/40">
-                                                    <p className="text-xs font-semibold text-red-600 uppercase tracking-wider">Close Lost Reason</p>
-                                                    <p className="text-sm text-red-700 dark:text-red-300 pt-1 italic">
+                                                <div className="space-y-1 col-span-full bg-destructive/10 p-2 rounded border border-destructive/40">
+                                                    <p className="text-xs font-semibold text-destructive uppercase tracking-wider">Close Lost Reason</p>
+                                                    <p className="text-sm text-destructive pt-1 italic">
                                                         "{record.close_lost_reason}"
                                                     </p>
                                                 </div>
                                             )}
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Amount</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</p>
                                                 <p className="text-lg font-bold text-foreground">
                                                     {record.amount ? formatCurrency(record.amount) : formatCurrency(0)}
                                                 </p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Probability</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Probability</p>
                                                 <div className="flex items-center gap-3 pt-1">
                                                     <span className="text-base font-semibold">{record.probability || 0}%</span>
                                                     <div className="flex-1 max-w-[100px] h-2 bg-muted rounded-full overflow-hidden">
-                                                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${record.probability || 0}%` }} />
+                                                        <div className="h-full bg-primary rounded-full" style={{ width: `${record.probability || 0}%` }} />
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Expected Revenue</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Expected Revenue</p>
                                                 <p className="text-lg font-bold text-emerald-400">
                                                     {formatCurrency(((record.amount || 0) * (record.probability || 0)) / 100)}
                                                 </p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Segment</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Segment</p>
                                                 <Badge variant="secondary" className={cn("uppercase font-bold mt-1", getSegmentBadgeClass(record.segment))}>
                                                     {getSegmentLabel(record.segment)}
                                                 </Badge>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Expected Close Date</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Expected Close Date</p>
                                                 <span className="text-sm font-medium pt-1 block">
                                                     {record.close_date ? formatDateLong(record.close_date) : "Not Set"}
                                                 </span>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Opportunity Source</p>
-                                                <span className="text-sm font-medium pt-1 block text-blue-400 cursor-pointer hover:underline">
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Opportunity Source</p>
+                                                <span className="text-sm font-medium pt-1 block text-primary cursor-pointer hover:underline">
                                                     {record.source_name || "-"}
                                                 </span>
                                             </div>
@@ -898,44 +953,44 @@ export function OpportunityDetails({
                                             {industry === "travel" && (
                                                 <>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Experience</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Experience</p>
                                                         <span className="text-sm font-medium pt-1 block text-foreground">
                                                             {record.experience_name || "-"}
                                                         </span>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Date of Travel</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date of Travel</p>
                                                         <span className="text-sm font-medium pt-1 block">
                                                             {record.industry_data?.travel_date ? formatDateLong(record.industry_data.travel_date) : "Not Set"}
                                                         </span>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">No. of Pax</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">No. of Pax</p>
                                                         <p className="text-sm font-semibold pt-1">{record.industry_data?.no_of_pax || "-"}</p>
                                                     </div>
                                                     {(record.industry_data?.no_of_nights ?? 0) > 0 && (
                                                         <div className="space-y-1">
-                                                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">No. of Nights</p>
+                                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">No. of Nights</p>
                                                             <p className="text-sm font-semibold pt-1">{record.industry_data?.no_of_nights}</p>
                                                         </div>
                                                     )}
                                                     <div className="space-y-2 col-span-full mt-4">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Destinations</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Destinations</p>
                                                         <div className="flex flex-wrap gap-2 pt-1">
                                                             {record.industry_data?.destination_names && record.industry_data.destination_names.length > 0 ? (
                                                                 record.industry_data.destination_names.map((dest: string, i: number) => (
                                                                     <Badge key={i} variant="outline" className="bg-muted px-3 py-1 font-medium border-border">
-                                                                        <MapPin className="h-3 w-3 mr-1.5 text-blue-500" />
+                                                                        <MapPin className="h-3 w-3 mr-1.5 text-primary" />
                                                                         {dest}
                                                                     </Badge>
                                                                 ))
                                                             ) : (
-                                                                <p className="text-sm text-slate-400">No destinations specified</p>
+                                                                <p className="text-sm text-muted-foreground">No destinations specified</p>
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2 col-span-full mt-2">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inclusions</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Inclusions</p>
                                                         <div className="flex flex-wrap gap-2 pt-1">
                                                             {record.industry_data?.inclusions && record.industry_data.inclusions.length > 0 ? (
                                                                 record.industry_data.inclusions.map((inclusion: string, i: number) => (
@@ -945,7 +1000,7 @@ export function OpportunityDetails({
                                                                     </Badge>
                                                                 ))
                                                             ) : (
-                                                                <p className="text-sm text-slate-400">No inclusions specified</p>
+                                                                <p className="text-sm text-muted-foreground">No inclusions specified</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -954,15 +1009,15 @@ export function OpportunityDetails({
                                             {industry === "healthcare" && (
                                                 <>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Treatment Type</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Treatment Type</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.treatment_type || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Appointment Date</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Appointment Date</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.appointment_date ? formatDateLong((record as any).industry_data.appointment_date) : "Not Set"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Insurance Pre-Auth</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Insurance Pre-Auth</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.insurance_preauth || "-"}</p>
                                                     </div>
                                                 </>
@@ -970,15 +1025,15 @@ export function OpportunityDetails({
                                             {industry === "education" && (
                                                 <>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Program / Course</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Program / Course</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.program || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Admission Status</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admission Status</p>
                                                         <p className="text-sm font-semibold pt-1 capitalize">{(record as any).industry_data?.admission_status || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Interview Date</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Interview Date</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.interview_date ? formatDateLong((record as any).industry_data.interview_date) : "Not Set"}</p>
                                                     </div>
                                                 </>
@@ -986,21 +1041,21 @@ export function OpportunityDetails({
                                             {industry === "manufacturing" && (
                                                 <>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Product / SKU</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Product / SKU</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.product_category || "-"}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Quantity / UOM</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quantity / UOM</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.quantity || "-"} {(record as any).industry_data?.uom || ""}</p>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Delivery Date</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Delivery Date</p>
                                                         <p className="text-sm font-semibold pt-1">{(record as any).industry_data?.delivery_date ? formatDateLong((record as any).industry_data.delivery_date) : "Not Set"}</p>
                                                     </div>
                                                 </>
                                             )}
                                             <div className="space-y-1 col-span-full mt-2">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</p>
                                                 <p className="text-sm text-foreground pt-1 whitespace-pre-wrap">
                                                     {record.description || "-"}
                                                 </p>
@@ -1016,17 +1071,17 @@ export function OpportunityDetails({
                                     >
                                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-4">
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Created By</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Created By</p>
                                                 <div className="flex items-center gap-2 pt-1">
-                                                    <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{record.created_by_name || "Unknown"}</p>
-                                                    <span className="text-slate-400 text-[10px]">{formatDateTime24h(record.created_at)}</span>
+                                                    <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{record.created_by_name || "Unknown"}</p>
+                                                    <span className="text-muted-foreground text-[10px]">{formatDateTime24h(record.created_at)}</span>
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Last Modified By</p>
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last Modified By</p>
                                                 <div className="flex items-center gap-2 pt-1">
-                                                    <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{record.last_modified_by_name || record.created_by_name || "Unknown"}</p>
-                                                    <span className="text-slate-400 text-[10px]">{formatDateTime24h(record.updated_at)}</span>
+                                                    <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{record.last_modified_by_name || record.created_by_name || "Unknown"}</p>
+                                                    <span className="text-muted-foreground text-[10px]">{formatDateTime24h(record.updated_at)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1095,7 +1150,7 @@ export function OpportunityDetails({
                                     <div className="flex justify-end pt-4">
                                         <Button
                                             onClick={handleSaveEmail}
-                                            className="bg-blue-600 hover:bg-blue-700 px-8"
+                                            className="px-8"
                                         >
                                             Save
                                         </Button>
@@ -1107,7 +1162,7 @@ export function OpportunityDetails({
                         {/* ── ATTACHMENTS TAB ── */}
                         <TabsContent value="attachments" className="p-6 focus-visible:outline-none focus-visible:ring-0">
                             <div className="flex items-center gap-2 mb-6">
-                                <Paperclip className="h-4 w-4 text-blue-500" />
+                                <Paperclip className="h-4 w-4 text-primary" />
                                 <h3 className="text-sm font-semibold text-foreground">Attachments</h3>
                             </div>
                             <div className="space-y-6">
@@ -1185,7 +1240,7 @@ export function OpportunityDetails({
                                     if (tableRows.length === 0) {
                                         return (
                                             <div className="text-center py-10">
-                                                <p className="text-sm text-slate-400 italic">No stage history recorded yet</p>
+                                                <p className="text-sm text-muted-foreground italic">No stage history recorded yet</p>
                                             </div>
                                         );
                                     }
@@ -1195,10 +1250,10 @@ export function OpportunityDetails({
                                             <Table>
                                             <TableHeader className="sticky top-0 z-10 bg-muted shadow-sm">
                                                 <TableRow>
-                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-slate-400">Stage</TableHead>
-                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-slate-400">Amount</TableHead>
-                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-slate-400">Prob</TableHead>
-                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-slate-400">Modified</TableHead>
+                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-muted-foreground">Stage</TableHead>
+                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-muted-foreground">Amount</TableHead>
+                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-muted-foreground">Prob</TableHead>
+                                                    <TableHead className="py-2 text-[10px] uppercase font-bold text-muted-foreground">Modified</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -1206,7 +1261,7 @@ export function OpportunityDetails({
                                                     <TableRow key={row.id || i} className="hover:bg-muted/40">
                                                         <TableCell className="py-2">
                                                             <div className="flex flex-col">
-                                                                <p className={`text-xs font-semibold truncate max-w-[80px] ${row.isStageChange ? 'text-blue-400' : 'text-foreground'}`} title={row.displayStage}>
+                                                                <p className={`text-xs font-semibold truncate max-w-[80px] ${row.isStageChange ? 'text-primary' : 'text-foreground'}`} title={row.displayStage}>
                                                                     {row.displayStage}
                                                                 </p>
                                                                 {row.isAmountChange && (
@@ -1215,12 +1270,12 @@ export function OpportunityDetails({
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="py-2">
-                                                            <p className="text-xs text-slate-300">
+                                                            <p className="text-xs text-muted-foreground">
                                                                 {formatCurrency(row.displayAmount)}
                                                             </p>
                                                         </TableCell>
                                                         <TableCell className="py-2">
-                                                            <p className="text-xs text-slate-300">
+                                                            <p className="text-xs text-muted-foreground">
                                                                 {row.displayProb}%
                                                             </p>
                                                         </TableCell>
@@ -1229,7 +1284,7 @@ export function OpportunityDetails({
                                                                 <span className="text-[10px] font-medium text-foreground truncate max-w-[70px]" title={row.user_name || "System"}>
                                                                     {row.user_name || "System"}
                                                                 </span>
-                                                                <span className="text-[9px] text-slate-400 capitalize">
+                                                                <span className="text-[9px] text-muted-foreground capitalize">
                                                                     {formatDateTimeBar(row.changed_at)}
                                                                 </span>
                                                             </div>

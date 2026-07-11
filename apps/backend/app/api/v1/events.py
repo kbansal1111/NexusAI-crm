@@ -146,8 +146,6 @@ async def get_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     
-    await event.increment_view_count()
-    
     return EventResponse.from_orm(event)
 
 

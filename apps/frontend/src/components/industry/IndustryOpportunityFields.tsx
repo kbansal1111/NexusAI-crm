@@ -224,7 +224,7 @@ function TravelOpportunityFields({ form, destinationSeedNames }: IndustryOppFiel
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Globe className="h-4 w-4 text-blue-600" />
+                <Globe className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-semibold text-foreground">Travel Requirements</h3>
             </div>
             <div className="grid gap-4 md:grid-cols-2">

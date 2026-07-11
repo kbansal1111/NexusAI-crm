@@ -100,6 +100,7 @@ class PicklistItemResponse(BaseModel):
     probability: Optional[int] = None
     is_won: Optional[bool] = None
     is_lost: Optional[bool] = None
+    country: Optional[str] = None  # destinations: the country the destination belongs to
 
 
 class PicklistSortItem(BaseModel):

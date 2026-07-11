@@ -37,7 +37,7 @@ const moduleIcons: Record<string, React.ReactNode> = {
 };
 
 const moduleColors: Record<string, string> = {
-    leads: "text-blue-500",
+    leads: "text-primary",
     accounts: "text-indigo-500",
     contacts: "text-emerald-500",
     opportunities: "text-amber-500",

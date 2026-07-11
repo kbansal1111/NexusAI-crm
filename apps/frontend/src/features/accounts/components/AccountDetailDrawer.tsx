@@ -35,7 +35,7 @@ function Field({ label, value, link }: { label: string; value?: string | null; l
     return (
         <div className="space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-            <p className={`text-sm font-medium ${link && value ? "text-blue-500 underline break-all" : "text-foreground"}`}>
+            <p className={`text-sm font-medium ${link && value ? "text-primary underline break-all" : "text-foreground"}`}>
                 {value || "-"}
             </p>
         </div>
@@ -54,7 +54,7 @@ function Section({
     return (
         <div className="space-y-3">
             <div className="flex items-center gap-2 border-b pb-2 text-sm font-bold text-foreground">
-                <span className="text-blue-600">{icon}</span>
+                <span className="text-primary">{icon}</span>
                 {title}
             </div>
             <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">{children}</div>

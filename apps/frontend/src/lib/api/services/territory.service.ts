@@ -22,12 +22,13 @@ export interface Territory {
   name: string;
   code?: string | null;
   description?: string | null;
-  region_id: string;
+  region_id?: string | null;
   region_name?: string | null;
   parent_territory_id?: string | null;
   countries: string[];
   states: string[];
   postal_codes?: string[];
+  destinations?: string[];
   manager_id?: string | null;
   assignment_type?: "manual" | "geographic" | "rule_based";
   is_active: boolean;
@@ -59,7 +60,7 @@ export const territoryService = {
     return data;
   },
   listTerritories: async (): Promise<{ territories: Territory[]; total: number }> => {
-    const { data } = await apiClient.get(`${BASE}/territories`);
+    const { data } = await apiClient.get(`${BASE}/territories`, { params: { per_page: 100 } });
     return data;
   },
   getBdReportList: async () => (await apiClient.get(`${BASE}/bd-report-list`)).data,

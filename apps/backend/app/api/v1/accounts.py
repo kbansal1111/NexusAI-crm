@@ -66,7 +66,6 @@ def account_to_response(account: Account) -> AccountResponse:
         created_by_name=created_by_name,
         last_modified_by_id=str(account.last_modified_by_id) if account.last_modified_by_id else None,
         last_modified_by_name=last_modified_by_name,
-        view_count=account.view_count,
         is_favorite=account.is_favorite,
         created_at=account.created_at,
         updated_at=account.updated_at,
@@ -506,7 +505,6 @@ async def get_accounts(
                     "owner_name": user_map.get(str(acc.owner_id)),
                     "created_by": str(acc.created_by),
                     "last_modified_by_id": str(acc.last_modified_by_id) if acc.last_modified_by_id else None,
-                    "view_count": acc.view_count,
                     "is_favorite": acc.is_favorite,
                     "created_at": acc.created_at,
                     "updated_at": acc.updated_at,
@@ -795,8 +793,6 @@ async def get_account(
             current_user.tenant_id
         )
         
-        # Increment view count
-        await account.increment_view_count()
 
         # Sprint D — populate custom_fields
         resp = account_to_response(account)

@@ -54,7 +54,7 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
 
 function ResultLink({ href, children }: { href: string; children: React.ReactNode }) {
     return (
-        <Link href={href} className="text-[#1a6bb0] hover:underline font-medium">
+        <Link href={href} className="text-primary hover:underline font-medium">
             {children}
         </Link>
     );

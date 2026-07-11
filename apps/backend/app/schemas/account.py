@@ -172,7 +172,6 @@ class AccountResponse(AccountBase):
     account_type_name: Optional[str] = None
     category_name: Optional[str] = None
 
-    view_count: int = 0
     is_favorite: bool = False
 
     created_at: datetime

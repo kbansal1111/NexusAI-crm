@@ -11,7 +11,7 @@ import {
     Filter as FilterIcon,
     Kanban as KanbanIcon,
     FileDown,
-    Lightbulb,
+    Target,
     ChevronDown,
     Save,
     Trash2,
@@ -96,8 +96,10 @@ export default function OpportunitiesPageClient() {
     const labels = useIndustryLabels();
 
     // Date views (Today / Yesterday / …) are now seeded system views applied via
-    // `view_id`; `currentView` only carries the special presets (recent / closed).
-    const currentView = searchParams.get("view") || searchParams.get("filter") || undefined;
+    // `view_id`; `currentView` only carries the special presets (recent / closed) —
+    // `all` is the explicit "All records" marker and applies no filter.
+    const rawCurrentView = searchParams.get("view") || searchParams.get("filter") || undefined;
+    const currentView = rawCurrentView === "all" ? undefined : rawCurrentView;
 
     const pathname = usePathname();
     const queryClient = useQueryClient();
@@ -297,10 +299,7 @@ export default function OpportunitiesPageClient() {
             <div className="crm-surface space-y-4 rounded-b-none border-b-0 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="rounded-full bg-primary p-2 text-primary-foreground">
-                            <Lightbulb className="h-5 w-5" />
-                        </div>
-                        <ListCountHeader label={labels.opportunity} count={totalCount ?? opportunities.length}>
+                        <ListCountHeader label={labels.opportunity} count={totalCount ?? opportunities.length} icon={Target}>
                             <ListViewSelector entity="opportunity" presetLabel={`All ${labels.opportunities}`} />
                         </ListCountHeader>
                     </div>

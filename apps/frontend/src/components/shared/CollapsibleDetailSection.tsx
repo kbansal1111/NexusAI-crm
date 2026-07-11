@@ -28,6 +28,7 @@ export function CollapsibleDetailSection({
                 type="button"
                 onClick={() => setIsOpen((prev) => !prev)}
                 className="flex w-full cursor-pointer select-none items-center gap-2 border-b border-border bg-muted/40 px-4 py-3 transition-colors hover:bg-muted/60"
+                suppressHydrationWarning
             >
                 <ChevronRight
                     className={cn(
@@ -39,14 +40,16 @@ export function CollapsibleDetailSection({
                 <span className="text-sm font-semibold text-foreground">{title}</span>
             </button>
 
-            {/* Content */}
+            {/* Content — grid-rows animation composites cheaply (no max-height reflow) */}
             <div
                 className={cn(
-                    "transition-all duration-200 ease-in-out",
-                    isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+                    "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out",
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 )}
             >
-                <div className="p-6">{children}</div>
+                <div className="min-h-0 overflow-hidden">
+                    <div className="p-6">{children}</div>
+                </div>
             </div>
         </div>
     );

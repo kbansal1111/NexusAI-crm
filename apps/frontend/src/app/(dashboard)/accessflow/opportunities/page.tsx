@@ -44,8 +44,8 @@ export default function AccessFlowOpportunitiesPage() {
                         aria-label="Hierarchy visibility"
                         onClick={toggle}
                         className={cn(
-                            "relative h-8 w-14 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-                            hierarchyOn ? "bg-blue-600" : "bg-input"
+                            "relative h-8 w-14 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                            hierarchyOn ? "bg-primary" : "bg-input"
                         )}
                     >
                         <span

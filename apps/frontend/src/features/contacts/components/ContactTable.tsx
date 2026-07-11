@@ -9,7 +9,7 @@ import {
     getFilteredRowModel,
     useReactTable,
 } from "@tanstack/react-table";
-import { Pencil, Check, Loader2, ChevronDown, RefreshCw, Filter, X, Search as SearchIcon, Download, Save, Trash2, Settings, Upload } from "lucide-react";
+import { Pencil, Check, Loader2, ChevronDown, RefreshCw, Filter, X, Search as SearchIcon, Download, Save, Trash2, Settings, Upload, Contact as ContactIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,7 +54,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Contact } from "../types";
+import type { Contact } from "../types";
 import { contactsService } from "@/lib/api/services/contacts.service";
 import { OwnerPopover } from "@/components/shared/OwnerPopover";
 import { ImportDataDialog, normalizeImportResult } from "@/components/shared/ImportDataDialog";
@@ -463,7 +463,7 @@ export function ContactTable({
         <div className="w-full px-4">
             <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                 {/* Saved-view selector */}
-                <ListCountHeader label="Contacts" count={pagination.total ?? rows.length}>
+                <ListCountHeader label="Contacts" count={pagination.total ?? rows.length} icon={ContactIcon}>
                     <ListViewSelector entity={entity} presetLabel="All records" />
                 </ListCountHeader>
 

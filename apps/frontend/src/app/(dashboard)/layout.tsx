@@ -103,7 +103,7 @@ export default function DashboardLayout({
                 className="flex flex-1 flex-col transition-all duration-300 ease-in-out"
                 style={{ marginLeft: isSidebarOpen && isLargeScreen ? 264 : 0 }}
             >
-                <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-card px-3 sm:px-5">
+                <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-card/85 backdrop-blur-lg px-3 sm:px-5">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -113,7 +113,7 @@ export default function DashboardLayout({
                         <Menu className="h-5 w-5" />
                     </Button>
                     <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
-                        <span className="text-base font-semibold tracking-tight text-primary">Travel CRM</span>
+                        <span className="font-display text-base font-semibold tracking-tight text-primary">Travel CRM</span>
                     </Link>
                     <div className="hidden min-w-0 flex-1 px-4 lg:block">
                         <GlobalSearchBar />

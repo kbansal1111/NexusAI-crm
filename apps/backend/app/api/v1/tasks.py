@@ -278,7 +278,6 @@ async def get_task(
     if not is_task_visible(task.created_by, task.assigned_user_id, visible_owner_ids):
         raise HTTPException(status_code=404, detail="Task not found")
 
-    await task.increment_view_count()
     enriched = await _build_enriched_tasks([task])
     return enriched[0]
 

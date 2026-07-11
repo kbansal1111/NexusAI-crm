@@ -55,17 +55,19 @@ class Territory(Document):
     code: Optional[str] = None
     description: Optional[str] = None
     
-    # Hierarchy
-    region_id: Indexed(PydanticObjectId)  # Parent region
+    # Hierarchy — region is optional; the simplified admin flow creates
+    # territories directly (Name + Countries + States + Destinations).
+    region_id: Optional[PydanticObjectId] = None  # Parent region
     parent_territory_id: Optional[PydanticObjectId] = None  # For nested territories
-    
+
     # Assignment rule type
     assignment_type: str = Field(default="manual")  # manual, geographic, rule_based
-    
+
     # Geographic Criteria (if assignment_type is geographic)
     countries: List[str] = Field(default_factory=list)  # Country codes
     states: List[str] = Field(default_factory=list)  # State codes/names
     postal_codes: List[str] = Field(default_factory=list)  # Zip/Postal codes (supports wildcards)
+    destinations: List[str] = Field(default_factory=list)  # Travel destination names (picklist values)
     
     # Assignment — a territory has exactly ONE manager (the "Territory Manager" /
     # "BD owner" — the same role). That user sees the territory's opportunities

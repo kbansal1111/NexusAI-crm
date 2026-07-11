@@ -592,7 +592,7 @@ export function ConvertLeadDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[900px] w-[95vw] max-h-[90vh] overflow-hidden p-0 border-none flex flex-col">
                 <DialogHeader className="border-b p-6 pb-4 mb-0">
-                    <DialogTitle className="flex items-center gap-2 text-2xl text-blue-700 dark:text-blue-400">
+                    <DialogTitle className="flex items-center gap-2 text-2xl text-primary dark:text-primary">
                         <CheckCircle2 className="h-7 w-7" />
                         Convert Lead: {lead.full_name}
                     </DialogTitle>
@@ -608,9 +608,9 @@ export function ConvertLeadDialog({
                             {/* Left Column: Account & Contact */}
                             <div className="space-y-8">
                                 {/* 1. Account Selection */}
-                                <Card className="border-blue-100/80 bg-blue-50/20 dark:border-blue-900/30 dark:bg-blue-950/10">
+                                <Card className="border-primary/20 bg-primary/5 dark:border-primary/25 dark:bg-primary/10">
                                     <CardContent className="pt-6 space-y-4">
-                                        <div className="flex items-center gap-2 font-semibold text-blue-800 dark:text-blue-300 border-b border-blue-100/80 dark:border-blue-900/30 pb-2">
+                                        <div className="flex items-center gap-2 font-semibold text-primary dark:text-primary border-b border-primary/20 dark:border-primary/25 pb-2">
                                             <Building2 className="h-5 w-5" />
                                             <h3>Account Selection</h3>
                                         </div>
@@ -1148,26 +1148,26 @@ export function ConvertLeadDialog({
                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 border p-4 rounded-lg bg-background/50 dark:bg-background/20 shadow-sm">
                                                     <FormField control={form.control} name="no_of_adults" render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Adults</FormLabel>
+                                                            <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Adults</FormLabel>
                                                             <FormControl><Input type="number" min="0" {...field} className="h-8 text-xs" /></FormControl>
                                                         </FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="no_of_childs" render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Children</FormLabel>
+                                                            <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Children</FormLabel>
                                                             <FormControl><Input type="number" min="0" {...field} className="h-8 text-xs" /></FormControl>
                                                         </FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="no_of_infants" render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Infants</FormLabel>
+                                                            <FormLabel className="text-[10px] uppercase font-bold text-muted-foreground">Infants</FormLabel>
                                                             <FormControl><Input type="number" min="0" {...field} className="h-8 text-xs" /></FormControl>
                                                         </FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="no_of_pax" render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">Total Pax</FormLabel>
-                                                            <FormControl><Input type="number" min="0" {...field} className="h-8 text-xs bg-blue-50/50 border-blue-200 text-blue-900 font-bold dark:bg-blue-950/40 dark:border-blue-900/60 dark:text-blue-200" /></FormControl>
+                                                            <FormLabel className="text-[10px] uppercase font-bold text-primary dark:text-primary">Total Pax</FormLabel>
+                                                            <FormControl><Input type="number" min="0" {...field} className="h-8 text-xs bg-primary/5 border-primary/30 text-primary font-bold dark:bg-primary/15 dark:border-primary/30 dark:text-primary" /></FormControl>
                                                         </FormItem>
                                                     )} />
                                                 </div>
@@ -1257,7 +1257,7 @@ export function ConvertLeadDialog({
                             <Button
                                 type="submit"
                                 disabled={convertLead.isPending}
-                                className="bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white min-w-[140px] shadow-lg shadow-blue-200/20 dark:shadow-none"
+                                className="bg-primary hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90 text-white min-w-[140px] shadow-lg shadow-primary/10 dark:shadow-none"
                             >
                                 {convertLead.isPending ? (
                                     <>

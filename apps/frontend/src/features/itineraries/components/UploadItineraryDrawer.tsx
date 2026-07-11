@@ -87,7 +87,7 @@ export function UploadItineraryDrawer({ open, onOpenChange, opportunityId, onUpl
             <SheetContent side="right" className="w-full sm:max-w-md flex flex-col">
                 <SheetHeader>
                     <SheetTitle className="flex items-center gap-2">
-                        <Upload className="h-4 w-4 text-blue-500" />
+                        <Upload className="h-4 w-4 text-primary" />
                         Upload Itinerary
                     </SheetTitle>
                     <SheetDescription>
@@ -127,7 +127,7 @@ export function UploadItineraryDrawer({ open, onOpenChange, opportunityId, onUpl
                             {file ? (
                                 <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
                                     <span className="flex items-center gap-2 truncate">
-                                        <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                                        <FileText className="h-4 w-4 text-primary shrink-0" />
                                         <span className="truncate">{file.name}</span>
                                     </span>
                                     <button
@@ -158,7 +158,7 @@ export function UploadItineraryDrawer({ open, onOpenChange, opportunityId, onUpl
                         <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={uploadMutation.isPending}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={uploadMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
+                        <Button type="submit" disabled={uploadMutation.isPending} className="bg-primary hover:bg-primary/90">
                             {uploadMutation.isPending ? (
                                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading…</>
                             ) : (

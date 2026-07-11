@@ -144,7 +144,6 @@ class LeadResponse(BaseModel):
     full_name: str
     is_converted: bool = False
     opportunity_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
-    view_count: int = 0
 
     # Industry-specific data (all industries including travel)
     industry_data: Optional[Dict[str, Any]] = Field(default_factory=dict)

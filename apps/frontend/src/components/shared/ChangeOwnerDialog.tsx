@@ -68,7 +68,7 @@ export function ChangeOwnerDialog({
                     <Button
                         onClick={handleConfirm}
                         disabled={!selectedUserId || selectedUserId === currentOwnerId || isLoading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="bg-primary hover:bg-primary/90 text-white"
                     >
                         {isLoading ? "Saving..." : "Change Owner"}
                     </Button>

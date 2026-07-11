@@ -186,10 +186,11 @@ class TerritoryService:
         tenant_id: str
     ) -> Territory:
         """Create a new territory."""
-        # Verify region exists
-        region = await self.get_region(data.region_id, tenant_id)
-        if not region:
-            raise ValueError("Region not found")
+        # Region is optional in the simplified flow — verify only when supplied.
+        if data.region_id:
+            region = await self.get_region(data.region_id, tenant_id)
+            if not region:
+                raise ValueError("Region not found")
 
         tenant_oid = PydanticObjectId(str(tenant_id))
         manager_oid = await self._validate_manager(tenant_oid, data.manager_id)
@@ -374,9 +375,11 @@ class TerritoryService:
         matched_by: str
     ) -> TerritoryAssignmentResponse:
         """Helper to build assignment response — region scoped to territory's tenant."""
-        region = await Region.find_one(
-            {"_id": territory.region_id, "tenant_id": territory.tenant_id}
-        )
+        region = None
+        if territory.region_id:
+            region = await Region.find_one(
+                {"_id": territory.region_id, "tenant_id": territory.tenant_id}
+            )
         return TerritoryAssignmentResponse(
             territory_id=str(territory.id),
             territory_name=territory.name,

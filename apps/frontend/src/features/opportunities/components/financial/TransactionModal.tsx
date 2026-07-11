@@ -199,7 +199,7 @@ export function TransactionModal({
                             <select
                                 value={paymentMode}
                                 onChange={(e) => setPaymentMode(e.target.value)}
-                                className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+                                className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                             >
                                 {PAYMENT_MODES.map((mode) => (
                                     <option
@@ -258,7 +258,7 @@ export function TransactionModal({
                                         value={service}
                                         onChange={(e) => setService(e.target.value)}
                                         disabled={!supplier}
-                                        className={`w-full h-10 rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                                        className={`w-full h-10 rounded-md border border-border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                                             !service ? "text-muted-foreground" : "text-foreground"
                                         }`}
                                     >
@@ -288,7 +288,7 @@ export function TransactionModal({
                                 <select
                                     value={location}
                                     onChange={(e) => setLocation(e.target.value)}
-                                    className={`w-full h-10 rounded-md border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors ${
+                                    className={`w-full h-10 rounded-md border bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors ${
                                         !location
                                             ? "border-border text-muted-foreground"
                                             : "border-border text-foreground"
@@ -320,7 +320,7 @@ export function TransactionModal({
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
                             placeholder="Note"
-                            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground min-h-[72px] focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors resize-y"
+                            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground min-h-[72px] focus:outline-none focus:ring-2 focus:ring-ring transition-colors resize-y"
                         />
                     </div>
 
@@ -362,7 +362,7 @@ export function TransactionModal({
                     <Button
                         onClick={handleSubmit}
                         disabled={isSaving}
-                        className="bg-blue-600 hover:bg-blue-700 h-9 px-5 text-sm"
+                        className="bg-primary hover:bg-primary/90 h-9 px-5 text-sm"
                     >
                         {isSaving ? (
                             <>

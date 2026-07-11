@@ -5,18 +5,74 @@
  * displays them in IST (Asia/Kolkata, UTC+05:30).
  *
  * Currency is Indian Rupees (₹) with en-IN grouping (lakhs / crores).
+ *
+ * All Intl formatters are module-level singletons: constructing an
+ * Intl.NumberFormat/DateTimeFormat is orders of magnitude more expensive
+ * than calling .format(), and these helpers run once per table cell.
  */
 
 const TIMEZONE = "Asia/Kolkata";
 const LOCALE = "en-IN";
 const CURRENCY = "INR";
 
+const currencyFmt = new Intl.NumberFormat(LOCALE, {
+  style: "currency",
+  currency: CURRENCY,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+const numberFmt = new Intl.NumberFormat(LOCALE);
+
+const dateFmt = new Intl.DateTimeFormat(LOCALE, {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: TIMEZONE,
+});
+
+const dateTimeFmt = new Intl.DateTimeFormat(LOCALE, {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: TIMEZONE,
+});
+
+const timeFmt = new Intl.DateTimeFormat(LOCALE, {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: TIMEZONE,
+});
+
+const isoDateFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE });
+
+const dateLongFmt = new Intl.DateTimeFormat(LOCALE, {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: TIMEZONE,
+});
+
+const dateTime24hFmt = new Intl.DateTimeFormat(LOCALE, {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: TIMEZONE,
+});
+
 /**
  * Normalise a date string from the backend.
  * FastAPI/MongoDB returns ISO strings without a timezone suffix, e.g.
  * "2026-06-08T14:48:23". The browser treats those as *local time*, but
  * they are actually stored in UTC.  Appending "Z" forces UTC interpretation
- * so the subsequent toLocale* calls with timeZone:"Asia/Kolkata" work correctly.
+ * so the subsequent formatters with timeZone:"Asia/Kolkata" work correctly.
  */
 function toUTC(date: string | Date | null | undefined): Date | null {
   if (!date) return null;
@@ -45,12 +101,7 @@ function toUTC(date: string | Date | null | undefined): Date | null {
  */
 export function formatCurrency(amount: number | null | undefined): string {
   if (amount == null) return "₹0";
-  return new Intl.NumberFormat(LOCALE, {
-    style: "currency",
-    currency: CURRENCY,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return currencyFmt.format(amount);
 }
 
 /**
@@ -59,7 +110,7 @@ export function formatCurrency(amount: number | null | undefined): string {
  */
 export function formatNumber(value: number | null | undefined): string {
   if (value == null) return "0";
-  return value.toLocaleString(LOCALE);
+  return numberFmt.format(value);
 }
 
 // ─── Date & Time ────────────────────────────────────────────
@@ -68,58 +119,36 @@ export function formatNumber(value: number | null | undefined): string {
  * Format a date string/Date as "17 Apr 2026" in IST.
  */
 export function formatDate(date: string | Date | null | undefined): string {
-  if (!date) return "-";
   const d = toUTC(date);
   if (!d) return "-";
-  return d.toLocaleDateString(LOCALE, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: TIMEZONE,
-  });
+  return dateFmt.format(d);
 }
 
 /**
  * Format a date string/Date as "17 Apr 2026, 06:30 PM" in IST.
  */
 export function formatDateTime(date: string | Date | null | undefined): string {
-  if (!date) return "-";
   const d = toUTC(date);
   if (!d) return "-";
-  return d.toLocaleString(LOCALE, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: TIMEZONE,
-  });
+  return dateTimeFmt.format(d);
 }
 
 /**
  * Format a date as "6:30 PM" in IST.
  */
 export function formatTime(date: string | Date | null | undefined): string {
-  if (!date) return "-";
   const d = toUTC(date);
   if (!d) return "-";
-  return d.toLocaleTimeString(LOCALE, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: TIMEZONE,
-  });
+  return timeFmt.format(d);
 }
 
 /**
  * Format a date as ISO date only "2026-04-17" in IST.
  */
 export function formatISODate(date: string | Date | null | undefined): string {
-  if (!date) return "";
   const d = toUTC(date);
   if (!d) return "";
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).formatToParts(d);
+  const parts = isoDateFmt.formatToParts(d);
   const y = parts.find(p => p.type === "year")?.value;
   const m = parts.find(p => p.type === "month")?.value;
   const day = parts.find(p => p.type === "day")?.value;
@@ -131,15 +160,9 @@ export function formatISODate(date: string | Date | null | undefined): string {
  * Replaces date-fns format(date, "PPP").
  */
 export function formatDateLong(date: string | Date | null | undefined): string {
-  if (!date) return "-";
   const d = toUTC(date);
   if (!d) return "-";
-  return d.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: TIMEZONE,
-  });
+  return dateLongFmt.format(d);
 }
 
 /**
@@ -147,18 +170,9 @@ export function formatDateLong(date: string | Date | null | undefined): string {
  * Replaces date-fns format(date, "dd MMM yyyy HH:mm") and "MMM d, yyyy HH:mm".
  */
 export function formatDateTime24h(date: string | Date | null | undefined): string {
-  if (!date) return "-";
   const d = toUTC(date);
   if (!d) return "-";
-  return d.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: TIMEZONE,
-  });
+  return dateTime24hFmt.format(d);
 }
 
 /**
@@ -166,20 +180,7 @@ export function formatDateTime24h(date: string | Date | null | undefined): strin
  * Replaces date-fns format(date, "d MMM yyyy | hh:mm aa").
  */
 export function formatDateTimeBar(date: string | Date | null | undefined): string {
-  if (!date) return "-";
   const d = toUTC(date);
   if (!d) return "-";
-  const datePart = d.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: TIMEZONE,
-  });
-  const timePart = d.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: TIMEZONE,
-  });
-  return `${datePart} | ${timePart}`;
+  return `${dateFmt.format(d)} | ${timeFmt.format(d)}`;
 }

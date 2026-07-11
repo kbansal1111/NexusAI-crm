@@ -47,7 +47,8 @@ def track_user_view(user_id: str, account_id: str, tenant_id: str):
         )
 
         if view:
-            view.count += 1
+            # Recency marker only. (This previously incremented a nonexistent
+            # `count` attr and crashed the task; counting is now removed anyway.)
             view.updated_at = datetime.utcnow()
             await view.save()
         else:
@@ -55,7 +56,6 @@ def track_user_view(user_id: str, account_id: str, tenant_id: str):
                 user_id=user_obj_id,
                 account_id=account_obj_id,
                 tenant_id=tenant_obj_id,
-                count=1
             )
             await view.insert()
 

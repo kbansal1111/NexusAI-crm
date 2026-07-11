@@ -1,21 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin, AlertCircle, CheckCircle2 } from "lucide-react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   territoryService,
   type TerritoryAssignmentResult,
 } from "@/lib/api/services/territory.service";
+import {
+  locationService,
+  type Country as GeoCountry,
+  type State as GeoState,
+} from "@/lib/api/services/locations.service";
 
 /**
- * Sandbox for admins: type an address, see which territory + BD user
- * + reporting manager the system would auto-assign. Calls the same
- * find_territory_for_address service used by lead creation.
+ * Sandbox for admins: pick an address, see which territory the system would
+ * auto-assign. Country/State are the same canonical dropdowns (stored by NAME)
+ * as the Account/Territory forms, so the test matches production exactly —
+ * no free-text codes like "IN"/"KA" that never match stored names.
  */
 export function TerritoryAssignmentTester() {
   const [country, setCountry] = useState("");
@@ -25,6 +32,55 @@ export function TerritoryAssignmentTester() {
   const [result, setResult] = useState<TerritoryAssignmentResult | null>(null);
   const [noMatch, setNoMatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [countryOpts, setCountryOpts] = useState<GeoCountry[]>([]);
+  const [stateOpts, setStateOpts] = useState<GeoState[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const countryByName = useRef<Map<string, GeoCountry>>(new Map());
+
+  const mergeCountries = (list: GeoCountry[]) => {
+    for (const c of list) countryByName.current.set(c.name, c);
+    setCountryOpts((prev) => {
+      const map = new Map(prev.map((c) => [c.name, c]));
+      for (const c of list) map.set(c.name, c);
+      return Array.from(map.values());
+    });
+  };
+
+  useEffect(() => {
+    setLoadingCountries(true);
+    locationService
+      .getCountries(true)
+      .then((r) => mergeCountries(r.countries))
+      .catch(() => {})
+      .finally(() => setLoadingCountries(false));
+  }, []);
+
+  const handleCountrySearch = (q: string, signal?: AbortSignal) => {
+    if (!q) return;
+    setLoadingCountries(true);
+    locationService
+      .searchCountries(q, signal)
+      .then((r) => mergeCountries(r.countries))
+      .catch(() => {})
+      .finally(() => setLoadingCountries(false));
+  };
+
+  // Proper cascade: picking a country loads exactly that country's states.
+  const onCountryChange = (name: string) => {
+    setCountry(name);
+    setState("");
+    setStateOpts([]);
+    const c = countryByName.current.get(name);
+    if (!c) return;
+    setLoadingStates(true);
+    locationService
+      .getStates(c.id)
+      .then((r) => setStateOpts(r.states))
+      .catch(() => {})
+      .finally(() => setLoadingStates(false));
+  };
 
   const run = async () => {
     if (!country && !state && !postalCode) {
@@ -68,12 +124,28 @@ export function TerritoryAssignmentTester() {
       <CardContent className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="grid gap-1.5">
-            <Label htmlFor="t_country">Country (code or name)</Label>
-            <Input id="t_country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="IN" />
+            <Label>Country</Label>
+            <SearchableSelect
+              options={countryOpts.map((c) => ({ label: c.name, value: c.name }))}
+              value={country}
+              onValueChange={onCountryChange}
+              onSearch={handleCountrySearch}
+              isLoading={loadingCountries}
+              placeholder="Select country"
+              searchPlaceholder="Search country"
+            />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="t_state">State</Label>
-            <Input id="t_state" value={state} onChange={(e) => setState(e.target.value)} placeholder="KA" />
+            <Label>State</Label>
+            <SearchableSelect
+              options={stateOpts.map((s) => ({ label: s.name, value: s.name }))}
+              value={state}
+              onValueChange={setState}
+              isLoading={loadingStates}
+              placeholder={country ? "Select state" : "Select a country first"}
+              searchPlaceholder="Search state"
+              disabled={!country}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="t_pc">Postal Code</Label>

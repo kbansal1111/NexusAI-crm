@@ -33,7 +33,7 @@ import { toast } from "sonner";
 const INDUSTRY_SELECTION_LOCKED = true;
 
 const INDUSTRIES = [
-    { value: "travel", label: "Travel", icon: Plane, color: "text-blue-600", email: "admin@tutterfly.com" },
+    { value: "travel", label: "Travel", icon: Plane, color: "text-primary", email: "admin@tutterfly.com" },
     { value: "healthcare", label: "Healthcare", icon: Stethoscope, color: "text-emerald-600", email: "admin-health@tutterfly.com" },
     { value: "education", label: "Education", icon: GraduationCap, color: "text-violet-600", email: "admin-edu@tutterfly.com" },
     { value: "manufacturing", label: "Manufacturing", icon: Factory, color: "text-orange-600", email: "admin-mfg@tutterfly.com" },

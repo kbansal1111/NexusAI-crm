@@ -754,16 +754,13 @@ class AccountService(ActivityMixin):
         )
         
         if view:
-            # Increment count
-            view.view_count += 1
+            # Recency marker only — counting was removed with the view-count system
             view.updated_at = datetime.utcnow()
             await view.save()
         else:
-            # Create new view
             view = UserAccountView(
                 user_id=user_id,
                 account_id=account_id,
                 tenant_id=tenant_id,
-                view_count=1
             )
             await view.insert()

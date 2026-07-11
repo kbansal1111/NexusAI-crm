@@ -12,14 +12,16 @@ export interface PipelineStage {
     value: number;
 }
 
+// Theme chart tokens first (they adapt to light/dark), then stable extras
+// for pipelines with more stages than tokens.
 const STAGE_COLORS = [
+    "var(--chart-1)", // indigo
+    "var(--chart-2)", // cyan
+    "var(--chart-3)", // emerald
+    "var(--chart-4)", // amber
+    "var(--chart-5)", // pink
     "#8b5cf6", // violet
-    "#6366f1", // indigo
-    "#3b82f6", // blue
-    "#06b6d4", // cyan
     "#14b8a6", // teal
-    "#10b981", // emerald
-    "#f59e0b", // amber
     "#ef4444", // red
 ];
 

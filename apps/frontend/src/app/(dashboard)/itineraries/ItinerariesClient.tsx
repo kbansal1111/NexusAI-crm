@@ -78,7 +78,7 @@ export default function ItinerariesClient() {
             <Card className="border-border shadow-sm min-w-0 w-full">
                 <CardHeader className="bg-muted/60 border-b border-border py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-blue-500 rounded flex items-center justify-center shrink-0">
+                        <div className="h-8 w-8 bg-primary rounded flex items-center justify-center shrink-0">
                             <FileText className="h-4 w-4 text-white" />
                         </div>
                         <CardTitle className="text-base font-semibold text-foreground">Itineraries</CardTitle>
@@ -96,7 +96,7 @@ export default function ItinerariesClient() {
                         </div>
                         <Button
                             onClick={() => setUploadOpen(true)}
-                            className="h-9 shrink-0 bg-blue-500 hover:bg-blue-600 gap-2"
+                            className="h-9 shrink-0 bg-primary hover:bg-primary/90 gap-2"
                         >
                             <Upload className="h-4 w-4" /> Upload Itinerary
                         </Button>
@@ -134,7 +134,7 @@ export default function ItinerariesClient() {
                                                     <button
                                                         type="button"
                                                         onClick={() => openPdf(itinerary.id, itinerary.pdf_file_id)}
-                                                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium break-words text-left"
+                                                        className="text-primary hover:text-primary dark:text-primary dark:hover:text-primary hover:underline font-medium break-words text-left"
                                                     >
                                                         {itinerary.name}
                                                     </button>
@@ -148,7 +148,7 @@ export default function ItinerariesClient() {
                                                     <button
                                                         type="button"
                                                         onClick={() => openPdf(itinerary.id, itinerary.pdf_file_id)}
-                                                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
+                                                        className="inline-flex items-center gap-1 text-primary hover:text-primary dark:text-primary text-sm"
                                                     >
                                                         <Download className="h-3.5 w-3.5" /> View
                                                     </button>

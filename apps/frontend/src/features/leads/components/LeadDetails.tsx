@@ -95,7 +95,7 @@ function IndustryDetailSection({ industry, lead, experiences = [] }: { industry:
         travel: {
             title: "Travel Requirements",
             icon: <Calendar className="h-4 w-4" />,
-            borderColor: "border-blue-200",
+            borderColor: "border-primary/30",
             fields: [
                 { label: "Travel Date", value: data.travel_date },
                 {
@@ -173,7 +173,7 @@ function IndustryDetailSection({ industry, lead, experiences = [] }: { industry:
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                 {config.fields.map((f, i) => (
                     <div key={i} className="space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{f.label}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{f.label}</p>
                         <p className="text-sm font-medium text-foreground">{f.value || "-"}</p>
                     </div>
                 ))}
@@ -240,7 +240,7 @@ export function LeadDetails({
     const owner = users.find(u => u.id === lead.owner_id);
 
     return (
-        <div className="container mx-auto px-4 py-6 max-w-7xl [&_.bg-white]:!bg-card [&_.border-slate-100]:!border-border [&_.border-slate-200]:!border-border [&_.border-slate-300]:!border-border [&_.text-slate-800]:!text-foreground [&_.text-slate-700]:!text-foreground [&_.text-slate-600]:!text-foreground/90 [&_.text-slate-500]:!text-muted-foreground [&_.text-slate-400]:!text-muted-foreground [&_.text-slate-300]:!text-muted-foreground">
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogContent>
@@ -255,7 +255,7 @@ export function LeadDetails({
                         <AlertDialogAction
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="bg-red-500 hover:bg-red-600 text-white"
+                            className="bg-destructive text-white hover:bg-destructive/90"
                         >
                             {isDeleting ? "Deleting..." : "Delete"}
                         </AlertDialogAction>
@@ -286,14 +286,14 @@ export function LeadDetails({
                         <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-11 p-0 gap-8">
                             <TabsTrigger
                                 value="details"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Details
                             </TabsTrigger>
 
                             <TabsTrigger
                                 value="attachments"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Attachments
                             </TabsTrigger>
@@ -310,37 +310,37 @@ export function LeadDetails({
                                 >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Salutation</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Salutation</p>
                                             <p className="text-sm font-medium text-foreground">{lead.salutation || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Full Name</p>
                                             <p className="text-sm font-medium text-foreground">{lead.full_name}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</p>
-                                            <p className="text-sm font-medium text-blue-400 underline">{lead.email || "-"}</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email</p>
+                                            <p className="text-sm font-medium text-primary underline">{lead.email || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Phone</p>
                                             <p className="text-sm font-medium text-foreground">{lead.phone || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mobile</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mobile</p>
                                             <p className="text-sm font-medium text-foreground">{lead.mobile || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lead Status</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Lead Status</p>
                                             <Badge variant="outline" className="text-emerald-700 dark:text-emerald-300 border-emerald-500/40 bg-emerald-500/20">
                                                 {status?.name || "New"}
                                             </Badge>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Industry</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Industry</p>
                                             <p className="text-sm font-medium text-foreground">{leadIndustry?.name || industry || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lead Owner</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Lead Owner</p>
                                             <p className="text-sm font-medium text-foreground">{owner?.name || "-"}</p>
                                         </div>
                                     </div>
@@ -355,27 +355,27 @@ export function LeadDetails({
                                 >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Company</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Company</p>
                                             <p className="text-sm font-medium text-foreground">{lead.company || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Website</p>
-                                            <p className="text-sm font-medium text-blue-400 underline">{lead.website || "-"}</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Website</p>
+                                            <p className="text-sm font-medium text-primary underline">{lead.website || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No of Employees</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No of Employees</p>
                                             <p className="text-sm font-medium text-foreground">{lead.no_employees || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Source</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Source</p>
                                             <p className="text-sm font-medium text-foreground">{source?.name || "Direct"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaign Name</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Campaign Name</p>
                                             <p className="text-sm font-medium text-foreground">{(lead.custom_fields as any)?.campaign_name || (lead as any).campaign_name || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">IP Address</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">IP Address</p>
                                             <p className="text-sm font-medium text-foreground">{(lead.custom_fields as any)?.ip_address || "-"}</p>
                                         </div>
                                     </div>
@@ -393,19 +393,19 @@ export function LeadDetails({
                                 >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Country</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Country</p>
                                             <p className="text-sm font-medium text-foreground">{lead.country || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">State/Province</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">State/Province</p>
                                             <p className="text-sm font-medium text-foreground">{lead.state || "-"}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">City</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">City</p>
                                             <p className="text-sm font-medium text-foreground">{lead.city || "-"}</p>
                                         </div>
                                         <div className="space-y-1 md:col-span-2">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Street Address</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Street Address</p>
                                             <p className="text-sm font-medium text-foreground">{lead.street || "-"}</p>
                                         </div>
                                     </div>
@@ -424,22 +424,18 @@ export function LeadDetails({
                                 >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created By</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Created By</p>
                                             <div className="flex items-center gap-2">
-                                                <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{lead.created_by_name || "Unknown"}</p>
-                                                <span className="text-slate-400 text-xs">at {formatDateTime(lead.created_at)}</span>
+                                                <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{lead.created_by_name || "Unknown"}</p>
+                                                <span className="text-muted-foreground text-xs">at {formatDateTime(lead.created_at)}</span>
                                             </div>
                                         </div>
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Last Modified By</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Last Modified By</p>
                                             <div className="flex items-center gap-2">
-                                                <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{lead.last_modified_by_name || lead.created_by_name || "Unknown"}</p>
-                                                <span className="text-slate-400 text-xs">at {formatDateTime(lead.updated_at)}</span>
+                                                <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{lead.last_modified_by_name || lead.created_by_name || "Unknown"}</p>
+                                                <span className="text-muted-foreground text-xs">at {formatDateTime(lead.updated_at)}</span>
                                             </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">View Count</p>
-                                            <Badge variant="secondary" className="font-mono text-[10px] h-4 px-1.5">{lead.view_count}</Badge>
                                         </div>
                                     </div>
                                 </CollapsibleDetailSection>

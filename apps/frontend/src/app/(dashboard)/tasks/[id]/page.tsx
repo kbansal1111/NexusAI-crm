@@ -78,13 +78,14 @@ export default function TaskDetailPage({ params }: EditTaskPageProps) {
 
     return (
         <div className="crm-page">
-            <div className="crm-surface flex flex-col items-start justify-between gap-4 px-4 py-3 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-md crm-icon-primary">
-                        <ClipboardList className="h-5 w-5 text-primary" />
+            <div className="crm-surface flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-chart-5 text-white shadow-sm">
+                        <ClipboardList className="h-6 w-6" />
                     </div>
-                    <div>
-                        <p className="text-xs font-medium text-primary">Task Follow Up</p>
+                    <div className="min-w-0 space-y-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">Task Follow Up</span>
+                        <h1 className="min-w-0 break-words text-xl md:text-2xl">{task.name}</h1>
                         {task.taskable_name && (
                             <p className="text-xs text-muted-foreground">
                                 Related To{" "}

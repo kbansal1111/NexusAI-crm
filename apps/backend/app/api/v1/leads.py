@@ -254,9 +254,9 @@ async def get_lead(
     visible_owner_ids = await get_visible_owner_ids(current_user)
     if not is_record_visible(lead.owner_id, visible_owner_ids):
         raise HTTPException(status_code=404, detail="Lead not found")
-    
-    # Increment view count
-    await lead.increment_view_count()
+
+    # Record the view so this lead surfaces in "Recently Viewed" (best-effort).
+    await service._track_user_view(current_user.id, lead.id, current_user.tenant_id)
 
     # Resolve creator / modifier / owner names in ONE query instead of three
     # sequential round trips.

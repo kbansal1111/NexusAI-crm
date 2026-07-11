@@ -156,7 +156,7 @@ export function UpdateStageDialog({
                     </Button>
                     <Button
                         type="button"
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-primary hover:bg-primary/90"
                         onClick={handleUpdateStage}
                         disabled={isLoading}
                     >

@@ -93,7 +93,6 @@ class Opportunity(BaseDocument):
     industry_data: Dict[str, Any] = Field(default_factory=dict)
     
     # Metadata
-    view_count: int = 0
     is_locked: bool = False
     locked_by: Optional[PydanticObjectId] = None
     locked_at: Optional[datetime] = None
@@ -168,7 +167,3 @@ class Opportunity(BaseDocument):
         self.locked_at = None
         await self.save()
     
-    async def increment_view_count(self):
-        # """Increment view count"""
-        self.view_count += 1
-        await self.save()

@@ -131,7 +131,7 @@ function PaymentReceivedDialog({ item, onConfirm, onCancel }: PaymentReceivedDia
                             <select
                                 value={paymentMethod}
                                 onChange={(e) => setPaymentMethod(e.target.value)}
-                                className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+                                className="w-full h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
                             >
                                 {PAYMENT_MODES.map((mode) => (
                                     <option
@@ -166,7 +166,7 @@ function PaymentReceivedDialog({ item, onConfirm, onCancel }: PaymentReceivedDia
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Any notes about this payment..."
-                            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground min-h-[72px] focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors resize-y"
+                            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground min-h-[72px] focus:outline-none focus:ring-2 focus:ring-ring transition-colors resize-y"
                         />
                     </div>
                 </div>
@@ -403,7 +403,7 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <span className="ml-2 text-muted-foreground text-sm">Loading payment schedule...</span>
             </div>
         );
@@ -432,7 +432,7 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
                         {!isLocked && (
                             <button
                                 onClick={() => setEditMode(true)}
-                                className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium transition-colors"
+                                className="inline-flex items-center gap-1.5 text-primary hover:text-primary dark:text-primary dark:hover:text-primary text-xs font-medium transition-colors"
                             >
                                 <Pencil className="h-3 w-3" />
                                 Edit Schedule
@@ -481,7 +481,7 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
                                                         handleStatusChange(item.id, e.target.value)
                                                     }
                                                     disabled={updateMutation.isPending || isLocked}
-                                                    className={`text-sm border rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:opacity-60 ${
+                                                    className={`text-sm border rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-ring transition-colors disabled:opacity-60 ${
                                                         item.status === "Received" && !underReview
                                                             ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
                                                             : "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40"
@@ -524,7 +524,7 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
                 {!editMode && !hasSavedSchedule && !isLocked && (
                     <Button
                         size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 h-8 text-xs"
+                        className="bg-primary hover:bg-primary/90 h-8 text-xs"
                         onClick={() => {
                             setEditMode(true);
                             if (rows.length === 0) addRow();
@@ -689,7 +689,7 @@ export function PaymentScheduleTab({ opportunityId, opportunityAmount, isLocked 
                         <Button
                             onClick={handleSave}
                             disabled={isSaving || Math.abs(remaining) > 0.01 || isLocked}
-                            className="bg-blue-600 hover:bg-blue-700 px-8 h-9 text-sm disabled:opacity-50"
+                            className="bg-primary hover:bg-primary/90 px-8 h-9 text-sm disabled:opacity-50"
                         >
                             {isSaving ? (
                                 <>

@@ -230,7 +230,36 @@ class OpportunityService(ActivityMixin):
     async def get_opportunity(self, opp_id: str, tenant_id: ObjectId) -> Optional[Opportunity]:
         """Get opportunity by ID"""
         return await self.repository.get_by_id(id=opp_id, tenant_id=tenant_id)
-    
+
+    async def _track_user_view(
+        self,
+        user_id: ObjectId,
+        opportunity_id: ObjectId,
+        tenant_id: ObjectId,
+    ):
+        """Record that a user viewed an opportunity — powers the "Recently
+        Viewed" preset, which orders these rows by ``updated_at`` (most-recent
+        first). Tenant-scoped so a row can't collide across tenants. Timestamp
+        only; best-effort (never fails the read)."""
+        from app.models.opportunity_custom_fields import UserOpportunityView
+        import logging
+        try:
+            view = await UserOpportunityView.find_one(
+                {"user_id": user_id, "opportunity_id": opportunity_id, "tenant_id": tenant_id}
+            )
+            if view:
+                view.updated_at = datetime.utcnow()
+                await view.save()
+            else:
+                view = UserOpportunityView(
+                    user_id=user_id,
+                    opportunity_id=opportunity_id,
+                    tenant_id=tenant_id,
+                )
+                await view.insert()
+        except Exception:
+            logging.getLogger(__name__).warning("Failed to track opportunity view", exc_info=True)
+
     async def update_opportunity(
         self,
         opp_id: str,

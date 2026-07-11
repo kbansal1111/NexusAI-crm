@@ -526,14 +526,9 @@ export function PersonAccountTable({
     return (
         <div className="w-full">
             <div className="flex flex-col gap-4 border-b bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground sm:h-10 sm:w-10">
-                        <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </div>
-                    <ListCountHeader label="Person Accounts" count={pagination.total ?? rows.length}>
-                        <ListViewSelector entity={entity} />
-                    </ListCountHeader>
-                </div>
+                <ListCountHeader label="Person Accounts" count={pagination.total ?? rows.length} icon={UserIcon}>
+                    <ListViewSelector entity={entity} />
+                </ListCountHeader>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
                     {/* Search */}

@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePicklist } from "@/hooks/use-picklist";
 import Link from "next/link";
 import { formatDateTimeBar, formatDate } from "@/lib/format";
-import { MoreHorizontal, Edit, Trash2, CheckCircle, Plus, Pencil, Check, Loader2 } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, CheckCircle, Plus, Pencil, Check, Loader2, CheckSquare } from "lucide-react";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -276,7 +276,7 @@ export function TaskList() {
             {/* Toolbar */}
             <div className="crm-toolbar mb-4 justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <ListCountHeader label="Tasks" count={tasks.length}>
+                    <ListCountHeader label="Tasks" count={tasks.length} icon={CheckSquare}>
                         <ListViewSelector entity={entity} presetLabel="All records" />
                     </ListCountHeader>
                     <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>

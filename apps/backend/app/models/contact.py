@@ -65,7 +65,6 @@ class Contact(BaseDocument):
     industry_data: Dict[str, Any] = Field(default_factory=dict)
     
     # Metadata
-    view_count: int = 0
     is_favorite: bool = False
 
     @before_event(Insert)
@@ -141,7 +140,3 @@ class Contact(BaseDocument):
             {"contact_id": self.id, "tenant_id": self.tenant_id}
         ).to_list()
     
-    async def increment_view_count(self):
-        # """Increment view count"""
-        self.view_count += 1
-        await self.save()

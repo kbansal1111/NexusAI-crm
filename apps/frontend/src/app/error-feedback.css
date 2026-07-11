@@ -1,5 +1,13 @@
 /* Global error/alert/exception styling */
 
+:root {
+  --feedback-shadow-color: oklch(0.2 0.02 272 / 0.14);
+}
+
+.dark {
+  --feedback-shadow-color: oklch(0.05 0.01 272 / 0.5);
+}
+
 /* Sonner toasts */
 .app-toaster {
   --error-bg: color-mix(in oklab, var(--destructive) 18%, var(--card));
@@ -14,8 +22,8 @@
   border: 1px solid var(--border) !important;
   background: var(--card) !important;
   color: var(--foreground) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.28) !important;
+  border-radius: calc(var(--radius) + 2px) !important;
+  box-shadow: 0 14px 34px var(--feedback-shadow-color) !important;
 }
 
 .app-toaster [data-sonner-toast][data-type="error"] {
@@ -57,14 +65,14 @@
 
 /* Alert dialogs */
 .app-alert-overlay {
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
 }
 
 .app-alert-dialog {
   border: 1px solid var(--border) !important;
   background: var(--card) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.34) !important;
+  border-radius: calc(var(--radius) + 4px) !important;
+  box-shadow: 0 18px 44px var(--feedback-shadow-color) !important;
 }
 
 .app-alert-title {
@@ -83,8 +91,8 @@
 
 .app-error-boundary-card {
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.2);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 14px 34px var(--feedback-shadow-color);
 }
 
 .app-error-boundary-icon {

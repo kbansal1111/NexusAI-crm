@@ -211,6 +211,51 @@ async def get_bd_territory_ids(user: User) -> Optional[List[ObjectId]]:
     return result
 
 
+async def opportunity_scope_match(user: User, scope: str = "team") -> dict:
+    """Build the MongoDB match for opportunity dashboards/aggregations.
+
+    scope="my"   → strictly the user's own opportunities (owner_id == user).
+    scope="team" → the same visibility the opportunity LIST enforces:
+      - admin → whole tenant;
+      - Territory Manager / BD user → STRICTLY their territories' opportunities;
+      - regular user → own + subordinates (owner/hierarchy scope).
+
+    The tenant_id filter is always present, so a forged/stale id can never
+    surface another tenant's data. Every dashboard number MUST be built from
+    this match (or entity_scope_match below) — never from a bare tenant query —
+    so a user can never be shown figures for records they cannot open.
+    """
+    match: dict = {"tenant_id": user.tenant_id, "deleted_at": None}
+    if scope == "my":
+        match["owner_id"] = user.id
+        return match
+    visible = await get_visible_owner_ids(user)
+    if visible is None:
+        return match  # admin — whole tenant
+    bd_terr = await get_bd_territory_ids(user)
+    if bd_terr:
+        match["territory_id"] = {"$in": bd_terr}  # Territory Manager: territory-only
+    else:
+        match["owner_id"] = {"$in": visible}
+    return match
+
+
+async def entity_scope_match(user: User, scope: str = "team") -> dict:
+    """Owner-scoped match for non-opportunity entities (accounts/contacts/leads).
+
+    Territory scope does not apply to these — they are owner/hierarchy scoped
+    like their list endpoints. Admin gets the whole tenant.
+    """
+    match: dict = {"tenant_id": user.tenant_id, "deleted_at": None}
+    if scope == "my":
+        match["owner_id"] = user.id
+        return match
+    visible = await get_visible_owner_ids(user)
+    if visible is not None:
+        match["owner_id"] = {"$in": visible}
+    return match
+
+
 def is_opportunity_visible(
     record_owner_id: ObjectId,
     record_territory_id: Optional[ObjectId],

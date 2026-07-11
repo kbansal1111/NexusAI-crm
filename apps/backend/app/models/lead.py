@@ -75,7 +75,6 @@ class Lead(BaseDocument):
     industry_data: Dict[str, Any] = Field(default_factory=dict)
     
     # Metadata
-    view_count: int = 0
     is_favorite: bool = False
     
     @before_event(Insert)
@@ -133,7 +132,3 @@ class Lead(BaseDocument):
         self.converted_at = datetime.utcnow()
         await self.save()
     
-    async def increment_view_count(self):
-        # """Increment view count"""
-        self.view_count += 1
-        await self.save()

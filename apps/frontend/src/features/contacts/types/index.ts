@@ -44,7 +44,6 @@ export interface Contact {
     last_modified_by_name?: string;
 
     // Metadata
-    view_count: number;
     created_at: string;
     updated_at: string;
 }

@@ -85,7 +85,7 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
     };
 
     return (
-        <div className="container mx-auto max-w-7xl px-4 py-6 [&_.bg-white]:!bg-card [&_.border-slate-100]:!border-border [&_.border-slate-200]:!border-border [&_.border-slate-300]:!border-border [&_.text-slate-800]:!text-foreground [&_.text-slate-700]:!text-foreground [&_.text-slate-600]:!text-foreground/90 [&_.text-slate-500]:!text-muted-foreground [&_.text-slate-400]:!text-muted-foreground [&_.text-slate-300]:!text-muted-foreground">
+        <div className="container mx-auto max-w-7xl px-4 py-6">
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogContent>
@@ -100,7 +100,7 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                         <AlertDialogAction
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="bg-red-500 hover:bg-red-600 text-white"
+                            className="bg-destructive text-white hover:bg-destructive/90"
                         >
                             {isDeleting ? "Deleting..." : "Delete"}
                         </AlertDialogAction>
@@ -130,19 +130,19 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                         <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-11 p-0 gap-8">
                             <TabsTrigger
                                 value="related"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Related
                             </TabsTrigger>
                             <TabsTrigger
                                 value="details"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Details
                             </TabsTrigger>
                             <TabsTrigger
                                 value="attachments"
-                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-slate-400 data-[state=active]:text-blue-600"
+                                className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-11 text-xs font-bold uppercase tracking-wider text-muted-foreground data-[state=active]:text-primary"
                             >
                                 Attachments
                             </TabsTrigger>
@@ -161,7 +161,7 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                                         variant="outline" 
                                         size="sm" 
                                         onClick={() => setIsNewOppDrawerOpen(true)}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white border-none h-8 px-4 text-xs font-bold"
+                                        className="bg-primary hover:bg-primary/90 text-white border-none h-8 px-4 text-xs font-bold"
                                     >
                                         <Plus className="h-3 w-3 mr-1" />
                                         New
@@ -179,23 +179,23 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                                     <Card className="border-border bg-card">
                                         <CardHeader className="border-b border-border bg-muted/40 pb-3">
                                             <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                                <UserIcon className="h-4 w-4 text-blue-600" />
+                                                <UserIcon className="h-4 w-4 text-primary" />
                                                 Contact Information
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Salutation</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Salutation</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.salutation || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Full Name</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.full_name}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email</p>
                                                 {contact.email ? (
-                                                    <a href={`mailto:${contact.email}`} className="text-sm font-medium text-blue-400 hover:underline">
+                                                    <a href={`mailto:${contact.email}`} className="text-sm font-medium text-primary hover:underline">
                                                         {contact.email}
                                                     </a>
                                                 ) : (
@@ -203,9 +203,9 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                                                 )}
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Phone</p>
                                                 {contact.phone ? (
-                                                    <a href={`tel:${contact.phone}`} className="text-sm font-medium text-blue-400 hover:underline">
+                                                    <a href={`tel:${contact.phone}`} className="text-sm font-medium text-primary hover:underline">
                                                         {contact.phone}
                                                     </a>
                                                 ) : (
@@ -213,13 +213,13 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                                                 )}
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Title</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Title</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.title || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Account Name</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account Name</p>
                                                 {contact.account_name && contact.account_id ? (
-                                                    <Link href={`/accounts/${contact.account_id}`} className="text-sm font-medium text-blue-400 hover:underline">
+                                                    <Link href={`/accounts/${contact.account_id}`} className="text-sm font-medium text-primary hover:underline">
                                                         {contact.account_name}
                                                     </Link>
                                                 ) : (
@@ -237,23 +237,23 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                                     >
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mailing Street</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mailing Street</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.mailing_street || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mailing City</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mailing City</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.mailing_city || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mailing State/Province</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mailing State/Province</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.mailing_state || "-"}</p>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mailing Zip/Postal Code</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mailing Zip/Postal Code</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.mailing_zip || "-"}</p>
                                             </div>
                                             <div className="space-y-1 md:col-span-2">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mailing Country</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mailing Country</p>
                                                 <p className="text-sm font-medium text-foreground">{contact.mailing_country || "-"}</p>
                                             </div>
                                         </div>
@@ -267,17 +267,17 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
                                     >
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created By</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Created By</p>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{contact.created_by_name || "Unknown"}</p>
-                                                    <span className="text-slate-400 text-xs">at {formatDateTime(contact.created_at)}</span>
+                                                    <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{contact.created_by_name || "Unknown"}</p>
+                                                    <span className="text-muted-foreground text-xs">at {formatDateTime(contact.created_at)}</span>
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Last Modified By</p>
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Last Modified By</p>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-blue-400 cursor-pointer hover:underline">{contact.last_modified_by_name || contact.created_by_name || "Unknown"}</p>
-                                                    <span className="text-slate-400 text-xs">at {formatDateTime(contact.updated_at)}</span>
+                                                    <p className="text-sm font-medium text-primary cursor-pointer hover:underline">{contact.last_modified_by_name || contact.created_by_name || "Unknown"}</p>
+                                                    <span className="text-muted-foreground text-xs">at {formatDateTime(contact.updated_at)}</span>
                                                 </div>
                                             </div>
                                         </div>

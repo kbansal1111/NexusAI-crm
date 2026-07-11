@@ -83,7 +83,7 @@ export default function BDDashboardClient() {
             {/* Monthly Sales + Sales Stages */}
             <div className="grid gap-4 lg:grid-cols-1 xl:grid-cols-3">
                 <div className="xl:col-span-2">
-                    <SalesChart data={chartData} closedAmount={summary.closed} openAmount={summary.open} />
+                    <SalesChart data={chartData} closedAmount={summary.closed} openAmount={summary.open} target={summary.target ?? 0} />
                 </div>
                 <PipelineChart stages={stages} />
             </div>

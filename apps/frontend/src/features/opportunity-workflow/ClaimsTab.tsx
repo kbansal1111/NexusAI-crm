@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Loader2, Plus } from "lucide-react";
+import { formatNumber } from "@/lib/format";
 
 export function ClaimsTab({ opportunityId }: { opportunityId: string }) {
   const [items, setItems] = useState<OpportunityClaim[]>([]);
@@ -140,7 +141,7 @@ export function ClaimsTab({ opportunityId }: { opportunityId: string }) {
               {items.map((c) => (
                 <tr key={c.id} className="border-b last:border-b-0">
                   <td className="px-3 py-2">{c.claim_type}</td>
-                  <td className="px-3 py-2 text-right font-medium">{c.amount?.toLocaleString() || "—"}</td>
+                  <td className="px-3 py-2 text-right font-medium">{c.amount != null ? formatNumber(c.amount) : "—"}</td>
                   <td className="px-3 py-2">{c.status}</td>
                   <td className="px-3 py-2 text-muted-foreground max-w-md truncate">
                     {c.description || "—"}

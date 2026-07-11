@@ -489,7 +489,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                     <Button type="button" variant="outline" onClick={() => onCancel ? onCancel() : router.back()}>
                         {isDrawer ? "Close" : "Cancel"}
                     </Button>
-                    <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+                    <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
                         {isLoading ? (id ? "Updating..." : "Creating...") : (id ? "Update" : "Save")}
                     </Button>
                 </div>

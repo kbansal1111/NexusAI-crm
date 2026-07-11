@@ -428,9 +428,19 @@ class DashboardService:
     async def get_analytics_summary(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        entity_match: Optional[Dict[str, Any]] = None,
+        opp_match: Optional[Dict[str, Any]] = None,
+        monthly_target: float = 0.0,
     ) -> Dict[str, Any]:
-        """Get comprehensive analytics summary."""
+        """Get comprehensive analytics summary.
+
+        `entity_match` / `opp_match` are the visibility-scoped MongoDB matches
+        built by the route from visibility_scope (entity_scope_match /
+        opportunity_scope_match) — every number here MUST honor them so users
+        only see figures for records they can actually open. The legacy
+        `user_id` owner filter is kept for callers that predate scoping.
+        """
         from beanie import PydanticObjectId
         from app.models.account import Account
         from app.models.contact import Contact
@@ -446,27 +456,33 @@ class DashboardService:
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         tenant_obj_id = PydanticObjectId(tenant_id)
-        base_query = {"tenant_id": tenant_obj_id, "deleted_at": None}
-        if user_id:
+        base_query = dict(entity_match) if entity_match else {"tenant_id": tenant_obj_id, "deleted_at": None}
+        opp_query = dict(opp_match) if opp_match else dict(base_query)
+        if user_id and not entity_match:
             base_query["owner_id"] = PydanticObjectId(user_id)
-        
+            if not opp_match:
+                opp_query["owner_id"] = PydanticObjectId(user_id)
+
         # Determine tenant industry for conditional metrics. Resolver raises
         # if the tenant is missing — dashboards must never report travel KPIs
         # for a different industry just because a tenant lookup failed.
         from app.services.industry_service import get_tenant_industry
         from app.services.industry_strategies import get_dashboard_kpis_strategy
         industry = await get_tenant_industry(tenant_obj_id)
-        
-        # Generic counts
+
+        # Generic counts — accounts/contacts/leads use owner scope, every
+        # opportunity number uses the opportunity scope (territory-aware).
         accounts_total = await Account.find(base_query).count()
         contacts_total = await Contact.find(base_query).count()
         leads_total = await Lead.find(base_query).count()
-        opportunities_total = await Opportunity.find(base_query).count()
-        
+        opportunities_total = await Opportunity.find(opp_query).count()
+
         # This month (Analytics Summary)
         month_query = {**base_query, "created_at": {"$gte": month_start}}
         leads_this_month = await Lead.find(month_query).count()
-        opportunities_this_month = await Opportunity.find(month_query).count()
+        opportunities_this_month = await Opportunity.find(
+            {**opp_query, "created_at": {"$gte": month_start}}
+        ).count()
         
         # Fetch won/lost stages scoped to THIS tenant (critical for multi-industry isolation)
         won_stages = await SalesStage.find(
@@ -497,27 +513,30 @@ class DashboardService:
 
         # Won this month
         won_month_query = {
-            **base_query,
+            **opp_query,
             "sales_stage_id": {"$in": won_stage_ids},
             "close_date": {"$gte": month_start} # Using close_date as it's in the model
         }
         won_this_month, revenue_this_month = await _count_and_revenue(won_month_query)
-        
+
         # Conversion rate
         conversion_rate = (won_this_month / opportunities_this_month * 100) if opportunities_this_month > 0 else 0
-        
+
         # --- Real-time Dashboard Fields ---
-        
+
         # Today's Opportunities (created today)
-        today_opps_query = {**base_query, "created_at": {"$gte": today_start, "$lt": today_end}}
+        today_opps_query = {**opp_query, "created_at": {"$gte": today_start, "$lt": today_end}}
         today_opportunities = await Opportunity.find(today_opps_query).count()
-        
-        # Open Opportunities (not in won or lost stages)
+
+        # Open Opportunities (not in won or lost stages) — count AND the real
+        # pipeline value in one aggregation. The value is what the dashboard's
+        # "Open" figure shows; it must be the true sum of amounts, never an
+        # estimate derived from the count.
         open_opps_query = {
-            **base_query,
+            **opp_query,
             "sales_stage_id": {"$nin": won_stage_ids + lost_stage_ids}
         }
-        open_opportunities = await Opportunity.find(open_opps_query).count()
+        open_opportunities, open_pipeline_value = await _count_and_revenue(open_opps_query)
         
         # B2C vs B2B vs Corporate Open — query by stored segment field.
         # The corporate bucket also accepts the legacy "B2B_DIRECT" value so the
@@ -542,7 +561,7 @@ class DashboardService:
         # this is empty today and grows as vertical-specific KPIs are added
         # without needing to touch this service.
         industry_kpi_extras = await get_dashboard_kpis_strategy(industry).compute(
-            base_query=base_query,
+            base_query=opp_query,  # travel KPIs (departures/checkouts) read Opportunity
             today_start=today_start,
             today_end=today_end,
             tomorrow_start=tomorrow_start,
@@ -555,7 +574,7 @@ class DashboardService:
         
         # Today's Revenue (won today)
         won_today_query = {
-            **base_query,
+            **opp_query,
             "sales_stage_id": {"$in": won_stage_ids},
             "close_date": {"$gte": today_start, "$lt": today_end}
         }
@@ -588,6 +607,10 @@ class DashboardService:
             "today_checkout": today_checkout,
             "tomorrow_departures": tomorrow_departures,
             "today_revenue": today_revenue,
+            # Real open-pipeline value + the caller-computed revenue target for
+            # the scope (user's own target or the team's summed targets).
+            "open_pipeline_value": open_pipeline_value,
+            "monthly_target": monthly_target,
             "industry": industry,
             "industry_kpis": industry_kpis,
         }
@@ -596,16 +619,23 @@ class DashboardService:
     async def get_pipeline_analytics(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        scope_key: str = "",
+        match: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Get opportunity pipeline analytics."""
+        """Get opportunity pipeline analytics.
+
+        `match` is the visibility-scoped opportunity match built by the route;
+        `scope_key` + `user_id` must be passed as KEYWORD args so the cache key
+        isolates each user's scope (see custom_key_builder).
+        """
         from beanie import PydanticObjectId
         from app.models.opportunity import Opportunity
         from app.models.opportunity_picklists import SalesStage
-        
+
         tenant_obj_id = PydanticObjectId(tenant_id)
-        query = {"tenant_id": tenant_obj_id, "deleted_at": None}
-        if user_id:
+        query = dict(match) if match else {"tenant_id": tenant_obj_id, "deleted_at": None}
+        if user_id and not match:
             query["owner_id"] = PydanticObjectId(user_id)
         
         # PERF: group by stage in MongoDB instead of loading every opportunity
@@ -651,13 +681,15 @@ class DashboardService:
         self,
         tenant_id: str,
         user_id: Optional[str] = None,
-        limit: int = 10
+        limit: int = 10,
+        scope_key: str = "",
+        match: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """Get recent sales/closed opportunities."""
+        """Get recent sales/closed opportunities (visibility-scoped via `match`)."""
         from beanie import PydanticObjectId
         from app.models.opportunity import Opportunity
         from app.models.opportunity_picklists import SalesStage
-        
+
         tenant_obj_id = PydanticObjectId(tenant_id)
         # Scoped to THIS tenant — prevents data leakage across industries
         won_stages = await SalesStage.find(
@@ -665,12 +697,9 @@ class DashboardService:
         ).to_list()
         won_stage_ids = [s.id for s in won_stages]
 
-        query = {
-            "tenant_id": tenant_obj_id,
-            "deleted_at": None,
-            "sales_stage_id": {"$in": won_stage_ids}
-        }
-        if user_id:
+        query = dict(match) if match else {"tenant_id": tenant_obj_id, "deleted_at": None}
+        query["sales_stage_id"] = {"$in": won_stage_ids}
+        if user_id and not match:
             query["owner_id"] = PydanticObjectId(user_id)
 
         opportunities = await Opportunity.find(query).sort("-close_date").limit(limit).to_list()
@@ -691,9 +720,11 @@ class DashboardService:
         self,
         tenant_id: str,
         user_id: Optional[str] = None,
-        period: str = "month"
+        period: str = "month",
+        scope_key: str = "",
+        match: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """Get revenue chart data for specified period."""
+        """Get revenue chart data for specified period (visibility-scoped via `match`)."""
         from beanie import PydanticObjectId
         from app.models.opportunity import Opportunity
         from app.models.opportunity_picklists import SalesStage
@@ -715,15 +746,12 @@ class DashboardService:
         ).to_list()
         won_stage_ids = [s.id for s in won_stages]
 
-        query = {
-            "tenant_id": tenant_obj_id,
-            "deleted_at": None,
-            "sales_stage_id": {"$in": won_stage_ids},
-            "close_date": {"$gte": last_month_start}
-        }
-        if user_id:
+        query = dict(match) if match else {"tenant_id": tenant_obj_id, "deleted_at": None}
+        query["sales_stage_id"] = {"$in": won_stage_ids}
+        query["close_date"] = {"$gte": last_month_start}
+        if user_id and not match:
             query["owner_id"] = PydanticObjectId(user_id)
-        
+
         opportunities = await Opportunity.find(query).to_list()
 
         _, days_in_this_month = calendar.monthrange(now.year, now.month)
@@ -772,10 +800,14 @@ class DashboardService:
     async def get_opportunities_by_stage(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        scope_key: str = "",
+        match: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Get opportunities grouped by sales stage."""
-        result = await self.get_pipeline_analytics(tenant_id, user_id)
+        result = await self.get_pipeline_analytics(
+            tenant_id=tenant_id, user_id=user_id, scope_key=scope_key, match=match
+        )
         return result
         
     @cache(expire=300, key_builder=custom_key_builder)
@@ -783,9 +815,11 @@ class DashboardService:
         self,
         tenant_id: str,
         user_id: Optional[str] = None,
-        limit: int = 5
+        limit: int = 5,
+        scope_key: str = "",
+        match: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """Get key deals (high value)."""
+        """Get key deals (high value, visibility-scoped via `match`)."""
         from beanie import PydanticObjectId
         from app.models.opportunity import Opportunity
         from app.models.user import User
@@ -803,14 +837,11 @@ class DashboardService:
         lost_stage_ids = [s.id for s in lost_stages]
         
         tenant_obj_id = PydanticObjectId(tenant_id)
-        query = {
-            "tenant_id": tenant_obj_id,
-            "deleted_at": None,
-            "sales_stage_id": {"$nin": won_stage_ids + lost_stage_ids},  # Open deals only
-        }
-        if user_id:
+        query = dict(match) if match else {"tenant_id": tenant_obj_id, "deleted_at": None}
+        query["sales_stage_id"] = {"$nin": won_stage_ids + lost_stage_ids}  # Open deals only
+        if user_id and not match:
             query["owner_id"] = PydanticObjectId(user_id)
-            
+
         opportunities = await Opportunity.find(query).sort("-amount").limit(limit).to_list()
         
         # N+1 OPTIMIZATION: Bulk fetch Users

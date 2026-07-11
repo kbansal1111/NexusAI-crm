@@ -109,7 +109,7 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <span className="ml-2 text-muted-foreground text-sm">Loading transactions...</span>
             </div>
         );
@@ -130,7 +130,7 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
                     <button
                         onClick={() => !isLocked && setShowDropdown(!showDropdown)}
                         disabled={isLocked}
-                        className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 rounded-md px-3.5 py-1.5 text-sm font-medium text-white transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 rounded-md px-3.5 py-1.5 text-sm font-medium text-white transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Add Transaction
                         <ChevronDown className="h-3.5 w-3.5" />
@@ -140,13 +140,13 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
                         <div className="absolute right-0 mt-1 w-44 bg-card border border-border rounded-lg shadow-lg z-20 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
                             <button
                                 onClick={() => openCreateModal("Pay")}
-                                className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                                className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-primary/15 hover:text-primary dark:hover:text-primary transition-colors"
                             >
                                 Pay Amount
                             </button>
                             <button
                                 onClick={() => openCreateModal("Refund")}
-                                className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                                className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-primary/15 hover:text-primary dark:hover:text-primary transition-colors"
                             >
                                 Refund Amount
                             </button>
@@ -283,7 +283,7 @@ export function TransactionTab({ opportunityId, opportunityAmount, suppliers, de
                                                                 onClick={() => verifyMutation.mutate(txn.id)}
                                                                 disabled={verifyMutation.isPending}
                                                                 title="Verify"
-                                                                className="inline-flex items-center gap-1 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                                                                className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:text-primary hover:bg-primary/15 transition-colors disabled:opacity-50"
                                                             >
                                                                 <Check className="h-3 w-3" />
                                                                 Verify

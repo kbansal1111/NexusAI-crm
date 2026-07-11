@@ -102,7 +102,12 @@ def custom_key_builder(func, namespace: str = "", *, request=None, response=None
         )
 
     base_key = f"{FastAPICache.get_prefix()}:{namespace}:{func.__module__}:{func.__name__}"
-    return f"{base_key}:{tenant_id}:{user_id}"
+    # Scope segment (e.g. "my"/"team") — cached dashboard aggregations are
+    # computed per (tenant, user, scope); omitting it would let one scope's
+    # numbers be served for another. Callers must pass scope_key as a KEYWORD
+    # argument for it to be picked up here.
+    scope_key = func_kwargs.get("scope_key") or "all"
+    return f"{base_key}:{tenant_id}:{user_id}:{scope_key}"
 
 async def invalidate_tenant_cache(tenant_id: str):
     """

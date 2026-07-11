@@ -31,7 +31,6 @@ class UserLeadView(Document):
     lead_id: Indexed(PydanticObjectId)
     tenant_id: Indexed(PydanticObjectId)
     
-    view_count: int = 1
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     

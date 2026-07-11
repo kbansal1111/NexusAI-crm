@@ -142,7 +142,6 @@ class ContactResponse(ContactBase):
     account_name: Optional[str] = None
 
     full_name: str
-    view_count: int = 0
     is_favorite: bool = False
 
     created_at: datetime

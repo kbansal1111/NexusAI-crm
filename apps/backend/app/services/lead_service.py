@@ -234,7 +234,35 @@ class LeadService(ActivityMixin):
             )
         except Exception:
             return None
-    
+
+    async def _track_user_view(
+        self,
+        user_id: ObjectId,
+        lead_id: ObjectId,
+        tenant_id: ObjectId,
+    ):
+        """Record that a user viewed a lead — powers the "Recently Viewed"
+        preset, which orders these rows by ``updated_at`` (most-recent first).
+        Tenant-scoped so a row can't collide across tenants. Timestamp only;
+        the old view-count counter was retired system-wide."""
+        try:
+            view = await UserLeadView.find_one(
+                {"user_id": user_id, "lead_id": lead_id, "tenant_id": tenant_id}
+            )
+            if view:
+                view.updated_at = datetime.utcnow()
+                await view.save()
+            else:
+                view = UserLeadView(
+                    user_id=user_id,
+                    lead_id=lead_id,
+                    tenant_id=tenant_id,
+                )
+                await view.insert()
+        except Exception:
+            # View tracking is best-effort telemetry — never fail the read.
+            logger.warning("Failed to track lead view", exc_info=True)
+
     async def update_lead(
         self,
         lead_id: str,

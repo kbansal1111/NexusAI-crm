@@ -15,7 +15,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Filter, MoreHorizontal, Settings, ChevronDown, CheckCircle2, RefreshCw, X, Search as SearchIcon, Download, Save, Trash2, Loader2, Check, Upload, Pencil } from "lucide-react";
+import { ArrowUpDown, Filter, MoreHorizontal, Settings, ChevronDown, CheckCircle2, RefreshCw, X, Search as SearchIcon, Download, Save, Trash2, Loader2, Check, Upload, Pencil, Users as UsersIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +35,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Lead, LeadStatus, Source, User } from "../types";
+import type { Lead, LeadStatus, Source, User } from "../types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { LoadingState, LoadingTable } from "@/components/ui/loading";
@@ -205,6 +205,10 @@ export const getColumns = (
     industry: IndustryType = "travel",
     destinationMap: Map<string, string> = new Map()
 ): ColumnDef<Lead>[] => {
+    // O(1) per-cell lookups — the cells below render for every row on every
+    // table re-render, so linear .find() scans add up fast at per_page=100.
+    const statusById = new Map(statuses.map(s => [s.id, s]));
+    const sourceById = new Map(sources.map(s => [s.id, s]));
     // Industry-specific columns that replace travel columns
     const industryColumns: ColumnDef<Lead>[] = industry === "travel" ? [
         {
@@ -419,7 +423,7 @@ export const getColumns = (
             header: "New",
             cell: ({ row }) => {
                 const statusId = row.original.lead_status_id;
-                const status = statuses.find(s => s.id === statusId);
+                const status = statusId ? statusById.get(statusId) : undefined;
                 const label = status?.name || "New";
                 return <div className="text-sm font-medium text-foreground">{label}</div>;
             },
@@ -446,7 +450,7 @@ export const getColumns = (
                 const sourceId = row.original.source_id;
                 let sourceLabel = "-";
                 if (sourceId) {
-                    const matchedSource = sources.find(s => s.id === sourceId);
+                    const matchedSource = sourceById.get(sourceId);
                     sourceLabel = matchedSource ? matchedSource.name : sourceId;
                 } else if (row.original.creation_type) {
                     sourceLabel = row.original.creation_type;
@@ -779,7 +783,7 @@ export function LeadTable({
             <div className="w-full">
                 <div className="mb-4 rounded-lg border bg-card text-card-foreground shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b px-4 py-3">
-                        <ListCountHeader label="Leads" count={total}>
+                        <ListCountHeader label="Leads" count={total} icon={UsersIcon}>
                             <ListViewSelector entity={entity} presetLabel="All Leads" />
                         </ListCountHeader>
                         <div className="flex flex-wrap items-center gap-2">

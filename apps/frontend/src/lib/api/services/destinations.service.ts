@@ -4,7 +4,7 @@ export interface Destination {
     id: string;
     name: string;
     country_id?: string;
-    country_name?: string;
+    country_name?: string;  // from the destination picklist's country mapping
     is_active: boolean;
     is_popular: boolean;
     image_url?: string;
@@ -40,6 +40,7 @@ export const destinationsService = {
             destinations: data.map(d => ({
                 id: d.id,
                 name: d.name,
+                country_name: d.country || undefined,
                 is_active: d.is_active,
                 is_popular: false
             })),

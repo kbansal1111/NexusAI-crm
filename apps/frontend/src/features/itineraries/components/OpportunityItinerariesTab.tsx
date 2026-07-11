@@ -75,10 +75,10 @@ export function OpportunityItinerariesTab({ opportunityId }: OpportunityItinerar
         <div className="space-y-6">
             <div className="mb-6 flex flex-col items-center justify-between gap-4 px-2 sm:flex-row">
                 <div className="relative flex-1 max-w-lg w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                     <Input
                         placeholder="Search attached itineraries"
-                        className="h-10 w-full rounded-md border-border bg-background pl-10 text-sm placeholder:text-muted-foreground focus:border-blue-500"
+                        className="h-10 w-full rounded-md border-border bg-background pl-10 text-sm placeholder:text-muted-foreground focus:border-primary"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -130,7 +130,7 @@ export function OpportunityItinerariesTab({ opportunityId }: OpportunityItinerar
                                         type="button"
                                         title="Download PDF"
                                         onClick={() => openPdf(item.itinerary.id, item.itinerary.pdf_file_id)}
-                                        className="text-blue-500 hover:text-blue-600 p-1"
+                                        className="text-primary hover:text-primary p-1"
                                     >
                                         <Download className="h-4 w-4" />
                                     </button>

@@ -35,7 +35,7 @@ export default async function OpportunityPage(props: OpportunityPageProps) {
                 <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
                     <h2 className="text-2xl font-semibold">Opportunity not found</h2>
                     <p className="text-muted-foreground">The opportunity you are looking for does not exist or has been deleted.</p>
-                    <Link href="/opportunities" className="text-blue-400 hover:underline text-sm">← Back to Opportunities</Link>
+                    <Link href="/opportunities" className="text-primary hover:underline text-sm">← Back to Opportunities</Link>
                 </div>
             );
         }
@@ -70,7 +70,7 @@ export default async function OpportunityPage(props: OpportunityPageProps) {
                 <div className="flex gap-4">
                     <Link
                         href={`/opportunities/${id}`}
-                        className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-md transition-colors"
+                        className="inline-flex items-center gap-1 bg-primary hover:bg-primary/90 text-white text-sm px-4 py-2 rounded-md transition-colors"
                     >
                         Retry
                     </Link>

@@ -35,8 +35,10 @@ export default function LeadsClientPage() {
     const view_id = searchParams.get("view_id") || undefined;
     // Date views (Today / Yesterday / …) and "WhatsApp Enquiry Leads" are now
     // seeded system views applied via `view_id`; the selector auto-selects "Today"
-    // on fresh load. `view` only carries the ordering-based `recent` preset.
-    const view = searchParams.get("view") || undefined;
+    // on fresh load. `view` only carries the ordering-based `recent` preset —
+    // `all` is the explicit "All records" marker and applies no filter.
+    const rawView = searchParams.get("view") || undefined;
+    const view = rawView === "all" ? undefined : rawView;
     const owner_id = searchParams.get("owner_id") || undefined;
     const lead_status_id = searchParams.get("lead_status_id") || undefined;
 

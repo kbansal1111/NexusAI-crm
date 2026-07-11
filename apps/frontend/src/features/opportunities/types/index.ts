@@ -47,7 +47,6 @@ export interface Opportunity {
     last_modified_by_name?: string;
     tenant_id: string;
     created_by: string;
-    view_count: number;
     created_at: string;
     updated_at: string;
     close_lost_reason?: string;
