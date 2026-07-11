@@ -114,7 +114,16 @@ def validate_industry_data(
             f"Supported industries: {sorted(registry.keys())}"
         )
 
-    validated = schema_cls(**data)
+    # Form inputs submit untouched fields as "" — an empty string is "not
+    # provided", not a value. Without this, every numeric/datetime field in a
+    # non-travel form 422s the whole request when left blank.
+    cleaned = {
+        k: v
+        for k, v in data.items()
+        if v is not None and not (isinstance(v, str) and not v.strip())
+    }
+
+    validated = schema_cls(**cleaned)
     return validated.model_dump(exclude_none=True)
 
 

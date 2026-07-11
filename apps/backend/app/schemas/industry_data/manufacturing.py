@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
+from app.schemas.industry_data.common import coerce_str_list
+
 
 class ManufacturingLeadData(BaseModel):
     """Validates industry_data for a Lead owned by a manufacturing tenant."""
@@ -69,6 +71,8 @@ class ManufacturingAccountData(BaseModel):
     iso_certification: Optional[str] = Field(None, description="e.g. ISO 9001, ISO 14001")
     primary_material_focus: List[str] = Field(default_factory=list, description="e.g. Plastics, Metals, Electronics")
 
+    _coerce_lists = field_validator("primary_material_focus", mode="before")(coerce_str_list)
+
 
 class ManufacturingContactData(BaseModel):
     """Validates industry_data for a Contact owned by a manufacturing tenant."""
@@ -77,4 +81,6 @@ class ManufacturingContactData(BaseModel):
     technical_specialty: Optional[str] = Field(None, description="e.g. CNC, Quality Assurance, Procurement")
     certifications: List[str] = Field(default_factory=list, description="Professional certifications")
     plant_safety_access: bool = Field(False, description="Whether visitor safety clearance is granted")
+
+    _coerce_lists = field_validator("certifications", mode="before")(coerce_str_list)
 

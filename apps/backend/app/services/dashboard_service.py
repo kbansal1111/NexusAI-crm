@@ -328,25 +328,29 @@ class DashboardService:
         if widget.widget_type == "count":
             result["value"] = await model.find(query).count()
         elif widget.widget_type == "metric":
-            # Sum or average
-            items = await model.find(query).to_list()
-            if widget.field and items:
-                values = [getattr(item, widget.field, 0) or 0 for item in items]
-                if widget.metric == "sum":
-                    result["value"] = sum(values)
-                elif widget.metric == "average":
-                    result["value"] = sum(values) / len(values) if values else 0
+            # Sum or average — aggregated in Mongo. The previous code pulled
+            # EVERY matching document into memory to add a number; at scale
+            # that's a full working-set fetch per widget render.
+            if widget.field:
+                op = "$avg" if widget.metric == "average" else "$sum"
+                rows = await model.aggregate([
+                    {"$match": query},
+                    {"$group": {"_id": None, "value": {op: f"${widget.field}"}}},
+                ]).to_list()
+                result["value"] = (rows[0].get("value") if rows else 0) or 0
         elif widget.widget_type == "chart":
-            # Group by and count
-            items = await model.find(query).to_list()
+            # Group-by counts — aggregated in Mongo for the same reason.
             if widget.group_by:
-                groups = {}
-                for item in items:
-                    key = str(getattr(item, widget.group_by, "Unknown"))
-                    groups[key] = groups.get(key, 0) + 1
+                rows = await model.aggregate([
+                    {"$match": query},
+                    {"$group": {
+                        "_id": {"$ifNull": [f"${widget.group_by}", "Unknown"]},
+                        "count": {"$sum": 1},
+                    }},
+                ]).to_list()
                 result["chart_data"] = {
-                    "labels": list(groups.keys()),
-                    "values": list(groups.values()),
+                    "labels": [str(r["_id"]) for r in rows],
+                    "values": [r["count"] for r in rows],
                     "type": widget.chart_type or "bar"
                 }
         elif widget.widget_type == "list":
@@ -752,7 +756,11 @@ class DashboardService:
         if user_id and not match:
             query["owner_id"] = PydanticObjectId(user_id)
 
-        opportunities = await Opportunity.find(query).to_list()
+        # Only close_date + amount are used below — project them instead of
+        # shipping full opportunity documents for two months of won deals.
+        opportunities = await Opportunity.get_motor_collection().find(
+            query, {"close_date": 1, "amount": 1}
+        ).to_list(length=None)
 
         _, days_in_this_month = calendar.monthrange(now.year, now.month)
         _, days_in_last_month = calendar.monthrange(last_month_start.year, last_month_start.month)
@@ -770,18 +778,19 @@ class DashboardService:
             }
 
         for opp in opportunities:
-            if not opp.close_date:
+            close_date = opp.get("close_date")
+            if not close_date:
                 continue
 
-            is_this_month = opp.close_date >= this_month_start
-            day = opp.close_date.day
+            is_this_month = close_date >= this_month_start
+            day = close_date.day
             if day > max_days:
                 day = max_days
 
             if is_this_month:
-                revenue_data[day]["sale_this_month"] += getattr(opp, "amount", 0) or 0
+                revenue_data[day]["sale_this_month"] += opp.get("amount") or 0
             else:
-                revenue_data[day]["sale_last_month"] += getattr(opp, "amount", 0) or 0
+                revenue_data[day]["sale_last_month"] += opp.get("amount") or 0
 
         # Convert the per-day amounts into running cumulative totals so each
         # series climbs steadily across the month (month-to-date revenue),

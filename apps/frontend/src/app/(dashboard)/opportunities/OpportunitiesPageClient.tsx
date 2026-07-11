@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { opportunitiesService } from "@/lib/api/services/opportunities.service";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     Plus,
@@ -83,15 +82,11 @@ export default function OpportunitiesPageClient() {
     const [groupByOwner, setGroupByOwner] = useState(true);
     const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
     const router = useRouter();
-    const backfillRan = useRef(false);
 
-    // One-time backfill: assign opportunity_number to any existing opportunities
-    // that pre-date the feature. Safe to call repeatedly — backend skips already-numbered ones.
-    useEffect(() => {
-        if (backfillRan.current) return;
-        backfillRan.current = true;
-        opportunitiesService.backfillOpportunityNumbers().catch(() => {/* silent — non-critical */});
-    }, []);
+    // NOTE: the opportunity_number backfill POST used to fire on every page
+    // load — a full tenant scan per visit. The migration has run; if a tenant
+    // ever needs it again, call POST /opportunities/backfill-opportunity-numbers
+    // manually (it's idempotent).
     const searchParams = useSearchParams();
     const labels = useIndustryLabels();
 

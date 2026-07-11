@@ -115,6 +115,63 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     #     + global search by name across the tenant. ---
     ("supplier_contacts", [("tenant_id", ASCENDING), ("supplier_id", ASCENDING), ("deleted_at", ASCENDING)]),
     ("supplier_contacts", [("tenant_id", ASCENDING), ("name", ASCENDING)]),
+
+    # --- opportunities: remaining hot filters (scale phase 2) ---
+    # BD / Territory-Manager list scope: territory_id $in replaces the owner
+    # clause entirely, so it needs its own keyset-friendly index.
+    ("opportunities", [("tenant_id", ASCENDING), ("territory_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
+    # Stage filter (list + kanban) and dashboard pipeline groupings.
+    ("opportunities", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("sales_stage_id", ASCENDING)]),
+    # closing_soon view, revenue chart window, key-deals sort.
+    ("opportunities", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("close_date", ASCENDING)]),
+    # Related-opportunities lists on account detail pages.
+    ("opportunities", [("tenant_id", ASCENDING), ("account_id", ASCENDING), ("deleted_at", ASCENDING)]),
+    # opportunity_number backfill/check + lookup-by-number; keeps the
+    # "any rows still un-numbered?" probe from scanning the tenant.
+    ("opportunities", [("tenant_id", ASCENDING), ("opportunity_number", ASCENDING)]),
+    # Travel dashboard KPIs (tomorrow departures / today checkouts window).
+    ("opportunities", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("industry_data.travel_date", ASCENDING)]),
+
+    # --- accounts / contacts: owner-scoped list paging (non-admin visibility
+    #     filter is owner_id $in + sort updated_at) ---
+    ("accounts", [("tenant_id", ASCENDING), ("owner_id", ASCENDING), ("deleted_at", ASCENDING), ("updated_at", DESCENDING), ("_id", DESCENDING)]),
+    ("contacts", [("tenant_id", ASCENDING), ("owner_id", ASCENDING), ("deleted_at", ASCENDING), ("updated_at", DESCENDING), ("_id", DESCENDING)]),
+
+    # --- picklists: queried on EVERY form/list load via build_picklist_query
+    #     ({picklist_type, is_active, tenant_id-or-None [, industry]}) ---
+    ("picklists", [("picklist_type", ASCENDING), ("tenant_id", ASCENDING), ("is_active", ASCENDING)]),
+
+    # --- users: System-pool owner resolution on opportunity visibility ---
+    ("users", [("tenant_id", ASCENDING), ("is_system", ASCENDING)]),
+
+    # --- opportunity histories: detail-page History tab ---
+    ("opportunity_histories", [("tenant_id", ASCENDING), ("opportunity_id", ASCENDING), ("changed_at", DESCENDING)]),
+
+    # --- "Recently Viewed" recency rows (leads + opportunities) ---
+    ("user_opportunity_views", [("tenant_id", ASCENDING), ("user_id", ASCENDING), ("updated_at", DESCENDING)]),
+    ("user_lead_views", [("tenant_id", ASCENDING), ("user_id", ASCENDING), ("updated_at", DESCENDING)]),
+
+    # --- timeline / activity feed: per-entity history + per-user feed ---
+    ("activity_logs", [("tenant_id", ASCENDING), ("entity_id", ASCENDING), ("created_at", DESCENDING)]),
+    ("activity_logs", [("tenant_id", ASCENDING), ("user_id", ASCENDING), ("created_at", DESCENDING)]),
+    ("activity_logs", [("tenant_id", ASCENDING), ("created_at", DESCENDING)]),
+
+    # --- notifications: bell dropdown polls per user ---
+    ("notifications", [("tenant_id", ASCENDING), ("user_id", ASCENDING), ("created_at", DESCENDING)]),
+
+    # --- opportunity financials: ledger tab per opportunity + approvals queue ---
+    ("opportunity_transactions", [("tenant_id", ASCENDING), ("opportunity_id", ASCENDING), ("created_at", ASCENDING)]),
+    ("opportunity_transactions", [("tenant_id", ASCENDING), ("approval_status", ASCENDING), ("created_at", DESCENDING)]),
+
+    # --- quotes: listed per tenant/opportunity, sorted by quote_date ---
+    ("quotes", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("quote_date", DESCENDING)]),
+    ("quotes", [("tenant_id", ASCENDING), ("opportunity_id", ASCENDING)]),
+
+    # --- suppliers: default tenant list paging ---
+    ("suppliers", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
+
+    # --- tasks: default list sort ---
+    ("tasks", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
 ]
 
 

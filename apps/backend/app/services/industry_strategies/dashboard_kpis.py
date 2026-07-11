@@ -73,16 +73,40 @@ class TravelDashboardKPIs:
         }
         tomorrow_departures = await Opportunity.find(tomorrow_dep_query).count()
 
-        # Today's checkouts — must compute in-app because checkout date is
-        # (travel_date + no_of_nights) and Mongo can't do that arithmetic on
-        # a string field without an aggregation pipeline.
+        # Today's checkouts — checkout = travel_date + no_of_nights, which
+        # Mongo can't compute on a string field, so the final filter runs
+        # in-app. SCALE: the candidate set MUST be bounded — this previously
+        # fetched EVERY opportunity with a travel_date (full documents, no
+        # window), which grows without limit as data scales. A checkout can
+        # only fall today if the departure was within the last stay-length;
+        # bound departures to the past year (no stay realistically exceeds
+        # that) and project just the two industry_data fields we compute on.
         today_checkout = 0
         try:
-            checkout_candidates = await Opportunity.find(
-                {**base_query, "industry_data.travel_date": {"$exists": True}}
-            ).to_list()
-            for opp in checkout_candidates:
-                industry_data = opp.industry_data or {}
+            window_start = today_start - timedelta(days=366)
+            # travel_date is written as an ISO string (validated schema), but
+            # legacy rows may hold real datetimes — Mongo range predicates are
+            # type-bracketed, so match both representations.
+            date_window = {
+                "$or": [
+                    {"industry_data.travel_date": {
+                        "$gte": window_start.isoformat(), "$lt": today_end.isoformat(),
+                    }},
+                    {"industry_data.travel_date": {
+                        "$gte": window_start, "$lt": today_end,
+                    }},
+                ]
+            }
+            checkout_query = (
+                {"$and": [base_query, date_window]}
+                if "$or" in base_query else {**base_query, **date_window}
+            )
+            cursor = Opportunity.get_motor_collection().find(
+                checkout_query,
+                {"industry_data.travel_date": 1, "industry_data.no_of_nights": 1},
+            )
+            async for doc in cursor:
+                industry_data = doc.get("industry_data") or {}
                 td = industry_data.get("travel_date")
                 nights = industry_data.get("no_of_nights", 0) or 0
                 if not td or not nights:

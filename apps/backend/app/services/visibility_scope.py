@@ -104,9 +104,9 @@ async def opportunity_pool_owner_ids(user: User) -> List[ObjectId]:
     """
     if not await user.has_permission("edit_opportunity"):
         return []
-    from app.services.system_user import get_system_user
-    system_user = await get_system_user(user.tenant_id)
-    return [system_user.id] if system_user else []
+    from app.services.system_user import get_system_user_id
+    system_user_id = await get_system_user_id(user.tenant_id)
+    return [system_user_id] if system_user_id else []
 
 
 def apply_visibility_filter(query: dict, visible_owner_ids: Optional[List[ObjectId]]) -> dict:

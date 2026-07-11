@@ -142,18 +142,33 @@ class User(BaseDocument):
         loaded via the unscoped `Role.get(role_id)`, which made cross-tenant
         permission inheritance possible. Cutting the per-id queries to one
         bulk lookup is also an N+1 fix.
+
+        PERF: memoized per User INSTANCE. One request re-checks permissions
+        several times (check_permission dependency, pool-owner widening,
+        finance-reviewer checks, ...) and each check re-ran this query. The
+        instance is rebuilt from the JWT on every request, so the memo lives
+        exactly one request — role edits still apply on the next request.
         """
+        cached = self.__dict__.get("_active_roles_memo")
+        if cached is not None:
+            return cached
+
         from app.models.role import Role
 
         if not self.role_ids:
-            return []
-        return await Role.find(
-            {
-                "_id": {"$in": list(self.role_ids)},
-                "tenant_id": self.tenant_id,
-                "deleted_at": None,
-            }
-        ).to_list()
+            roles: "List[Any]" = []
+        else:
+            roles = await Role.find(
+                {
+                    "_id": {"$in": list(self.role_ids)},
+                    "tenant_id": self.tenant_id,
+                    "deleted_at": None,
+                }
+            ).to_list()
+        # object.__setattr__ bypasses pydantic's __setattr__ for this
+        # non-field, request-scoped cache slot.
+        object.__setattr__(self, "_active_roles_memo", roles)
+        return roles
 
     async def has_permission(self, permission: str) -> bool:
         """Check if user has a specific permission (tenant-scoped).

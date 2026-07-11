@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
+from app.schemas.industry_data.common import coerce_str_list
+
 
 class HealthcareLeadData(BaseModel):
     """Validates industry_data for a Lead owned by a healthcare tenant."""
@@ -47,6 +49,9 @@ class HealthcareOpportunityData(BaseModel):
     care_plan_id: Optional[str] = Field(None, description="Care plan ObjectId")
     procedure_codes: List[str] = Field(default_factory=list, description="CPT procedure codes")
 
+    # Forms submit these as comma-separated text — coerce instead of 422ing.
+    _coerce_lists = field_validator("diagnosis_codes", "procedure_codes", mode="before")(coerce_str_list)
+
 
 class HealthcareQuoteData(BaseModel):
     """Validates industry_data for a Quote owned by a healthcare tenant."""
@@ -55,6 +60,8 @@ class HealthcareQuoteData(BaseModel):
     estimated_sessions: Optional[int] = Field(None, ge=1, description="Estimated sessions (≥ 1)")
     insurance_preauth: Optional[str] = Field(None, max_length=100, description="Pre-authorization number")
     procedure_codes: List[str] = Field(default_factory=list, description="CPT procedure codes")
+
+    _coerce_lists = field_validator("procedure_codes", mode="before")(coerce_str_list)
 
 
 class HealthcareAccountData(BaseModel):
@@ -66,6 +73,8 @@ class HealthcareAccountData(BaseModel):
     accreditations: List[str] = Field(default_factory=list, description="e.g. JCI, ACHC")
     primary_insurance_contract: Optional[str] = Field(None, description="Primary insurance contractor")
 
+    _coerce_lists = field_validator("specialties", "accreditations", mode="before")(coerce_str_list)
+
 
 class HealthcareContactData(BaseModel):
     """Validates industry_data for a Contact owned by a healthcare tenant."""
@@ -76,4 +85,6 @@ class HealthcareContactData(BaseModel):
     medical_history_summary: Optional[str] = Field(None, description="Brief history summary")
     npi: Optional[str] = Field(None, description="Provider NPI if contact is a provider")
     license_number: Optional[str] = Field(None, description="Medical license number")
+
+    _coerce_lists = field_validator("allergies", mode="before")(coerce_str_list)
 

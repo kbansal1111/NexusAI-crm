@@ -170,6 +170,12 @@ app.add_middleware(SlowAPIMiddleware)
 # don't trigger BaseHTTPMiddleware's "No response returned." RuntimeError.
 app.add_middleware(ActivityContextMiddleware)
 
+# GZip — list/dashboard JSON payloads compress 5-10x; without this every
+# 100-row page ships uncompressed over the wire. Pure-ASGI middleware; only
+# kicks in past 1 KiB so tiny responses skip the compression cost.
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
 
 # CORS middleware - Added last to be outermost
 app.add_middleware(

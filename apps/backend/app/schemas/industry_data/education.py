@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict
 from datetime import datetime
 
+from app.schemas.industry_data.common import coerce_str_list
+
 
 class EducationLeadData(BaseModel):
     """Validates industry_data for a Lead owned by an education tenant."""
@@ -41,6 +43,9 @@ class EducationOpportunityData(BaseModel):
     tuition_fee: Optional[float] = Field(None, ge=0, description="Tuition fee (≥ 0)")
     documents_submitted: List[str] = Field(default_factory=list, description="List of submitted document names")
 
+    # Forms submit this as comma-separated text — coerce instead of 422ing.
+    _coerce_lists = field_validator("documents_submitted", mode="before")(coerce_str_list)
+
     @field_validator("admission_status")
     @classmethod
     def validate_admission_status(cls, v):
@@ -69,6 +74,8 @@ class EducationAccountData(BaseModel):
     acreditation_body: Optional[str] = Field(None, description="Accrediting organization")
     student_count: Optional[int] = Field(None, ge=0, description="Total student capacity/enrolled")
     offered_programs: List[str] = Field(default_factory=list, description="List of program names")
+
+    _coerce_lists = field_validator("offered_programs", mode="before")(coerce_str_list)
 
 
 class EducationContactData(BaseModel):
