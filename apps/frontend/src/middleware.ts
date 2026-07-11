@@ -9,11 +9,18 @@ import { decompressPermissions } from "@/lib/permissions-compression";
  * Protects routes that require auth (session from backend /api/v1/auth/login).
  * All API calls from the app already use NEXT_PUBLIC_API_URL (env) which includes /api/v1.
  *
- * NOTE: this is the Next.js "proxy" file convention (formerly "middleware",
- * renamed in Next.js 16). Same request/response APIs — only the file and the
- * exported function name changed.
+ * NOTE (2026-07-11): Next.js 16 deprecates the `middleware.ts` convention in
+ * favor of `proxy.ts` — DO NOT migrate this file yet. `proxy.ts` runs on the
+ * Node.js runtime ONLY (the `runtime` config option is disallowed in proxy
+ * files), and @opennextjs/cloudflare (<= 1.20.1, our production Workers
+ * adapter) supports Edge middleware only — the rename breaks the Workers
+ * build with "ERROR Node.js middleware is not currently supported". The
+ * dev-time deprecation warning is harmless; a failing production build is
+ * not. Re-attempt the migration only after the OpenNext Cloudflare adapter
+ * ships Node proxy support (check their release notes), and verify with
+ * `npm run cf-build` — NOT just `next build` or tsc.
  *
- * SECURITY: this proxy enforces BOTH auth and permission/module checks
+ * SECURITY: this middleware enforces BOTH auth and permission/module checks
  * server-side. Doing the check only on the client (component code) is
  * bypassable by direct URL navigation — a user with `view_lead` could
  * navigate to `/admin/users` and see the page render until API calls fail.
@@ -37,7 +44,7 @@ function withCookieCleanup(req: NextRequest, res: NextResponse): NextResponse {
     return res;
 }
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
     // Allow NextAuth API and static/Next internals
