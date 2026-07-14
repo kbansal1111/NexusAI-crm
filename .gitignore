@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# Production env staging area (real secrets — must never enter git history)
+docs/env*
 
 # Dependencies
 node_modules/
