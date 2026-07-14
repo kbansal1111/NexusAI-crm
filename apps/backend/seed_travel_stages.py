@@ -39,6 +39,15 @@ async def main():
     inserted = 0
     updated = 0
     for stage_data in travel_stages:
+        # Raw inserts into the consolidated `picklists` collection MUST carry
+        # both discriminators, or SalesStage.find() cannot see the docs and
+        # stages stay invisible on opportunity forms.
+        stage_data = {
+            **stage_data,
+            "picklist_type": "sales_stage",
+            "_class_id": "BasePicklist.SalesStage",
+            "industry": "travel",
+        }
         # Check if already exists for this tenant
         existing = await collection.find_one({
             "name": stage_data["name"],
@@ -63,7 +72,7 @@ async def main():
 
     # Final verification
     final = await collection.find(
-        {"tenant_id": travel_tenant_id, "is_active": True}
+        {"tenant_id": travel_tenant_id, "is_active": True, "picklist_type": "sales_stage"}
     ).sort("sorting", 1).to_list(length=200)
 
     print(f"\nTravel pipeline ({len(final)} stages):")
