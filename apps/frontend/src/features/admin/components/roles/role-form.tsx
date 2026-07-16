@@ -77,6 +77,28 @@ const TWO_WORD_ACTIONS = new Set([
     "check_in",  // for check_in_bd_visit
 ]);
 
+// Module display order — mirrors the old CRM's permission list sequence.
+// Modules not listed here (new-CRM-only) follow alphabetically after these.
+const MODULE_ORDER = [
+    "User",
+    "Role",
+    "Account",
+    "Contact",
+    "Opportunity",
+    "Lead",
+    "Task",
+    "Destination",
+    "Person Account",
+    "File",
+    "File Folder",
+    "Report",
+];
+
+function moduleRank(entity: string): number {
+    const idx = MODULE_ORDER.indexOf(entity);
+    return idx === -1 ? MODULE_ORDER.length : idx;
+}
+
 function groupPermissions(perms: string[]) {
     const groups: Record<string, { action: string; perm: string }[]> = {};
 
@@ -104,8 +126,10 @@ function groupPermissions(perms: string[]) {
         groups[key].push({ action, perm });
     });
 
-    // Sort groups alphabetically
-    const sorted = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    // Old-CRM module sequence first, remaining modules alphabetically
+    const sorted = Object.entries(groups).sort(
+        (a, b) => moduleRank(a[0]) - moduleRank(b[0]) || a[0].localeCompare(b[0])
+    );
     return sorted;
 }
 

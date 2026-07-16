@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Trash2, Folder, Loader2 } from "lucide-react";
+import { PermissionGate } from "@/components/permissions/PermissionGate";
 
 export default function FileFoldersPage() {
   const [items, setItems] = useState<FileFolder[]>([]);
@@ -60,12 +61,14 @@ export default function FileFoldersPage() {
           <p className="text-sm text-muted-foreground">Group your files. Share with users or whole tenant.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New folder
-            </Button>
-          </DialogTrigger>
+          <PermissionGate permission="create_file_folder">
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New folder
+              </Button>
+            </DialogTrigger>
+          </PermissionGate>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>New folder</DialogTitle>
@@ -117,18 +120,20 @@ export default function FileFoldersPage() {
                   <Folder className="h-4 w-4 text-amber-600" />
                   <div className="font-semibold">{f.name}</div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    if (confirm("Delete folder?")) {
-                      await filesExtraService.deleteFolder(f.id);
-                      await load();
-                    }
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <PermissionGate permission="delete_file_folder">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      if (confirm("Delete folder?")) {
+                        await filesExtraService.deleteFolder(f.id);
+                        await load();
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </PermissionGate>
               </div>
               {f.description && (
                 <p className="text-sm text-muted-foreground">{f.description}</p>

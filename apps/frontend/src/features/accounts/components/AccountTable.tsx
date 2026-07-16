@@ -702,10 +702,12 @@ export function AccountTable({
                                 <DropdownMenuItem onClick={refresh}>
                                     <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => exportAll("csv")}>
-                                    <Download className="mr-2 h-4 w-4" /> Export all (CSV)
-                                </DropdownMenuItem>
-                                <PermissionGate permission="create_account">
+                                <PermissionGate permission="download_account">
+                                    <DropdownMenuItem onClick={() => exportAll("csv")}>
+                                        <Download className="mr-2 h-4 w-4" /> Export all (CSV)
+                                    </DropdownMenuItem>
+                                </PermissionGate>
+                                <PermissionGate permission="upload_account">
                                     <DropdownMenuItem onClick={() => setImportOpen(true)}>
                                         <Upload className="mr-2 h-4 w-4" /> Import Accounts (CSV)
                                     </DropdownMenuItem>

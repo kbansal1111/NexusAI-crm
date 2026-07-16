@@ -19,7 +19,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_permission
 from app.models.user import User
 from app.models.file import File
 from app.models.file_extras import FileFolder, FileShare, FileVersion, FilePublicLink
@@ -37,7 +37,7 @@ class FolderIn(BaseModel):
 
 
 @router.get("/folders")
-async def list_folders(current_user: User = Depends(get_current_user)):
+async def list_folders(current_user: User = Depends(check_permission("view_file_folder"))):
     rows = await FileFolder.find(
         {"tenant_id": current_user.tenant_id, "deleted_at": None}
     ).to_list()
@@ -52,7 +52,7 @@ async def list_folders(current_user: User = Depends(get_current_user)):
 @router.post("/folders", status_code=201)
 async def create_folder(
     payload: FolderIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("create_file_folder")),
 ):
     obj = FileFolder(
         tenant_id=current_user.tenant_id,
@@ -66,7 +66,7 @@ async def create_folder(
 @router.get("/folders/{folder_id}")
 async def get_folder(
     folder_id: PydanticObjectId,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("view_file_folder")),
 ):
     obj = await FileFolder.find_one(
         {"_id": folder_id, "tenant_id": current_user.tenant_id, "deleted_at": None}
@@ -80,7 +80,7 @@ async def get_folder(
 async def update_folder(
     folder_id: PydanticObjectId,
     payload: FolderIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("edit_file_folder")),
 ):
     obj = await FileFolder.find_one(
         {"_id": folder_id, "tenant_id": current_user.tenant_id, "deleted_at": None}
@@ -99,7 +99,7 @@ async def update_folder(
 @router.delete("/folders/{folder_id}", status_code=204)
 async def delete_folder(
     folder_id: PydanticObjectId,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("delete_file_folder")),
 ):
     obj = await FileFolder.find_one(
         {"_id": folder_id, "tenant_id": current_user.tenant_id, "deleted_at": None}
@@ -124,7 +124,7 @@ class ShareIn(BaseModel):
 @router.post("/shares", status_code=201)
 async def create_share(
     payload: ShareIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("share_file")),
 ):
     if not payload.file_id and not payload.folder_id:
         raise HTTPException(400, "file_id or folder_id required")
@@ -191,7 +191,7 @@ async def list_files_shared_by_admin(current_user: User = Depends(get_current_us
 @router.delete("/shares/{share_id}", status_code=204)
 async def revoke_share(
     share_id: PydanticObjectId,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("share_file")),
 ):
     obj = await FileShare.get(share_id)
     if not obj or obj.tenant_id != current_user.tenant_id:
@@ -256,7 +256,7 @@ class PublicLinkIn(BaseModel):
 async def create_public_link(
     file_id: PydanticObjectId,
     payload: PublicLinkIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("public_link_file")),
 ):
     file = await File.get(file_id)
     if not file or file.tenant_id != current_user.tenant_id:
@@ -278,7 +278,7 @@ async def create_public_link(
 @router.get("/{file_id}/public-link")
 async def get_public_link(
     file_id: PydanticObjectId,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("public_link_file")),
 ):
     obj = await FilePublicLink.find_one(
         {"tenant_id": current_user.tenant_id, "file_id": file_id, "is_active": True}
@@ -291,7 +291,7 @@ async def get_public_link(
 @router.delete("/{file_id}/public-link", status_code=204)
 async def revoke_public_link(
     file_id: PydanticObjectId,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("public_link_file")),
 ):
     obj = await FilePublicLink.find_one(
         {"tenant_id": current_user.tenant_id, "file_id": file_id, "is_active": True}

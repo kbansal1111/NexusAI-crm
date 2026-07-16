@@ -25,6 +25,21 @@ VALID_ENTITIES = {"account", "contact", "lead", "opportunity",
 
 VALID_FORMATS = {"csv", "xlsx"}
 
+# Entities without a dedicated upload/download permission fall back to the
+# permission that already gates their create/view flows.
+_UPLOAD_PERMS = {
+    "account": "upload_account", "personal_account": "upload_account",
+    "contact": "upload_contact", "lead": "upload_lead",
+    "opportunity": "upload_opportunity",
+    "supplier": "create_supplier", "task": "create_task",
+}
+_DOWNLOAD_PERMS = {
+    "account": "download_account", "personal_account": "download_account",
+    "contact": "download_contact", "lead": "download_lead",
+    "opportunity": "download_opportunity",
+    "supplier": "view_supplier", "task": "view_task",
+}
+
 
 def _check_entity(entity: str) -> None:
     if entity not in VALID_ENTITIES:
@@ -34,6 +49,11 @@ def _check_entity(entity: str) -> None:
 def _check_format(fmt: str) -> None:
     if fmt not in VALID_FORMATS:
         raise HTTPException(400, f"Unsupported format: {fmt}")
+
+
+async def _require_perm(user: User, permission: str) -> None:
+    if not await user.has_permission(permission):
+        raise HTTPException(403, f"Permission denied: {permission} required")
 
 
 # ============== Field lists ==============
@@ -77,6 +97,7 @@ async def export_entity(
     """Mirror old `/rest_{entity}_export/{format}`. Queues an async export."""
     _check_entity(entity)
     _check_format(fmt)
+    await _require_perm(current_user, _DOWNLOAD_PERMS[entity])
     return {
         "entity": entity,
         "format": fmt,
@@ -102,6 +123,7 @@ async def import_entity(
 ):
     """Mirror old `/rest_{entity}_import`. Queues background import job."""
     _check_entity(entity)
+    await _require_perm(current_user, _UPLOAD_PERMS[entity])
     return {
         "entity": entity,
         "queued": True,
@@ -120,6 +142,7 @@ async def import_entity_upload(
 ):
     """Variant: direct multipart upload."""
     _check_entity(entity)
+    await _require_perm(current_user, _UPLOAD_PERMS[entity])
     return {
         "entity": entity,
         "queued": True,
@@ -137,6 +160,7 @@ async def import_opportunity_history(
     current_user: User = Depends(get_current_user),
 ):
     """Mirror old `/rest_opportunity_histories_import`."""
+    await _require_perm(current_user, "upload_opportunity")
     return {
         "queued": True,
         "tenant_id": str(current_user.tenant_id),

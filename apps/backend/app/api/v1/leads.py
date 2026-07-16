@@ -534,7 +534,7 @@ async def update_single_column(
 @router.post("/import")
 async def import_leads(
     file: UploadFile = File(...),
-    current_user: User = Depends(check_permission("create_lead"))
+    current_user: User = Depends(check_permission("upload_lead"))
 ):
     """Import leads from CSV or Excel file"""
     from app.services.import_export_service import ImportExportService
@@ -559,7 +559,7 @@ async def import_leads(
 
 @router.get("/import/sample")
 async def download_lead_import_sample(
-    current_user: User = Depends(check_permission("create_lead"))
+    current_user: User = Depends(check_permission("upload_lead"))
 ):
     """Download the sample CSV whose columns match the lead importer."""
     from app.services.import_export_service import generate_sample_csv
@@ -577,7 +577,7 @@ async def download_lead_import_sample(
 @router.get("/export/{format}")
 async def export_leads(
     format: str,
-    current_user: User = Depends(check_permission("view_lead"))
+    current_user: User = Depends(check_permission("download_lead"))
 ):
     """Export all visible leads to CSV or Excel."""
     from app.services.import_export_service import ImportExportService

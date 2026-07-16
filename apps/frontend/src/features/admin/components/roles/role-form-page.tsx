@@ -79,6 +79,28 @@ const EXCLUDED_PERMISSIONS = new Set([
     "manage_webhooks",
 ]);
 
+// Module display order — mirrors the old CRM's permission list sequence.
+// Modules not listed here (new-CRM-only) follow alphabetically after these.
+const MODULE_ORDER = [
+    "User",
+    "Role",
+    "Account",
+    "Contact",
+    "Opportunity",
+    "Lead",
+    "Task",
+    "Destination",
+    "Person Account",
+    "File",
+    "File Folder",
+    "Report",
+];
+
+function moduleRank(entity: string): number {
+    const idx = MODULE_ORDER.indexOf(entity);
+    return idx === -1 ? MODULE_ORDER.length : idx;
+}
+
 function groupPermissions(perms: string[]) {
     const groups: Record<string, { action: string; perm: string }[]> = {};
 
@@ -106,7 +128,9 @@ function groupPermissions(perms: string[]) {
         groups[key].push({ action, perm });
     });
 
-    const sorted = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    const sorted = Object.entries(groups).sort(
+        (a, b) => moduleRank(a[0]) - moduleRank(b[0]) || a[0].localeCompare(b[0])
+    );
     return sorted;
 }
 
@@ -125,27 +149,25 @@ const STANDARD_COLUMNS = [
 ];
 
 function getRowCells(items: { action: string; perm: string }[]) {
-    const cells = Array(8).fill(null);
+    const cells: { action: string; perm: string }[][] = Array.from({ length: 8 }, () => []);
     const nonStandard: { action: string; perm: string }[] = [];
 
     // Step 1: Map standard actions
     items.forEach(item => {
         const idx = STANDARD_COLUMNS.findIndex(col => col.action === item.action);
         if (idx !== -1) {
-            cells[idx] = item;
+            cells[idx].push(item);
         } else {
             nonStandard.push(item);
         }
     });
 
-    // Step 2: Distribute non-standard actions to the empty slots
-    let nsIdx = 0;
-    for (let i = 0; i < 8; i++) {
-        if (cells[i] === null && nsIdx < nonStandard.length) {
-            cells[i] = nonStandard[nsIdx];
-            nsIdx++;
-        }
-    }
+    // Step 2: Distribute non-standard actions to the empty slots; once the row
+    // is full, stack the leftovers in the last cell so nothing is dropped.
+    nonStandard.forEach(item => {
+        const empty = cells.findIndex(c => c.length === 0);
+        cells[empty === -1 ? cells.length - 1 : empty].push(item);
+    });
 
     return cells;
 }
@@ -485,25 +507,31 @@ export function ProfileFormPage({ initialData }: ProfileFormPageProps) {
                                                 <TableCell className="font-semibold text-sm border-b py-2.5 text-foreground">
                                                     {entity}
                                                 </TableCell>
-                                                {cells.map((cell, idx) => {
-                                                    if (!cell) {
+                                                {cells.map((cellItems, idx) => {
+                                                    if (cellItems.length === 0) {
                                                         return <TableCell key={idx} className="border-b py-2.5" />;
                                                     }
-                                                    const isChecked = selectedPerms.includes(cell.perm);
                                                     return (
                                                         <TableCell key={idx} className="border-b py-2.5">
-                                                            <label className={cn(
-                                                                "inline-flex items-center gap-2 text-xs cursor-pointer select-none font-medium transition-colors py-1 px-1.5 rounded-sm hover:bg-muted/50",
-                                                                isChecked ? "text-primary font-semibold" : "text-muted-foreground/80"
-                                                            )}>
-                                                                <Checkbox
-                                                                    checked={isChecked}
-                                                                    onCheckedChange={(checked) => handleToggle(cell.perm, !!checked)}
-                                                                />
-                                                                <span className="capitalize whitespace-nowrap">
-                                                                    {cell.action.replace(/_/g, " ")}
-                                                                </span>
-                                                            </label>
+                                                            <div className="flex flex-col gap-1">
+                                                                {cellItems.map((cell) => {
+                                                                    const isChecked = selectedPerms.includes(cell.perm);
+                                                                    return (
+                                                                        <label key={cell.perm} className={cn(
+                                                                            "inline-flex items-center gap-2 text-xs cursor-pointer select-none font-medium transition-colors py-1 px-1.5 rounded-sm hover:bg-muted/50",
+                                                                            isChecked ? "text-primary font-semibold" : "text-muted-foreground/80"
+                                                                        )}>
+                                                                            <Checkbox
+                                                                                checked={isChecked}
+                                                                                onCheckedChange={(checked) => handleToggle(cell.perm, !!checked)}
+                                                                            />
+                                                                            <span className="capitalize whitespace-nowrap">
+                                                                                {cell.action.replace(/_/g, " ")}
+                                                                            </span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         </TableCell>
                                                     );
                                                 })}

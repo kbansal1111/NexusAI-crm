@@ -499,8 +499,10 @@ export function ContactTable({
                         extra={
                             <>
                                 <DropdownMenuItem onClick={refresh}><RefreshCw className="mr-2 h-4 w-4" /> Refresh</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => exportAll("csv")}><Download className="mr-2 h-4 w-4" /> Export all (CSV)</DropdownMenuItem>
-                                <PermissionGate permission="create_contact">
+                                <PermissionGate permission="download_contact">
+                                    <DropdownMenuItem onClick={() => exportAll("csv")}><Download className="mr-2 h-4 w-4" /> Export all (CSV)</DropdownMenuItem>
+                                </PermissionGate>
+                                <PermissionGate permission="upload_contact">
                                     <DropdownMenuItem onClick={() => setImportOpen(true)}><Upload className="mr-2 h-4 w-4" /> Import Contacts (CSV)</DropdownMenuItem>
                                 </PermissionGate>
                             </>

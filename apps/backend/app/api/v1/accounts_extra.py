@@ -123,7 +123,7 @@ async def get_edit_form_data(
 @router.get("/import/sample")
 async def download_account_import_sample(
     is_person_account: bool = False,
-    current_user: User = Depends(check_permission("create_account"))
+    current_user: User = Depends(check_permission("upload_account"))
 ):
     """Download the sample CSV whose columns match the account importer.
 
@@ -147,7 +147,7 @@ async def download_account_import_sample(
 async def import_accounts(
     file: UploadFile = File(...),
     is_person_account: bool = False,
-    current_user: User = Depends(check_permission("create_account"))
+    current_user: User = Depends(check_permission("upload_account"))
 ):
     """Import company or person accounts from a CSV or Excel file."""
     from app.services.import_export_service import ImportExportService
@@ -176,7 +176,7 @@ async def import_accounts(
 async def export_accounts(
     format: str,
     is_person_account: bool = False,
-    current_user: User = Depends(check_permission("view_account"))
+    current_user: User = Depends(check_permission("download_account"))
 ):
     """Export all visible company or person accounts to CSV or Excel."""
     from app.services.import_export_service import ImportExportService

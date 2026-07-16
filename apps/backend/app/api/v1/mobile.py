@@ -11,7 +11,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_permission
 from app.models.user import User
 from app.models.account import Account
 from app.models.contact import Contact
@@ -223,7 +223,7 @@ async def mobile_list_opportunities(
 @router.post("/opportunities/change-owner")
 async def mobile_opp_change_owner(
     payload: OwnerChangeIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("owner_change_opportunity")),
 ):
     await _validate_owner_in_tenant(payload.new_owner_id, current_user.tenant_id)
     updated = await _bulk_change_owner(
@@ -329,7 +329,7 @@ async def mobile_list_personal_accounts(
 # ============== FILE FOLDERS (mobile alias) ==============
 
 @router.get("/file-folders")
-async def mobile_list_file_folders(current_user: User = Depends(get_current_user)):
+async def mobile_list_file_folders(current_user: User = Depends(check_permission("view_file_folder"))):
     """Mirror old `/rest_file_folders_m`."""
     from app.models.file_extras import FileFolder
     rows = await FileFolder.find(

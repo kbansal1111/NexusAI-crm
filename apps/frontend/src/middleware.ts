@@ -73,6 +73,22 @@ export async function middleware(req: NextRequest) {
         return withCookieCleanup(req, NextResponse.redirect(loginUrl));
     }
 
+    // A failed silent refresh flags the JWT (see refreshAccessToken in
+    // lib/auth.ts). Bounce straight to login server-side — before any page
+    // renders with a dead access token and fails into 401s/404s — and drop
+    // the stale session cookie so the user isn't re-flagged on the next hit.
+    if ((token as { error?: string }).error === "RefreshAccessTokenError") {
+        const loginUrl = new URL("/login", req.url);
+        loginUrl.searchParams.set("reason", "expired");
+        const res = NextResponse.redirect(loginUrl);
+        req.cookies.getAll().forEach((c) => {
+            if (c.name.includes("session-token")) {
+                res.cookies.set(c.name, "", { maxAge: 0, path: "/" });
+            }
+        });
+        return res;
+    }
+
     // Permission gate — server-side RBAC enforcement
     const requiredPerm = getRoutePermission(pathname);
     if (requiredPerm) {

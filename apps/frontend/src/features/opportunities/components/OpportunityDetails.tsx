@@ -132,6 +132,8 @@ export function OpportunityDetails({
     // Gate mutating actions so users only see what they can actually do (the
     // backend enforces the same permissions — this just avoids "access denied").
     const canEdit = sessionPermissions.includes("edit_opportunity");
+    const canLock = sessionPermissions.includes("lock_opportunity");
+    const canChangeOwner = sessionPermissions.includes("owner_change_opportunity");
     const canDelete = sessionPermissions.includes("delete_opportunity");
     const canCreateTask = sessionPermissions.includes("create_task");
     const [isCloseLostDialogOpen, setIsCloseLostDialogOpen] = useState(false);
@@ -429,7 +431,7 @@ export function OpportunityDetails({
                                             </Button>
                                         )}
                                     </div>
-                                ) : (
+                                ) : canLock ? (
                                     <Button
                                         size="sm"
                                         variant="outline"
@@ -441,7 +443,7 @@ export function OpportunityDetails({
                                         <Lock className="h-3 w-3" />
                                         {isLocking ? "Locking..." : "Lock"}
                                     </Button>
-                                )}
+                                ) : null}
                             </div>
                             <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                                 <h1 className="min-w-0 break-words text-xl md:text-2xl">{record.name}</h1>
@@ -593,7 +595,7 @@ export function OpportunityDetails({
                 <div className="grid grid-cols-1 gap-x-6 gap-y-3 border-t bg-muted/40 px-5 py-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="min-w-0">
                         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Opportunity Owner</p>
-                        {canEdit ? (
+                        {canChangeOwner ? (
                             <button
                                 onClick={() => setIsOwnerDialogOpen(true)}
                                 className="mt-0.5 flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:underline"

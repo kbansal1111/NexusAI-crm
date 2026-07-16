@@ -70,6 +70,7 @@ import { Account } from "../types";
 import { AccountDetailDrawer } from "./AccountDetailDrawer";
 import { OwnerPopover } from "@/components/shared/OwnerPopover";
 import { ImportDataDialog, normalizeImportResult } from "@/components/shared/ImportDataDialog";
+import { PermissionGate } from "@/components/permissions/PermissionGate";
 import { accountService } from "../services/accountService";
 import { useDebounce } from "@/hooks/use-debounce";
 import { validateInlineField, normalizePhoneValue, isPhoneField, type InlineField } from "@/lib/validation/inline-field-validation";
@@ -574,12 +575,16 @@ export function PersonAccountTable({
                                 <DropdownMenuItem onClick={refresh}>
                                     <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => exportAll("csv")}>
-                                    <Download className="mr-2 h-4 w-4" /> Export all (CSV)
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setImportOpen(true)}>
-                                    <Upload className="mr-2 h-4 w-4" /> Import Person Accounts (CSV)
-                                </DropdownMenuItem>
+                                <PermissionGate permission="download_account">
+                                    <DropdownMenuItem onClick={() => exportAll("csv")}>
+                                        <Download className="mr-2 h-4 w-4" /> Export all (CSV)
+                                    </DropdownMenuItem>
+                                </PermissionGate>
+                                <PermissionGate permission="upload_account">
+                                    <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                                        <Upload className="mr-2 h-4 w-4" /> Import Person Accounts (CSV)
+                                    </DropdownMenuItem>
+                                </PermissionGate>
                             </>
                         }
                     />

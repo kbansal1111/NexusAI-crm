@@ -1033,7 +1033,7 @@ async def change_opportunity_stage(
 @router.post("/{opportunity_id}/lock", response_model=OpportunityResponse)
 async def lock_opportunity(
     opportunity_id: str,
-    current_user: User = Depends(check_permission("edit_opportunity"))
+    current_user: User = Depends(check_permission("lock_opportunity"))
 ):
     """
     Lock an opportunity for editing
@@ -1125,7 +1125,7 @@ async def unlock_opportunity(
 async def change_opportunity_owner(
     opportunity_id: str,
     owner_change: OpportunityOwnerChange,
-    current_user: User = Depends(check_permission("edit_opportunity"))
+    current_user: User = Depends(check_permission("owner_change_opportunity"))
 ):
     """
     Change the owner of an opportunity

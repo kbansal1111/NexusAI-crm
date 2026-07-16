@@ -16,7 +16,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_permission
 from app.models.user import User
 from app.models.report import Report
 from app.models.report_folders import ReportFolder, ReportFolderShare
@@ -391,7 +391,7 @@ class ExportFormatIn(BaseModel):
 @router.post("/export/format")
 async def format_data_export(
     payload: ExportFormatIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("export_report")),
 ):
     """Mirror old `/format_data_export`. Returns metadata; actual
     file generation handled by background task."""

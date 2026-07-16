@@ -18,7 +18,13 @@ export function ApiTokenSync() {
     useEffect(() => {
         if (session?.error === "RefreshAccessTokenError") {
             setApiAccessToken(null);
-            signOut({ callbackUrl: "/login?reason=expired" });
+            // signOut()'s internal /api/auth/csrf + /api/auth/signout fetches
+            // can themselves fail (auth route hiccup, backend down) — if we
+            // await them for the redirect, a failure strands the user on a
+            // broken page. Fire-and-forget the cookie cleanup and navigate
+            // unconditionally (same pattern as the 401 interceptor in client.ts).
+            signOut({ redirect: false }).catch(() => {});
+            window.location.replace("/login?reason=expired");
             return;
         }
         setApiAccessToken(session?.accessToken ?? null);

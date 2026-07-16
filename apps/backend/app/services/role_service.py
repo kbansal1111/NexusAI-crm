@@ -16,21 +16,27 @@ from app.services.scope_cache import invalidate_scope_cache
 
 # Core permissions — available to ALL industries
 CORE_PERMISSIONS = [
-    # Account permissions
+    # Account permissions — upload = CSV/XLSX import, download = export (old CRM parity)
     "view_account", "create_account", "edit_account", "delete_account",
+    "upload_account", "download_account",
 
     # Person Account permissions
     "view_person_account", "create_person_account", "edit_person_account", "delete_person_account",
 
     # Contact permissions
     "view_contact", "create_contact", "edit_contact", "delete_contact",
+    "upload_contact", "download_contact",
 
     # Lead permissions
     "view_lead", "create_lead", "edit_lead", "delete_lead",
+    "upload_lead", "download_lead",
 
     # Opportunity permissions
     "view_opportunity", "create_opportunity", "edit_opportunity", "delete_opportunity",
+    "upload_opportunity", "download_opportunity",
     "lock_opportunity", "unlock_opportunity",
+    # Reassign opportunity ownership (old CRM "owner_change") — separate from edit.
+    "owner_change_opportunity",
     # Opportunity finance (accounts team) — verify then give final approval on
     # ledger transactions (amounts) entered by sales.
     "verify_opportunity_transaction", "approve_opportunity_transaction",
@@ -51,6 +57,9 @@ CORE_PERMISSIONS = [
     # File permissions
     "view_file", "upload_file", "delete_file", "download_file",
     "share_file", "public_link_file",
+
+    # File Folder permissions (old CRM FileFolder module)
+    "view_file_folder", "create_file_folder", "edit_file_folder", "delete_file_folder",
 
     # Supplier / Provider / Vendor permissions (label differs per industry)
     "view_supplier", "create_supplier", "edit_supplier", "delete_supplier",
@@ -73,8 +82,9 @@ CORE_PERMISSIONS = [
     # Role / Profile permissions (RBAC permission profiles)
     "view_role", "create_role", "edit_role", "delete_role",
 
-    # Report permissions
+    # Report permissions — export_report gates report data export (old CRM parity)
     "view_reports", "view_report", "create_report", "edit_report", "delete_report",
+    "export_report",
 
     # Dashboard permissions
     "view_dashboard",

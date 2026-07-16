@@ -40,9 +40,51 @@ FULL_PERMS = (
     ["manage_sales_stages", "manage_sales_targets", "manage_incentives"] +
     ["manage_settings", "manage_system", "manage_tenants", "manage_billing", "manage_notifications"] +
     ["manage_package_pricing", "feature_package"] +
-    ["lock_opportunity", "owner_change"] +
+    ["lock_opportunity", "owner_change_opportunity"] +
     ["verify_opportunity_transaction", "approve_opportunity_transaction"]
 )
+
+# ---------------------------------------------------------------------------
+# Old-CRM parity permissions (upload/download per module, file folders,
+# report export). Derived from what each profile can already do so no profile
+# loses an ability it effectively had before these permissions existed:
+#   - import (upload_X) was gated by create_X, export (download_X) by view_X
+#   - file folders had no gate; mirror the profile's file permissions
+#   - report export had no gate; mirror view_report
+# The legacy bare "owner_change" string is renamed to owner_change_opportunity.
+# ---------------------------------------------------------------------------
+PARITY_DERIVED = [
+    ("create_account", "upload_account"),
+    ("view_account", "download_account"),
+    ("create_contact", "upload_contact"),
+    ("view_contact", "download_contact"),
+    ("create_lead", "upload_lead"),
+    ("view_lead", "download_lead"),
+    ("create_opportunity", "upload_opportunity"),
+    ("view_opportunity", "download_opportunity"),
+    ("view_file", "view_file_folder"),
+    ("upload_file", "create_file_folder"),
+    ("upload_file", "edit_file_folder"),
+    ("delete_file", "delete_file_folder"),
+    ("view_report", "export_report"),
+    # Change-owner was gated by edit_opportunity before it became its own
+    # permission — derive it so no profile loses the ability.
+    ("edit_opportunity", "owner_change_opportunity"),
+]
+
+PARITY_RENAMES = {"owner_change": "owner_change_opportunity"}
+
+
+def apply_parity_perms(perms: list) -> list:
+    out = set(perms)
+    for old, new in PARITY_RENAMES.items():
+        if old in out:
+            out.discard(old)
+            out.add(new)
+    for source, derived in PARITY_DERIVED:
+        if source in out:
+            out.add(derived)
+    return sorted(out)
 
 # ---------------------------------------------------------------------------
 # Profile definitions matching production
@@ -66,7 +108,7 @@ PROFILES = [
             ["send_email", "view_reports", "view_dashboard", "view_leaderboard"] +
             ["manage_sales_stages", "manage_sales_targets", "manage_incentives"] +
             ["manage_package_pricing", "feature_package"] +
-            ["lock_opportunity", "owner_change"]
+            ["lock_opportunity", "owner_change_opportunity"]
         ),
     },
     {
@@ -92,7 +134,7 @@ PROFILES = [
             ["view_itinerary", "create_itinerary", "edit_itinerary"] +
             ["view_file", "upload_file", "download_file"] +
             ["view_reports", "view_report", "view_dashboard", "view_leaderboard"] +
-            ["lock_opportunity", "owner_change"]
+            ["lock_opportunity", "owner_change_opportunity"]
         ),
     },
     {
@@ -269,7 +311,7 @@ async def seed():
             "deleted_at": None,
         })
 
-        perms = list(set(profile_def["permissions"]))  # deduplicate
+        perms = apply_parity_perms(profile_def["permissions"])  # dedupe + old-CRM parity perms
 
         if existing:
             existing.permissions = perms

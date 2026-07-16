@@ -151,7 +151,7 @@ async def update_single_column(
 
 @router.get("/import/sample")
 async def download_contact_import_sample(
-    current_user: User = Depends(check_permission("create_contact"))
+    current_user: User = Depends(check_permission("upload_contact"))
 ):
     """Download the sample CSV whose columns match the contact importer."""
     from app.services.import_export_service import generate_sample_csv
@@ -169,7 +169,7 @@ async def download_contact_import_sample(
 @router.post("/import")
 async def import_contacts(
     file: UploadFile = File(...),
-    current_user: User = Depends(check_permission("create_contact"))
+    current_user: User = Depends(check_permission("upload_contact"))
 ):
     """Import contacts from CSV or Excel file"""
     from app.services.import_export_service import ImportExportService
@@ -195,7 +195,7 @@ async def import_contacts(
 @router.get("/export/{format}")
 async def export_contacts(
     format: str,
-    current_user: User = Depends(check_permission("view_contact"))
+    current_user: User = Depends(check_permission("download_contact"))
 ):
     """Export all visible contacts to CSV or Excel."""
     from app.services.import_export_service import ImportExportService
