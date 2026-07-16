@@ -23,7 +23,7 @@ router = APIRouter()
 @router.post("", response_model=IncentiveResponse)
 async def create_incentive(
     data: IncentiveCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_incentives"))
 ):
     """Create a new incentive program."""
     incentive = await incentive_service.create_incentive(
@@ -81,7 +81,7 @@ async def get_incentive(
 async def update_incentive(
     incentive_id: str,
     data: IncentiveUpdate,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_incentives"))
 ):
     """Update an incentive."""
     incentive = await incentive_service.update_incentive(
@@ -100,7 +100,7 @@ async def update_incentive(
 @router.delete("/{incentive_id}")
 async def delete_incentive(
     incentive_id: str,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_incentives"))
 ):
     """Delete an incentive."""
     deleted = await incentive_service.delete_incentive(incentive_id, str(current_user.tenant_id))
@@ -114,7 +114,7 @@ async def delete_incentive(
 @router.post("/targets", response_model=TargetResponse)
 async def set_target(
     data: TargetCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_sales_targets"))
 ):
     """Set a sales target."""
     target = await incentive_service.set_target(

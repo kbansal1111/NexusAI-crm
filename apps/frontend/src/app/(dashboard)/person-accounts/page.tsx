@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CreateAccountButton } from "@/features/accounts/components/CreateAccountButton";
+import { PermissionGate } from "@/components/permissions/PermissionGate";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,9 @@ export default async function PersonAccountsPage({
                         Manage individual customers and personal accounts.
                     </p>
                 </div>
-                <CreateAccountButton isPerson />
+                <PermissionGate permission="create_person_account">
+                    <CreateAccountButton isPerson />
+                </PermissionGate>
             </div>
 
             <div className="crm-surface overflow-hidden">

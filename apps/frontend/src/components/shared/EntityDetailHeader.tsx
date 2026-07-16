@@ -19,16 +19,17 @@ import { getSegmentBadgeClass, getSegmentLabel } from "@/lib/segments";
 import { usePermissions } from "@/hooks/use-permissions";
 
 // Map the header's entity `type` to the permission the BACKEND actually enforces.
-// Person Accounts share the /accounts endpoints, so they are gated by the
-// account permissions (not the vestigial *_person_account strings) — the gate
-// must match the server or we'd hide a button that works / show one that 403s.
+// Person Accounts share the /accounts endpoints but the server now branches on
+// the record's is_person_account flag (old-CRM parity), so their gates use the
+// *_person_account permission family — the gate must match the server or we'd
+// hide a button that works / show one that 403s.
 const TYPE_PERMS: Record<
     EntityDetailHeaderProps["type"],
     { edit: string; delete: string }
 > = {
     "Contact": { edit: "edit_contact", delete: "delete_contact" },
     "Account": { edit: "edit_account", delete: "delete_account" },
-    "Person Account": { edit: "edit_account", delete: "delete_account" },
+    "Person Account": { edit: "edit_person_account", delete: "delete_person_account" },
     "Lead": { edit: "edit_lead", delete: "delete_lead" },
     "Supplier": { edit: "edit_supplier", delete: "delete_supplier" },
 };

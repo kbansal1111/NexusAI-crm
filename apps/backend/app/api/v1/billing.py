@@ -33,7 +33,7 @@ async def list_plans(
 @router.post("/plans", response_model=PlanResponse)
 async def create_plan(
     data: PlanCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_billing"))
 ):
     """Create a new plan."""
     plan = await billing_service.create_plan(data)
@@ -44,7 +44,7 @@ async def create_plan(
 async def update_plan(
     plan_id: str,
     data: PlanUpdate,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_billing"))
 ):
     """Update a plan."""
     plan = await billing_service.update_plan(plan_id, data)
@@ -80,7 +80,7 @@ async def get_subscription(
 @router.post("/subscription", response_model=SubscriptionResponse)
 async def create_subscription(
     data: SubscriptionCreate,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_billing"))
 ):
     """Create or upgrade subscription."""
     try:
@@ -102,7 +102,7 @@ async def create_subscription(
 
 @router.delete("/subscription")
 async def cancel_subscription(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(check_permission("manage_billing"))
 ):
     """Cancel subscription."""
     sub = await billing_service.cancel_subscription(str(current_user.tenant_id))

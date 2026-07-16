@@ -1192,9 +1192,12 @@ async def change_opportunity_owner(
         opp_response.type = "Person Account" if is_person_account else "Account"
         opp_response.created_by_name = created_by_name
         opp_response.last_modified_by_name = last_modified_by_name
-            
+
         return opp_response
-    
+
+    except HTTPException:
+        # Don't let the catch-all below rewrap intentional 404s as 500s.
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

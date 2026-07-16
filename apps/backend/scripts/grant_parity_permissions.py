@@ -55,6 +55,8 @@ PARITY_DERIVED = [
     ("create_opportunity", "upload_opportunity"),
     ("view_opportunity", "download_opportunity"),
     ("view_file", "view_file_folder"),
+    ("upload_file", "create_file"),
+    ("upload_file", "edit_file"),
     ("upload_file", "create_file_folder"),
     ("upload_file", "edit_file_folder"),
     ("delete_file", "delete_file_folder"),
@@ -68,9 +70,13 @@ PARITY_DERIVED = [
 
 PARITY_RENAMES = {"owner_change": "owner_change_opportunity"}
 
+# Dropped from the registry (no such operations exist — emails are immutable
+# send/log records); strip stale copies from stored roles.
+PARITY_REMOVED = {"edit_email", "delete_email"}
+
 
 def compute_new_perms(perms: list) -> list:
-    out = set(perms)
+    out = set(perms) - PARITY_REMOVED
     for old, new in PARITY_RENAMES.items():
         if old in out:
             out.discard(old)

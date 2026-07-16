@@ -50,6 +50,15 @@ def _scrub(payload: BaseModel) -> Dict[str, Any]:
     return payload.model_dump(exclude_none=True)
 
 
+async def _require_settings_manage(current_user: User) -> None:
+    """Tenant-wide settings writes need manage_settings; admin roles pass
+    unconditionally so wiring the permission can never lock admins out."""
+    if await current_user.is_super_admin():
+        return
+    if not await current_user.has_permission("manage_settings"):
+        raise HTTPException(status_code=403, detail="Permission denied: manage_settings required")
+
+
 # ================ COMPANY (logo / bank / branding) ================
 
 class CompanySettingsUpdate(BaseModel):
@@ -90,6 +99,7 @@ async def update_company_settings(
     payload: CompanySettingsUpdate,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_settings_manage(current_user)
     obj = await _get_or_create(CompanySettings, tenant_id=current_user.tenant_id)
     for k, v in _scrub(payload).items():
         setattr(obj, k, v)
@@ -104,6 +114,7 @@ async def update_logo(
     current_user: User = Depends(get_current_user),
 ):
     """Mirror old `/admin/logo_update`. Expect {logo_url|favicon_url}."""
+    await _require_settings_manage(current_user)
     obj = await _get_or_create(CompanySettings, tenant_id=current_user.tenant_id)
     if "logo_url" in payload:
         obj.logo_url = payload["logo_url"]
@@ -146,6 +157,7 @@ async def update_opp_settings(
     payload: OppSettingsUpdate,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_settings_manage(current_user)
     obj = await _get_or_create(OpportunityWorkflowSettings, tenant_id=current_user.tenant_id)
     for k, v in _scrub(payload).items():
         setattr(obj, k, v)
@@ -179,6 +191,7 @@ async def save_leaderboard_parameters(
     payload: LeaderboardParameters,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_settings_manage(current_user)
     obj = await _get_or_create(LeaderboardConfig, tenant_id=current_user.tenant_id)
     obj.parameters = payload.parameters
     obj.updated_at = datetime.utcnow()
@@ -191,6 +204,7 @@ async def save_leaderboard_accolades(
     payload: LeaderboardAccolades,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_settings_manage(current_user)
     obj = await _get_or_create(LeaderboardConfig, tenant_id=current_user.tenant_id)
     obj.accolades = payload.accolades
     obj.updated_at = datetime.utcnow()
@@ -203,6 +217,7 @@ async def save_leaderboard_performance(
     payload: LeaderboardPerformance,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_settings_manage(current_user)
     obj = await _get_or_create(LeaderboardConfig, tenant_id=current_user.tenant_id)
     obj.performance = payload.performance
     obj.updated_at = datetime.utcnow()

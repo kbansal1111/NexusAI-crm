@@ -50,12 +50,14 @@ CORE_PERMISSIONS = [
     # Note permissions
     "view_note", "create_note", "edit_note", "delete_note",
 
-    # Email permissions
-    "view_email", "create_email", "edit_email", "delete_email",
-    "send_email", "view_email_template", "create_email_template", "edit_email_template", "delete_email_template",
+    # Email permissions — emails are send/log records (no edit/delete ops);
+    # templates have full CRUD (templates router).
+    "view_email", "create_email", "send_email",
+    "view_email_template", "create_email_template", "edit_email_template", "delete_email_template",
 
-    # File permissions
-    "view_file", "upload_file", "delete_file", "download_file",
+    # File permissions — create/upload both allow adding files (one operation
+    # in this CRM, two checkboxes in the old CRM); edit gates version uploads.
+    "view_file", "create_file", "edit_file", "upload_file", "delete_file", "download_file",
     "share_file", "public_link_file",
 
     # File Folder permissions (old CRM FileFolder module)

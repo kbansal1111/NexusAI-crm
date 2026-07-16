@@ -20,9 +20,10 @@ export function FileUploader({ entityType, entityId, onUploadComplete }: FileUpl
     const uploadFile = useUploadFile();
     const { can } = usePermissions();
 
-    // Shared across every detail page — if the user can't upload, show nothing
-    // (the backend enforces upload_file too). The file list stays visible.
-    if (!can("upload_file")) return null;
+    // Shared across every detail page — if the user can't add files, show
+    // nothing. Upload and Create are one operation here (two checkboxes in the
+    // old CRM), so either permission grants it — mirrors the backend check.
+    if (!can("upload_file") && !can("create_file")) return null;
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();

@@ -285,6 +285,11 @@ async def init_db():
             AccountPinView,
             ReportFolderShare,
             FileShare,
+            # File folders / versions / public links — collections are created
+            # lazily on first write, so registration costs no namespaces.
+            FileFolder,
+            FileVersion,
+            FilePublicLink,
             RoleHierarchy,
             
             # Missing Industry Models

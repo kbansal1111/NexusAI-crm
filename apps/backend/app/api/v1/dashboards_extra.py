@@ -261,9 +261,12 @@ async def user_activities(current_user: User = Depends(get_current_user)):
 @router.get("/leaderboard")
 async def leaderboard(
     period: str = Query("current_month", pattern="^(current_month|last_month)$"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("view_leaderboard")),
 ):
-    """Ranked leaderboard for the tenant using LeaderboardConfig scoring."""
+    """Ranked leaderboard for the tenant using LeaderboardConfig scoring.
+
+    Full tenant ranking needs view_leaderboard; /leaderboard/me (own rank)
+    stays open to any authenticated user."""
     cfg = await LeaderboardConfig.find_one({"tenant_id": current_user.tenant_id})
     parameters = (cfg.parameters if cfg else []) or []
     accolades = (cfg.accolades if cfg else []) or []

@@ -4,7 +4,7 @@ API endpoints for Webhooks.
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_current_user, check_permission
+from app.api.deps import get_current_user, check_permission, check_any_permission
 from app.models.user import User
 from app.services.webhook_service import webhook_service
 from app.schemas.webhook import (
@@ -20,7 +20,9 @@ router = APIRouter()
 @router.post("", response_model=WebhookEndpointResponse)
 async def create_endpoint(
     data: WebhookEndpointCreate,
-    current_user: User = Depends(check_permission("manage_webhook"))
+    # "manage_webhook" (singular) was never in the permission registry, so this
+    # endpoint was un-grantable. Accept the granular perm or the blanket one.
+    current_user: User = Depends(check_any_permission(["create_webhook", "manage_webhooks"]))
 ):
     """Create a new webhook endpoint."""
     endpoint = await webhook_service.create_endpoint(
@@ -76,7 +78,7 @@ async def get_endpoint(
 async def update_endpoint(
     endpoint_id: str,
     data: WebhookEndpointUpdate,
-    current_user: User = Depends(check_permission("manage_webhook"))
+    current_user: User = Depends(check_any_permission(["edit_webhook", "manage_webhooks"]))
 ):
     """Update a webhook endpoint."""
     endpoint = await webhook_service.update_endpoint(
@@ -95,7 +97,7 @@ async def update_endpoint(
 @router.delete("/{endpoint_id}")
 async def delete_endpoint(
     endpoint_id: str,
-    current_user: User = Depends(check_permission("manage_webhook"))
+    current_user: User = Depends(check_any_permission(["delete_webhook", "manage_webhooks"]))
 ):
     """Delete a webhook endpoint."""
     deleted = await webhook_service.delete_endpoint(endpoint_id, current_user.tenant_id)

@@ -212,7 +212,7 @@ class VersionIn(BaseModel):
 @router.get("/{file_id}/versions")
 async def list_versions(
     file_id: PydanticObjectId,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("view_file")),
 ):
     rows = await FileVersion.find(
         {"tenant_id": current_user.tenant_id, "file_id": file_id}
@@ -224,7 +224,7 @@ async def list_versions(
 async def upload_new_version(
     file_id: PydanticObjectId,
     payload: VersionIn,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_permission("edit_file")),
 ):
     file = await File.get(file_id)
     if not file or file.tenant_id != current_user.tenant_id:

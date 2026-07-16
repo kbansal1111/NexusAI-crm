@@ -14,7 +14,7 @@ from app.schemas.package import (
     PackagePricingCreate, PackagePricingResponse
 )
 from app.services.package_service import PackageService
-from app.api.deps import get_current_user, check_permission
+from app.api.deps import get_current_user, check_permission, check_any_permission
 from app.middleware.industry_guard import require_module
 
 router = APIRouter(dependencies=[Depends(require_module("packages"))])
@@ -111,7 +111,13 @@ async def update_package(
 ):
     """Update a package"""
     service = PackageService()
-    
+
+    # Featuring/unfeaturing a package is its own permission (matrix:
+    # Package → feature); plain edits don't require it.
+    if getattr(package_data, "is_featured", None) is not None:
+        if not await current_user.has_permission("feature_package"):
+            raise HTTPException(status_code=403, detail="Permission denied: feature_package required")
+
     package = await service.update_package(
         package_id,
         package_data,
@@ -148,7 +154,9 @@ async def delete_package(
 async def add_pricing_tier(
     package_id: str,
     tier_data: PackagePricingCreate,
-    current_user: User = Depends(check_permission("edit_package"))
+    # Pricing has a dedicated permission; edit_package alone also suffices so
+    # package editors aren't locked out of the tiers they could always manage.
+    current_user: User = Depends(check_any_permission(["manage_package_pricing", "edit_package"]))
 ):
     """Add a pricing tier to a package"""
     service = PackageService()

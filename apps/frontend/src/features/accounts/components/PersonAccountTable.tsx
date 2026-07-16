@@ -166,14 +166,16 @@ function EditableTextCell({
     return (
         <div className="group/edit flex items-center gap-1.5 text-sm text-foreground">
             <span className="truncate">{displayValue}</span>
-            <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="opacity-0 transition-opacity group-hover/edit:opacity-100"
-                title="Edit"
-            >
-                <Pencil className="h-3 w-3 text-primary" />
-            </button>
+            <PermissionGate permission="edit_person_account">
+                <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="opacity-0 transition-opacity group-hover/edit:opacity-100"
+                    title="Edit"
+                >
+                    <Pencil className="h-3 w-3 text-primary" />
+                </button>
+            </PermissionGate>
         </div>
     );
 }

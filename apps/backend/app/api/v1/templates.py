@@ -10,13 +10,13 @@ from app.schemas.template import (
     TemplateRenderRequest, TemplateRenderResponse
 )
 from app.services.template_service import TemplateService
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, check_permission
 
 router = APIRouter()
 
 
 @router.post("/", response_model=TemplateResponse, status_code=201)
-async def create_template(data: TemplateCreate, current_user: User = Depends(get_current_user)):
+async def create_template(data: TemplateCreate, current_user: User = Depends(check_permission("create_email_template"))):
     """Create a template"""
     service = TemplateService()
     template = await service.create_template(data, current_user.id, current_user.tenant_id)
@@ -64,7 +64,7 @@ async def get_template(template_id: str, current_user: User = Depends(get_curren
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
-async def update_template(template_id: str, data: TemplateUpdate, current_user: User = Depends(get_current_user)):
+async def update_template(template_id: str, data: TemplateUpdate, current_user: User = Depends(check_permission("edit_email_template"))):
     """Update a template"""
     service = TemplateService()
     template = await service.update_template(template_id, data, current_user.tenant_id)
@@ -74,7 +74,7 @@ async def update_template(template_id: str, data: TemplateUpdate, current_user: 
 
 
 @router.delete("/{template_id}")
-async def delete_template(template_id: str, current_user: User = Depends(get_current_user)):
+async def delete_template(template_id: str, current_user: User = Depends(check_permission("delete_email_template"))):
     """Delete a template"""
     service = TemplateService()
     success = await service.delete_template(template_id, current_user.tenant_id)

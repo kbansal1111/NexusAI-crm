@@ -77,6 +77,9 @@ const EXCLUDED_PERMISSIONS = new Set([
     "delete_department",
     "view_reports",
     "manage_webhooks",
+    // Platform-level: manages tenant companies themselves; no in-tenant
+    // endpoints, so it must not appear as a grantable row in the matrix.
+    "manage_tenants",
 ]);
 
 // Module display order — mirrors the old CRM's permission list sequence.

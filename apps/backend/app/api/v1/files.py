@@ -16,7 +16,7 @@ from app.services.file_service import (
     StorageBackendUnavailable,
     detect_extension_mismatch,
 )
-from app.api.deps import get_current_user, check_permission
+from app.api.deps import get_current_user, check_permission, check_any_permission
 from app.core.rate_limiter import limiter
 
 _logger = logging.getLogger(__name__)
@@ -35,7 +35,9 @@ async def upload_file(
     fileable_type: Optional[str] = Form(None),
     fileable_id: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
-    current_user: User = Depends(check_permission("upload_file"))
+    # Creating a file and uploading one are the same operation here; the old
+    # CRM exposed them as two checkboxes, so either permission grants it.
+    current_user: User = Depends(check_any_permission(["upload_file", "create_file"]))
 ):
     """Upload a file to S3.
 

@@ -200,12 +200,24 @@ async def get_account_form_data(current_user: User = Depends(get_current_user)):
 import logging
 logger = logging.getLogger(__name__)
 
+
+async def _require_account_perm(current_user: User, action: str, is_person_account: bool) -> None:
+    """Person accounts carry their own permission family (old-CRM parity):
+    a role may manage person accounts without company-account rights and vice
+    versa, so branch on the record/request type instead of a fixed dependency."""
+    perm = f"{action}_person_account" if is_person_account else f"{action}_account"
+    if not await current_user.has_permission(perm):
+        raise HTTPException(status_code=403, detail=f"Permission denied: {perm} required")
+
+
 @router.post("/", response_model=AccountResponse, status_code=201)
 async def create_account(
     account_data: AccountCreate,
-    current_user: User = Depends(check_permission("create_account"))
+    current_user: User = Depends(get_current_user)
 ):
     """Create a new account"""
+    # Outside the try below — its catch-all would rewrap the 403 as a 500.
+    await _require_account_perm(current_user, "create", bool(getattr(account_data, "is_person_account", False)))
     try:
         account_data.industry_data = await resolve_industry_data(
             current_user.tenant_id,
@@ -241,9 +253,10 @@ async def get_accounts(
     search: Optional[str] = Query(None, description="Free-text search across name, email, phone, city"),
     view_id: Optional[str] = Query(None, description="Apply a saved AccountView's filters"),
     cursor: Optional[str] = Query(None, description="Keyset cursor for 'load more' — when set, returns the next page after this cursor and skips the COUNT (O(1) deep pagination)."),
-    current_user: User = Depends(check_permission("view_account"))
+    current_user: User = Depends(get_current_user)
 ):
     """Get all accounts with pagination, views, and columns"""
+    await _require_account_perm(current_user, "view", bool(is_person_account))
     # Validate the keyset cursor up-front (BEFORE the broad try/except, which
     # would otherwise swallow this HTTPException into a 500). A malformed/stale
     # cursor is a client error → 400, not a server error.
@@ -570,7 +583,7 @@ class AccountViewCreate(BaseModel):
 @router.post("/views", status_code=201)
 async def create_account_view(
     payload: AccountViewCreate,
-    current_user: User = Depends(check_permission("view_account")),
+    current_user: User = Depends(get_current_user),
 ):
     """Save the current account-list filters as a named list view.
 
@@ -578,6 +591,7 @@ async def create_account_view(
     "search": "delhi", "billing_city": "Agra"}) — the same shape get_accounts
     applies when the view is later selected.
     """
+    await _require_account_perm(current_user, "view", bool(payload.is_person_account))
     from app.models.account_views import AccountView
     name = (payload.name or "").strip()
     if not name:
@@ -607,7 +621,7 @@ async def create_account_view(
 @router.delete("/views/{view_id}", status_code=204)
 async def delete_account_view(
     view_id: str,
-    current_user: User = Depends(check_permission("view_account")),
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a saved view. Only the user who created it may delete it."""
     from app.models.account_views import AccountView
@@ -620,6 +634,7 @@ async def delete_account_view(
     })
     if not view:
         raise HTTPException(404, "View not found")
+    await _require_account_perm(current_user, "view", bool(view.is_person_account))
     await view.delete()
     return None
 
@@ -744,19 +759,24 @@ async def get_parent_accounts(
 async def get_account(
     account_id: str,
     include_related: bool = Query(False, description="Include related contacts, opportunities, and tasks"),
-    current_user: User = Depends(check_permission("view_account"))
+    current_user: User = Depends(get_current_user)
 ):
     """Get account by ID, optionally with related records"""
     from app.services.visibility_scope import get_visible_owner_ids
     service = AccountService()
-    
+
     if include_related:
         # Get account with all related records
         account_data = await service.get_account_with_relations(account_id, current_user.tenant_id)
-        
+
         if not account_data:
             raise HTTPException(status_code=404, detail="Account not found")
-        
+
+        await _require_account_perm(
+            current_user, "view",
+            bool(account_data.get("account", {}).get("is_person_account")) if isinstance(account_data, dict) else False,
+        )
+
         # Visibility check
         visible_owner_ids = await get_visible_owner_ids(current_user)
         acc_owner = account_data.get("account", {}).get("owner_id") if isinstance(account_data, dict) else None
@@ -776,10 +796,12 @@ async def get_account(
     else:
         # Get basic account
         account = await service.get_account(account_id, current_user.tenant_id)
-        
+
         if not account:
             raise HTTPException(status_code=404, detail="Account not found")
-            
+
+        await _require_account_perm(current_user, "view", bool(account.is_person_account))
+
         # Visibility check
         visible_owner_ids = await get_visible_owner_ids(current_user)
         from app.services.visibility_scope import is_record_visible
@@ -840,12 +862,12 @@ async def get_account_address_for_contact(
 async def update_account(
     account_id: str,
     account_data: AccountUpdate,
-    current_user: User = Depends(check_permission("edit_account"))
+    current_user: User = Depends(get_current_user)
 ):
     """Update an account"""
     try:
         from app.services.visibility_scope import get_visible_owner_ids, is_record_visible
-        
+
         if account_data.industry_data is not None:
             account_data.industry_data = await resolve_industry_data(
                 current_user.tenant_id,
@@ -859,11 +881,13 @@ async def update_account(
         existing = await service.get_account(account_id, current_user.tenant_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Account not found")
-            
+
+        await _require_account_perm(current_user, "edit", bool(existing.is_person_account))
+
         visible_owner_ids = await get_visible_owner_ids(current_user)
         if not is_record_visible(existing.owner_id, visible_owner_ids):
             raise HTTPException(status_code=404, detail="Account not found")
-            
+
         account = await service.update_account(
             account_id,
             account_data,
@@ -887,16 +911,18 @@ async def update_account(
 @router.delete("/{account_id}")
 async def delete_account(
     account_id: str,
-    current_user: User = Depends(check_permission("delete_account"))
+    current_user: User = Depends(get_current_user)
 ):
     """Delete an account (soft delete)"""
     from app.services.visibility_scope import get_visible_owner_ids, is_record_visible
     service = AccountService()
-    
+
     # Visibility pre-check
     existing = await service.get_account(account_id, current_user.tenant_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Account not found")
+
+    await _require_account_perm(current_user, "delete", bool(existing.is_person_account))
         
     visible_owner_ids = await get_visible_owner_ids(current_user)
     if not is_record_visible(existing.owner_id, visible_owner_ids):
@@ -920,11 +946,16 @@ async def delete_account(
 async def change_account_owner(
     account_id: str,
     owner_change: AccountOwnerChange,
-    current_user: User = Depends(check_permission("edit_account"))
+    current_user: User = Depends(get_current_user)
 ):
     """Change account owner"""
     service = AccountService()
-    
+
+    existing = await service.get_account(account_id, current_user.tenant_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Account not found")
+    await _require_account_perm(current_user, "edit", bool(existing.is_person_account))
+
     account = await service.change_owner(
         account_id,
         PydanticObjectId(owner_change.new_owner_id),
@@ -1030,7 +1061,7 @@ async def update_single_column(
     account_id: str = Query(...),
     field_name: str = Query(...),
     field_value: str = Query(...),
-    current_user: User = Depends(check_permission("edit_account"))
+    current_user: User = Depends(get_current_user)
 ):
     """Update a single column of an account"""
     from app.services.visibility_scope import get_visible_owner_ids, is_record_visible
@@ -1043,6 +1074,8 @@ async def update_single_column(
     )
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
+
+    await _require_account_perm(current_user, "edit", bool(account.is_person_account))
         
     # Visibility pre-check
     visible_owner_ids = await get_visible_owner_ids(current_user)

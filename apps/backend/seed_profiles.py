@@ -27,7 +27,8 @@ ALL_CRUD = lambda entity: [f"view_{entity}", f"create_{entity}", f"edit_{entity}
 FULL_PERMS = (
     ALL_CRUD("lead") + ALL_CRUD("opportunity") + ALL_CRUD("account") +
     ALL_CRUD("person_account") + ALL_CRUD("contact") + ALL_CRUD("task") +
-    ALL_CRUD("event") + ALL_CRUD("note") + ALL_CRUD("email") +
+    ALL_CRUD("event") + ALL_CRUD("note") +
+    ["view_email", "create_email"] +
     ALL_CRUD("supplier") + ALL_CRUD("destination") +
     ALL_CRUD("itinerary") + ALL_CRUD("package") +
     ALL_CRUD("product") + ALL_CRUD("quote") + ALL_CRUD("invoice") +
@@ -63,6 +64,8 @@ PARITY_DERIVED = [
     ("create_opportunity", "upload_opportunity"),
     ("view_opportunity", "download_opportunity"),
     ("view_file", "view_file_folder"),
+    ("upload_file", "create_file"),
+    ("upload_file", "edit_file"),
     ("upload_file", "create_file_folder"),
     ("upload_file", "edit_file_folder"),
     ("delete_file", "delete_file_folder"),
@@ -74,9 +77,12 @@ PARITY_DERIVED = [
 
 PARITY_RENAMES = {"owner_change": "owner_change_opportunity"}
 
+# Dropped from the registry — no email edit/delete operations exist.
+PARITY_REMOVED = {"edit_email", "delete_email"}
+
 
 def apply_parity_perms(perms: list) -> list:
-    out = set(perms)
+    out = set(perms) - PARITY_REMOVED
     for old, new in PARITY_RENAMES.items():
         if old in out:
             out.discard(old)
@@ -98,7 +104,8 @@ PROFILES = [
         "permissions": (
             ALL_CRUD("lead") + ALL_CRUD("opportunity") + ALL_CRUD("account") +
             ALL_CRUD("person_account") + ALL_CRUD("contact") + ALL_CRUD("task") +
-            ALL_CRUD("event") + ALL_CRUD("note") + ALL_CRUD("email") +
+            ALL_CRUD("event") + ALL_CRUD("note") +
+            ["view_email", "create_email"] +
             ALL_CRUD("supplier") + ALL_CRUD("destination") +
             ALL_CRUD("itinerary") + ALL_CRUD("package") +
             ALL_CRUD("product") + ALL_CRUD("quote") + ALL_CRUD("invoice") +

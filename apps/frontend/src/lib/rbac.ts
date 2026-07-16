@@ -10,7 +10,7 @@ const ROUTE_RULES: { prefix: string; permission: string }[] = [
     { prefix: "/admin/departments", permission: "manage_system" },
     { prefix: "/admin/hierarchies", permission: "manage_system" },
     { prefix: "/admin", permission: "view_user" },
-    { prefix: "/person-accounts", permission: "view_contact" },
+    { prefix: "/person-accounts", permission: "view_person_account" },
     { prefix: "/accessflow/opportunities", permission: "view_opportunity" },
     { prefix: "/accounts", permission: "view_account" },
     { prefix: "/contacts", permission: "view_contact" },

@@ -158,12 +158,20 @@ async def list_items(
     return [PicklistItemResponse.model_validate(i, from_attributes=True) for i in items]
 
 
+async def _require_stage_manage(type_key: str, current_user: User) -> None:
+    """Sales stages have a dedicated manage permission (matrix: Sales Stages →
+    Manage); other picklist types remain open to any authenticated user."""
+    if type_key == "sales_stage" and not await current_user.has_permission("manage_sales_stages"):
+        raise HTTPException(403, "Permission denied: manage_sales_stages required")
+
+
 @router.post("/{type_key}", response_model=PicklistItemResponse, status_code=201)
 async def create_item(
     type_key: str,
     payload: PicklistItemCreate,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_stage_manage(type_key, current_user)
     Doc = _resolve(type_key)
     kwargs = payload.model_dump()
     if "tenant_id" in Doc.model_fields:
@@ -197,6 +205,7 @@ async def update_item(
     payload: PicklistItemUpdate,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_stage_manage(type_key, current_user)
     Doc = _resolve(type_key)
     obj = await Doc.get(item_id)
     if not obj:
@@ -266,6 +275,7 @@ async def delete_item(
     item_id: PydanticObjectId,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_stage_manage(type_key, current_user)
     Doc = _resolve(type_key)
     obj = await Doc.get(item_id)
     if not obj:
@@ -285,6 +295,7 @@ async def sort_items(
     payload: PicklistSortRequest,
     current_user: User = Depends(get_current_user),
 ):
+    await _require_stage_manage(type_key, current_user)
     Doc = _resolve(type_key)
     updated = 0
     for item in payload.items:
