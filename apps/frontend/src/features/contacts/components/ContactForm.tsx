@@ -35,7 +35,7 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { MapPin, Paperclip, User, X } from "lucide-react";
-import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
+import { FormSectionHeader, FormFooter, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 
 const contactFormSchema = z.object({
     salutation: z.string().optional(),
@@ -485,14 +485,13 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                         onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
                     />
                 </div>
-                <div className={cn("flex justify-end gap-4 pt-4 border-t", isDrawer && "sticky bottom-0 z-10 -mx-5 -mb-5 bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]")}>
-                    <Button type="button" variant="outline" onClick={() => onCancel ? onCancel() : router.back()}>
-                        {isDrawer ? "Close" : "Cancel"}
-                    </Button>
-                    <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
-                        {isLoading ? (id ? "Updating..." : "Creating...") : (id ? "Update" : "Save")}
-                    </Button>
-                </div>
+                <FormFooter
+                    isLoading={isLoading}
+                    submitLabel={id ? "Update" : "Save"}
+                    loadingLabel={id ? "Updating..." : "Creating..."}
+                    onCancel={() => onCancel ? onCancel() : router.back()}
+                    cancelLabel={isDrawer ? "Close" : "Cancel"}
+                />
             </form>
         </Form>
     );

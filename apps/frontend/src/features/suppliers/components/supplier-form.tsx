@@ -48,7 +48,7 @@ import { Supplier } from "@/features/suppliers/types";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, X, Loader2, Paperclip, Building2, Globe, MapPin } from "lucide-react";
-import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
+import { FormSectionHeader, FormFooter, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { useToast } from "@/hooks/use-toast";
 import { useIndustry } from "@/lib/industry-labels";
@@ -996,14 +996,13 @@ export function SupplierForm({ initialData, onSuccess, onCancel, isDrawer = fals
                     />
                 </div>
 
-                <div className={cn("flex justify-end gap-2 border-t pt-4", isDrawer && "sticky bottom-0 z-10 -mx-5 -mb-5 bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]")}>
-                    <Button type="button" variant="outline" onClick={onCancel || (() => router.back())}>
-                        {isDrawer ? "Close" : "Cancel"}
-                    </Button>
-                    <Button type="submit" className="px-6 font-medium" disabled={isLoading}>
-                        {isLoading ? (initialData ? "Updating..." : "Creating...") : (initialData ? "Update" : "Save")}
-                    </Button>
-                </div>
+                <FormFooter
+                    isLoading={isLoading}
+                    submitLabel={initialData ? "Update" : "Save"}
+                    loadingLabel={initialData ? "Updating..." : "Creating..."}
+                    onCancel={onCancel || (() => router.back())}
+                    cancelLabel={isDrawer ? "Close" : "Cancel"}
+                />
             </form>
         </Form>
     );

@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
+import { FormSectionHeader, FormFooter, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { accountService } from "@/features/accounts/services/accountService";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { ErrorHandler, ErrorType } from "@/lib/error-handler";
@@ -930,14 +930,13 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                     </div>
                 </div>
 
-                <div className={cn("flex justify-end gap-4 pt-4 border-t", isDrawer && "sticky bottom-0 z-10 -mx-5 -mb-5 bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]")}>
-                    <Button type="button" variant="outline" onClick={() => onCancel ? onCancel() : router.back()}>
-                        {isDrawer ? "Close" : "Cancel"}
-                    </Button>
-                    <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
-                        {isLoading ? (id ? "Updating..." : "Creating...") : (isDrawer ? (id ? "Update" : "Save") : (id ? "Update Account" : "Create Account"))}
-                    </Button>
-                </div>
+                <FormFooter
+                    isLoading={isLoading}
+                    submitLabel={isDrawer ? (id ? "Update" : "Save") : (id ? "Update Account" : "Create Account")}
+                    loadingLabel={id ? "Updating..." : "Creating..."}
+                    onCancel={() => onCancel ? onCancel() : router.back()}
+                    cancelLabel={isDrawer ? "Close" : "Cancel"}
+                />
             </form>
         </Form>
     );

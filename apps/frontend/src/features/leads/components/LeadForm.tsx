@@ -54,10 +54,9 @@ import { destinationsService, Destination } from "@/lib/api/services/destination
 import { Lead, LeadCreateData, LeadStatus, Source, Industry } from "../types";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
-import { FormSectionHeader, FORM_SHELL_CLASS, FORM_BODY_CLASS } from "@/components/shared/form-section";
+import { FormSectionHeader, FormFooter, FORM_SHELL_CLASS, FORM_BODY_CLASS } from "@/components/shared/form-section";
 import { ErrorHandler, showSuccessToast, cleanErrorMessage } from "@/lib/error-handler";
 import { logger } from "@/lib/logger";
-import { LoadingButton } from "@/components/ui/loading";
 import { IndustryLeadFields } from "@/components/industry/IndustryLeadFields";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { useIndustry } from "@/lib/industry-labels";
@@ -1139,16 +1138,12 @@ export function LeadForm({
                                 loadingDestinations={loadingDestinations}
                             />
                         )}
-                    </div>
-
-                    {/* Sticky footer */}
-                    <div className="sticky bottom-0 z-10 flex justify-end gap-3 border-t bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]">
-                        <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={isLoading}>
-                            Close
-                        </Button>
-                        <LoadingButton type="submit" isLoading={isLoading} className="bg-primary hover:bg-primary/90 h-8 px-3 text-sm">
-                            {leadId ? "Update" : "Add"}
-                        </LoadingButton>
+                        <FormFooter
+                            isLoading={isLoading}
+                            submitLabel={leadId ? "Update" : "Add"}
+                            loadingLabel={leadId ? "Updating..." : "Adding..."}
+                            onCancel={() => onCancel?.()}
+                        />
                     </div>
                 </form>
             </Form>

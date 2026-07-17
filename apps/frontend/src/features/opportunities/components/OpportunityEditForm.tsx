@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CalendarIcon, ChevronLeft, Check, ChevronsUpDown, X, Paperclip, Briefcase, Info } from "lucide-react";
-import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
+import { FormSectionHeader, FormFooter, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -1014,18 +1014,12 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                         </div>
                     )}
 
-                    <div className="sticky bottom-0 z-10 flex gap-4 border-t bg-card py-3 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]">
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? "Saving..." : isDrawer ? "Update" : "Save Changes"}
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onCancel ? onCancel() : router.push(`/opportunities/${opportunity.id}`)}
-                        >
-                            {isDrawer ? "Close" : "Cancel"}
-                        </Button>
-                    </div>
+                    <FormFooter
+                        isLoading={isLoading}
+                        submitLabel={isDrawer ? "Update" : "Save Changes"}
+                        onCancel={() => onCancel ? onCancel() : router.push(`/opportunities/${opportunity.id}`)}
+                        cancelLabel={isDrawer ? "Close" : "Cancel"}
+                    />
                 </form>
             </Form>
         </div>

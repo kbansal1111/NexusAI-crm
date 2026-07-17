@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { CalendarIcon, Check, ChevronsUpDown, X, Paperclip, Briefcase, Info } from "lucide-react";
-import { FormSectionHeader, FORM_SHELL_CLASS } from "@/components/shared/form-section";
+import { FormSectionHeader, FormFooter, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { format } from "date-fns";
 
@@ -1044,18 +1044,13 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                     </div>
                 )}
 
-                <div className="flex gap-4">
-                    <Button type="submit" disabled={isLoading}>
-                        {isLoading ? "Creating..." : "Save"}
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => onCancel ? onCancel() : router.push("/opportunities")}
-                    >
-                        {isDrawer ? "Close" : "Cancel"}
-                    </Button>
-                </div>
+                <FormFooter
+                    isLoading={isLoading}
+                    submitLabel="Save"
+                    loadingLabel="Creating..."
+                    onCancel={() => onCancel ? onCancel() : router.push("/opportunities")}
+                    cancelLabel={isDrawer ? "Close" : "Cancel"}
+                />
             </form>
         </Form>
     );
