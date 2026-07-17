@@ -23,6 +23,19 @@ class Settings(BaseSettings):
     APP_NAME: str = "TutterflyC CRM API"
     VERSION: str = "2.0.0"
     ENVIRONMENT: str = "development"
+
+    # Logging (see docs/LOGGING_AND_AUDIT.md)
+    LOG_LEVEL: str = "INFO"
+    # Write rotating log files (app.log + error.log) in addition to stdout.
+    LOG_TO_FILE: bool = True
+    # Directory for log files; relative paths resolve against apps/backend.
+    LOG_DIR: str = "logs"
+    # Daily-rotated files kept this many days before deletion.
+    LOG_RETENTION_DAYS: int = 30
+    # TTL (days) for the api_audit_logs collection — enforced by a Mongo TTL
+    # index created by scripts/create_indexes.py, NOT at runtime. If you change
+    # this, re-run that script so the TTL index is rebuilt to match.
+    AUDIT_LOG_RETENTION_DAYS: int = 365
     
     # MongoDB
     MONGODB_URL: str = "mongodb://localhost:27017/tutterfly_crm"  # Fallback, .env will override

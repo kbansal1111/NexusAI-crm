@@ -78,7 +78,7 @@ async def get_current_user(request: Request = None, token: str = Depends(oauth2_
     # Populate per-request activity context so ActivityMixin can log mutations
     # without each endpoint having to call set_request_context() explicitly.
     try:
-        set_activity_context({
+        ctx = {
             "ip_address": _client_ip(request),
             "user_agent": request.headers.get("user-agent", "") if request else "",
             "user_id": user.id,
@@ -87,7 +87,14 @@ async def get_current_user(request: Request = None, token: str = Depends(oauth2_
             "tenant_id": user.tenant_id,
             "request_id": getattr(request.state, "request_id", None) if request else None,
             "timestamp": datetime.utcnow(),
-        })
+        }
+        set_activity_context(ctx)
+        # Also expose the actor on request.state (shared scope dict) so the
+        # request-logging middleware can attribute the access log + audit row
+        # to this user — ContextVars don't cross task-boundary middlewares,
+        # scope state does.
+        if request is not None:
+            request.state.audit_user = ctx
     except Exception:
         # Never let context setup break authentication.
         pass

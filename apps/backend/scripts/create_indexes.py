@@ -156,6 +156,14 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     ("activity_logs", [("tenant_id", ASCENDING), ("user_id", ASCENDING), ("created_at", DESCENDING)]),
     ("activity_logs", [("tenant_id", ASCENDING), ("created_at", DESCENDING)]),
 
+    # --- login_logs: login-history pages filter tenant(+user), newest first ---
+    ("login_logs", [("tenant_id", ASCENDING), ("created_at", DESCENDING)]),
+    ("login_logs", [("user_id", ASCENDING), ("created_at", DESCENDING)]),
+
+    # --- api_audit_logs: automatic mutation audit (see docs/LOGGING_AND_AUDIT.md) ---
+    ("api_audit_logs", [("tenant_id", ASCENDING), ("created_at", DESCENDING)]),
+    ("api_audit_logs", [("request_id", ASCENDING)]),
+
     # --- notifications: bell dropdown polls per user ---
     ("notifications", [("tenant_id", ASCENDING), ("user_id", ASCENDING), ("created_at", DESCENDING)]),
 
@@ -174,14 +182,27 @@ INDEXES: list[tuple[str, list[tuple[str, int]]]] = [
     ("tasks", [("tenant_id", ASCENDING), ("deleted_at", ASCENDING), ("created_at", DESCENDING), ("_id", DESCENDING)]),
 ]
 
+# TTL indexes: (collection, [(field, direction)], expire_after_seconds).
+# Mongo's TTL monitor deletes expired docs in the background — this is the ONLY
+# retention mechanism for the raw API audit trail (the app never deletes it).
+# NOTE: to CHANGE a TTL later, Mongo requires collMod (create_index with a
+# different expireAfterSeconds on the same keys raises OperationFailure —
+# reported as [skip] here). See docs/LOGGING_AND_AUDIT.md.
+AUDIT_TTL_DAYS = int(os.getenv("AUDIT_LOG_RETENTION_DAYS", "365"))
+TTL_INDEXES: list[tuple[str, list[tuple[str, int]], int]] = [
+    ("api_audit_logs", [("created_at", ASCENDING)], AUDIT_TTL_DAYS * 24 * 3600),
+]
+
 
 async def main(dry_run: bool = False) -> None:
     print(f"DB: {DB_NAME}")
-    print(f"Indexes to ensure: {len(INDEXES)}\n")
+    print(f"Indexes to ensure: {len(INDEXES)} (+{len(TTL_INDEXES)} TTL)\n")
 
     if dry_run:
         for coll, keys in INDEXES:
             print(f"  [plan] {coll}: {keys}")
+        for coll, keys, expire in TTL_INDEXES:
+            print(f"  [plan] {coll}: {keys} (TTL {expire}s)")
         print("\nDry run — nothing created.")
         return
 
@@ -204,6 +225,21 @@ async def main(dry_run: bool = False) -> None:
                 skipped += 1
             except Exception as e:  # noqa: BLE001 - never let one index abort the run
                 print(f"  [FAIL] {coll} {keys}: {e}")
+                failed += 1
+
+        for coll, keys, expire in TTL_INDEXES:
+            try:
+                name = await db[coll].create_index(
+                    keys, expireAfterSeconds=expire, background=True
+                )
+                print(f"  [ok]   {coll}: {name} (TTL {expire}s)")
+                created += 1
+            except OperationFailure as e:
+                msg = e.details.get("errmsg", str(e)) if getattr(e, "details", None) else str(e)
+                print(f"  [skip] {coll} {keys} TTL: {msg}")
+                skipped += 1
+            except Exception as e:  # noqa: BLE001
+                print(f"  [FAIL] {coll} {keys} TTL: {e}")
                 failed += 1
     finally:
         client.close()

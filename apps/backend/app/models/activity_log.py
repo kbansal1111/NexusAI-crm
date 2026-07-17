@@ -1,11 +1,11 @@
 """
 Activity Log models for tracking user actions and system events
 """
-from beanie import Indexed
+from beanie import Document, Indexed
 from pydantic import Field
 from typing import Optional, Dict, Any
 from beanie import PydanticObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 from app.models.base import BaseDocument
 
 
@@ -79,3 +79,52 @@ class LoginLog(BaseDocument):
         # [("tenant_id", 1), ("created_at", -1)],
             # [("user_id", 1), ("created_at", -1)],
         # ]
+
+
+class ApiAuditLog(Document):
+    """Automatic audit record of every mutating API request.
+
+    Written by ActivityContextMiddleware (app/middleware/activity_context.py)
+    for all POST/PUT/PATCH/DELETE calls under /api/v1 — no endpoint opts in or
+    out, so coverage can never drift as new routes are added. This is the
+    "who changed what, when, from where" safety net; the human-curated
+    per-entity timeline stays in `activity_logs`.
+
+    NOT a BaseDocument on purpose: audit entries are never soft-deleted, and
+    tenant_id must stay optional (failed logins / public integration calls have
+    no authenticated tenant). Retention is a Mongo TTL index on `created_at`
+    (see scripts/create_indexes.py), sized by settings.AUDIT_LOG_RETENTION_DAYS.
+    """
+
+    # Correlation — same id as the X-Request-ID response header and the
+    # [req:...] field on every log line for this request.
+    request_id: Optional[str] = None
+
+    # Request
+    method: str
+    path: str
+    route: Optional[str] = None       # matched route template, e.g. /api/v1/leads/{lead_id}
+    query: Optional[str] = None
+    body: Optional[Any] = None        # sanitized (secrets redacted, size-capped)
+
+    # Outcome
+    status_code: int
+    duration_ms: Optional[float] = None
+    response_error: Optional[Any] = None  # error payload when status >= 400
+
+    # Actor (absent for unauthenticated calls, e.g. failed logins)
+    user_id: Optional[PydanticObjectId] = None
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    tenant_id: Optional[PydanticObjectId] = None
+
+    # Origin
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    class Settings:
+        name = "api_audit_logs"
+        # Indexes (incl. the TTL index) are managed out-of-band by
+        # scripts/create_indexes.py — see that file.

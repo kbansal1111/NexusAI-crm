@@ -2,7 +2,9 @@
 Activity Log API endpoints
 """
 import logging
-from fastapi import APIRouter, Depends
+import re
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 
 from app.models.user import User
@@ -83,6 +85,81 @@ async def get_user_activity(
     service = ActivityLogService()
     logs = await service.get_user_activity(user_id, current_user.tenant_id, limit=limit)
     return {"logs": [ActivityLogResponse.from_orm(l) for l in logs], "total": len(logs)}
+
+
+@router.get("/audit")
+async def get_api_audit_logs(
+    method: Optional[str] = None,
+    status_min: Optional[int] = None,
+    path_prefix: Optional[str] = None,
+    user_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    days: int = 7,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+):
+    """Raw API audit trail (every mutating request) — ADMIN ONLY.
+
+    Tenant-scoped: an admin only ever sees their own tenant's rows. Rows with
+    no tenant (unauthenticated calls such as failed logins) are intentionally
+    NOT exposed here — inspect them directly in Mongo / the log files.
+    """
+    from bson import ObjectId
+    from app.models.activity_log import ApiAuditLog
+    from app.services.visibility_scope import _is_admin_user
+
+    if not await _is_admin_user(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    query: dict = {
+        "tenant_id": current_user.tenant_id,
+        "created_at": {"$gte": datetime.utcnow() - timedelta(days=min(days, 400))},
+    }
+    if method:
+        query["method"] = method.upper()
+    if status_min:
+        query["status_code"] = {"$gte": status_min}
+    if path_prefix:
+        # Anchored prefix regex — index-friendly, never a contains-scan.
+        query["path"] = {"$regex": f"^{re.escape(path_prefix)}"}
+    if user_id:
+        query["user_id"] = ObjectId(user_id)
+    if request_id:
+        query["request_id"] = request_id
+
+    limit = min(max(limit, 1), 200)
+    logs = (
+        await ApiAuditLog.find(query)
+        .sort("-created_at")
+        .skip(max(skip, 0))
+        .limit(limit)
+        .to_list()
+    )
+    return {
+        "logs": [
+            {
+                "id": str(l.id),
+                "request_id": l.request_id,
+                "method": l.method,
+                "path": l.path,
+                "route": l.route,
+                "query": l.query,
+                "body": l.body,
+                "status_code": l.status_code,
+                "duration_ms": l.duration_ms,
+                "response_error": l.response_error,
+                "user_id": str(l.user_id) if l.user_id else None,
+                "user_name": l.user_name,
+                "user_email": l.user_email,
+                "ip_address": l.ip_address,
+                "user_agent": l.user_agent,
+                "created_at": l.created_at,
+            }
+            for l in logs
+        ],
+        "total": len(logs),
+    }
 
 
 @router.get("/logins", response_model=LoginLogListResponse)

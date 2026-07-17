@@ -83,7 +83,7 @@ from app.models.product import Product
 from app.models.quote import Quote, QuoteItem
 from app.models.invoice import Invoice, InvoiceItem, Payment
 from app.models.country import Country, State, City
-from app.models.activity_log import ActivityLog, LoginLog
+from app.models.activity_log import ActivityLog, LoginLog, ApiAuditLog
 from app.models.consolidated_settings import (
     TenantSettings, UserSettings, CompanySettings, LeaderboardConfig, 
     OpportunityWorkflowSettings, EmailFooter, AutoAssignmentRule,
@@ -254,6 +254,7 @@ async def init_db():
             # Activity Logs
             ActivityLog,
             LoginLog,
+            ApiAuditLog,
             # Settings (consolidated - single collection)
             TenantSettings,
             UserSettings,

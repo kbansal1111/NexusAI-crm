@@ -44,8 +44,15 @@ from app.api.v1 import accounts
 
 # Configure root logger before anything else runs. JSON output in prod
 # (parseable by log shippers), human-readable text in dev. Sensitive fields
-# (password, token, authorization) are redacted by a filter.
-configure_logging(settings.ENVIRONMENT)
+# (password, token, authorization) are redacted by a filter. When LOG_TO_FILE
+# is on (default), daily-rotating app.log/error.log files are written to
+# LOG_DIR as well — see docs/LOGGING_AND_AUDIT.md.
+configure_logging(
+    settings.ENVIRONMENT,
+    level=settings.LOG_LEVEL,
+    log_dir=settings.LOG_DIR if settings.LOG_TO_FILE else None,
+    retention_days=settings.LOG_RETENTION_DAYS,
+)
 
 
 # ── Sentry ──────────────────────────────────────────────────────────────────
@@ -166,8 +173,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# Activity logging middleware — pure ASGI so cancelled/disconnected requests
-# don't trigger BaseHTTPMiddleware's "No response returned." RuntimeError.
+# Request logging + audit middleware — stamps X-Request-ID, writes one access
+# log line per request, and persists an api_audit_logs row for every mutating
+# API call. Pure ASGI so cancelled/disconnected requests don't trigger
+# BaseHTTPMiddleware's "No response returned." RuntimeError.
 app.add_middleware(ActivityContextMiddleware)
 
 # GZip — list/dashboard JSON payloads compress 5-10x; without this every

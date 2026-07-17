@@ -1,6 +1,7 @@
 """
 Authentication service for user login, registration, and token management
 """
+import logging
 from typing import Tuple
 from datetime import datetime, timedelta, timezone
 from bson import ObjectId
@@ -11,6 +12,8 @@ from app.core.config import settings
 from app.models.user import User
 from app.schemas.auth import UserLogin, UserRegister
 from app.services.email_service import EmailService
+
+_logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -68,7 +71,9 @@ class AuthService:
     
     async def login_user(
         self,
-        login_data: UserLogin
+        login_data: UserLogin,
+        ip_address: str = None,
+        user_agent: str = None,
     ) -> Tuple[User, str, str]:
         """Login user and return user, access_token, refresh_token.
 
@@ -96,11 +101,28 @@ class AuthService:
         password_ok = pwd_context.verify(login_data.password, password_hash)
 
         if not user or not password_ok:
+            if user:
+                await self._log_login(
+                    user, success=False, failure_reason="Invalid password",
+                    ip_address=ip_address, user_agent=user_agent,
+                )
+            else:
+                # No user record → nothing to attach a LoginLog to, but the
+                # attempt still needs a trace (brute-force / enumeration
+                # forensics). Lands in app.log + error.log with the request id.
+                _logger.warning(
+                    "Failed login for unknown email %s from ip=%s",
+                    login_data.email, ip_address or "unknown",
+                )
             raise generic_invalid
 
         if not user.is_active:
             # Distinct error is fine here — an attacker already cleared the
             # bcrypt gate, so we're talking to the legitimate user.
+            await self._log_login(
+                user, success=False, failure_reason="Account inactive",
+                ip_address=ip_address, user_agent=user_agent,
+            )
             raise ValueError("User account is inactive")
 
         # Verify industry access if provided. The error must NOT mention the
@@ -111,8 +133,16 @@ class AuthService:
             try:
                 tenant_industry = await get_tenant_industry(user.tenant_id)
             except TenantNotFoundError:
+                await self._log_login(
+                    user, success=False, failure_reason="Tenant not found",
+                    ip_address=ip_address, user_agent=user_agent,
+                )
                 raise generic_invalid
             if tenant_industry.lower() != login_data.industry.lower():
+                await self._log_login(
+                    user, success=False, failure_reason="Industry mismatch",
+                    ip_address=ip_address, user_agent=user_agent,
+                )
                 raise generic_invalid
 
         # Generate tokens
@@ -123,7 +153,9 @@ class AuthService:
         await user.update_last_login()
 
         # Log login activity
-        await self._log_login(user)
+        await self._log_login(
+            user, success=True, ip_address=ip_address, user_agent=user_agent
+        )
 
         return user, access_token, refresh_token
     
@@ -330,14 +362,32 @@ class AuthService:
         
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     
-    async def _log_login(self, user: User):
-        """Log user login activity"""
-        from app.models.activity_log import LoginLog
-        
-        log = LoginLog(
-            user_id=user.id,
-            user_name=user.name,
-            user_email=user.email,
-            tenant_id=user.tenant_id
-        )
-        await log.insert()
+    async def _log_login(
+        self,
+        user: User,
+        success: bool = True,
+        failure_reason: str = None,
+        ip_address: str = None,
+        user_agent: str = None,
+    ):
+        """Persist a LoginLog row (success AND failed attempts).
+
+        Guarded — a Mongo hiccup while writing the log must never block a
+        legitimate login or mask the real credential error.
+        """
+        try:
+            from app.models.activity_log import LoginLog
+
+            log = LoginLog(
+                user_id=user.id,
+                user_name=user.name,
+                user_email=user.email,
+                tenant_id=user.tenant_id,
+                success=success,
+                failure_reason=failure_reason,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            await log.insert()
+        except Exception as e:
+            _logger.warning("Could not write login log for %s: %s", user.email, e)

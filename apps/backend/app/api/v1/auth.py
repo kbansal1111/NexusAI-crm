@@ -10,7 +10,7 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 from app.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, _client_ip
 from app.core.config import settings
 from app.core.rate_limiter import limiter
 
@@ -63,10 +63,14 @@ async def register(
 async def login(request: Request, response: Response, login_data: UserLogin):
     """Login user and return access token"""
     service = AuthService()
-    
+
     try:
-        user, access_token, refresh_token = await service.login_user(login_data)
-        
+        user, access_token, refresh_token = await service.login_user(
+            login_data,
+            ip_address=_client_ip(request),
+            user_agent=request.headers.get("user-agent", ""),
+        )
+
         permissions = await user.get_permissions()
         
         # Fetch tenant to include industry + modules in response. If the
@@ -115,9 +119,13 @@ async def login_for_access_token(request: Request, response: Response, form_data
         email=form_data.username,
         password=form_data.password
     )
-    
+
     try:
-        user, access_token, refresh_token = await service.login_user(login_data)
+        user, access_token, refresh_token = await service.login_user(
+            login_data,
+            ip_address=_client_ip(request),
+            user_agent=request.headers.get("user-agent", ""),
+        )
         
         return {
             "access_token": access_token,
@@ -252,7 +260,22 @@ async def logout(current_user: User = Depends(get_current_user)):
     """Logout user (client should discard token)"""
     # In a stateless JWT system, logout is handled client-side
     # Optionally, implement token blacklisting here
-    
+
+    # Audit trail: record the logout so login_logs + activity feed show full
+    # session bounds. Guarded — logout must succeed even if logging doesn't.
+    try:
+        from app.services.activity_log_service import ActivityLogService
+        await ActivityLogService().log_activity(
+            user_id=current_user.id,
+            user_name=current_user.name,
+            tenant_id=current_user.tenant_id,
+            action="logout",
+            entity_type="session",
+            description=f"{current_user.name} logged out",
+        )
+    except Exception:
+        pass
+
     return {
         "error": False,
         "message": "Logged out successfully"
