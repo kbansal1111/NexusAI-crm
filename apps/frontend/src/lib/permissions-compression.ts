@@ -4,6 +4,13 @@
  */
 
 // Prefixes aligned with apps/backend/app/services/role_service.py
+//
+// APPEND-ONLY: codes are positional (index → char), so inserting or reordering
+// entries silently re-maps every permission in already-issued session cookies.
+// New prefixes/suffixes go at the END of the array, never in the middle.
+// Every permission that misses these tables falls back to the uncompressed
+// "*full_string" form, inflating the session JWT — past ~4KB NextAuth chunks
+// the cookie, so keep these tables covering the whole permission registry.
 const PREFIXES = [
     "view_",
     "create_",
@@ -16,7 +23,15 @@ const PREFIXES = [
     "upload_",
     "download_",
     "send_",
-    "feature_"
+    "feature_",
+    // Old-CRM parity sweep (2026-07) — see role_service.py
+    "lock_",
+    "unlock_",
+    "verify_",
+    "share_",
+    "public_link_",
+    "export_",
+    "owner_change_"
 ];
 
 // Suffixes (resources) aligned with apps/backend/app/services/role_service.py
@@ -79,7 +94,10 @@ const SUFFIXES = [
     "inventory",
     "quality_inspection",
     "warehouse",
-    "work_order"
+    "work_order",
+    // Old-CRM parity sweep (2026-07) — APPEND-ONLY, see note above
+    "file_folder",
+    "opportunity_transaction"
 ];
 
 // 62-character lookup table (exactly 1 character representation for indices 0-61)

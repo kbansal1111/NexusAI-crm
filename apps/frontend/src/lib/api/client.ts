@@ -101,47 +101,54 @@ apiClient.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                // Re-fetch the session — if it was updated externally the new token may work.
+                // Re-fetch the session. This hits /api/auth/session, which runs
+                // the jwt callback server-side — i.e. it attempts (and persists)
+                // a silent refresh if the access token is expired.
                 const session = await getSession();
-                if (session?.accessToken) {
-                    cachedAccessToken = session.accessToken; // keep fast-path cache fresh
-                    const oldToken = originalRequest.headers?.Authorization;
-                    const newBearer = `Bearer ${session.accessToken}`;
-                    if (oldToken !== newBearer) {
-                        if (originalRequest.headers) {
-                            originalRequest.headers.Authorization = newBearer;
-                        }
-                        return apiClient(originalRequest);
+
+                // Definitive dead session: no session at all, or the refresh
+                // was REJECTED by the backend (refresh token expired/revoked,
+                // user deactivated). Only then do we log the user out.
+                if (!session?.accessToken || session.error === 'RefreshAccessTokenError') {
+                    cachedAccessToken = null;
+                    if (!isSessionExpiring) {
+                        isSessionExpiring = true;
+
+                        // Clear the NextAuth session cookie in the background — fire-and-forget.
+                        // We don't await this; the page is navigating away regardless.
+                        signOut({ redirect: false }).catch(() => {});
+
+                        // Replace the current history entry so the back button skips
+                        // the expired page and doesn't loop the user back to a broken state.
+                        window.location.replace('/login?reason=expired');
                     }
+                    // Never-settling promise: keeps the 401 from flashing error
+                    // UI while the page navigates away; GC'd on unload.
+                    return new Promise(() => {});
                 }
 
-                // Token is the same (or missing) → confirmed expired.
-                cachedAccessToken = null;
-                if (!isSessionExpiring) {
-                    isSessionExpiring = true;
-
-                    // Clear the NextAuth session cookie in the background — fire-and-forget.
-                    // We don't await this; the page is navigating away regardless.
-                    signOut({ redirect: false }).catch(() => {});
-
-                    // Replace the current history entry so the back button skips
-                    // the expired page and doesn't loop the user back to a broken state.
-                    window.location.replace('/login?reason=expired');
+                cachedAccessToken = session.accessToken; // keep fast-path cache fresh
+                const oldToken = originalRequest.headers?.Authorization;
+                const newBearer = `Bearer ${session.accessToken}`;
+                if (oldToken !== newBearer) {
+                    if (originalRequest.headers) {
+                        originalRequest.headers.Authorization = newBearer;
+                    }
+                    return apiClient(originalRequest);
                 }
+
+                // Same token, session alive, no error flag → the refresh
+                // transiently failed (backend blip / rate limit) or the 401 has
+                // another cause. Surface the error to the caller — logging the
+                // user out here turned every backend hiccup into a forced
+                // re-login even though the session was perfectly valid.
+                return Promise.reject(error);
             } catch {
-                // getSession failed (e.g. auth route temporarily unavailable).
-                // Still redirect — better to send the user to login than leave them stuck.
-                if (!isSessionExpiring) {
-                    isSessionExpiring = true;
-                    signOut({ redirect: false }).catch(() => {});
-                    window.location.replace('/login?reason=expired');
-                }
+                // getSession itself failed (auth route temporarily unreachable).
+                // That says nothing about the session's validity — treat as
+                // transient and let the caller's error/retry handling deal with it.
+                return Promise.reject(error);
             }
-
-            // Return a promise that never settles. This prevents the 401 from
-            // propagating to the calling component (no "Failed to load" error UI).
-            // All pending promises are garbage-collected once the page unloads.
-            return new Promise(() => {});
         }
 
         if (error.response?.status === 403) {

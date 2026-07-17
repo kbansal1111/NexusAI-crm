@@ -35,10 +35,27 @@ function isOpenRedirectSafe(callbackUrl: string): boolean {
     return callbackUrl.startsWith("/") && !callbackUrl.startsWith("//");
 }
 
-function withCookieCleanup(req: NextRequest, res: NextResponse): NextResponse {
+/**
+ * Expire every NextAuth session cookie (base + chunked `.0`/`.1`... variants).
+ *
+ * ONLY call this on a bounce-to-login path. NextAuth chunks the session cookie
+ * across `session-token.N` cookies whenever the encrypted JWT exceeds ~4KB —
+ * an earlier version of this file deleted those chunks on EVERY response as
+ * "cleanup", which destroyed any legitimately-chunked session one request
+ * after login (an endless login loop for permission-heavy users). NextAuth
+ * v4 already expires obsolete chunks itself when it re-issues the cookie.
+ *
+ * `__Secure-`-prefixed cookies are silently ignored by browsers unless the
+ * deletion carries the Secure attribute, so mirror the prefix.
+ */
+function clearSessionCookies(req: NextRequest, res: NextResponse): NextResponse {
     req.cookies.getAll().forEach((c) => {
-        if (c.name.includes("session-token.")) {
-            res.cookies.set(c.name, "", { maxAge: 0, path: "/" });
+        if (c.name.includes("next-auth.session-token")) {
+            res.cookies.set(c.name, "", {
+                maxAge: 0,
+                path: "/",
+                secure: c.name.startsWith("__Secure-") || c.name.startsWith("__Host-"),
+            });
         }
     });
     return res;
@@ -49,17 +66,17 @@ export async function middleware(req: NextRequest) {
 
     // Allow NextAuth API and static/Next internals
     if (pathname.startsWith(AUTH_API) || pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
-        return withCookieCleanup(req, NextResponse.next());
+        return NextResponse.next();
     }
 
     // Allow public pages
     if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-        return withCookieCleanup(req, NextResponse.next());
+        return NextResponse.next();
     }
 
     // Root "/" can show login or dashboard; let the page decide (it uses getServerSession)
     if (pathname === "/") {
-        return withCookieCleanup(req, NextResponse.next());
+        return NextResponse.next();
     }
 
     // All other routes require a valid session
@@ -67,26 +84,24 @@ export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret });
 
     if (!token) {
+        // No decodable session — clear whatever session cookies were sent so
+        // undecryptable leftovers (rotated secret, corrupt chunks) can't cause
+        // a redirect loop, and bounce to login.
         const loginUrl = new URL("/login", req.url);
         const safeCallback = isOpenRedirectSafe(pathname) ? pathname : "/dashboard";
         loginUrl.searchParams.set("callbackUrl", safeCallback);
-        return withCookieCleanup(req, NextResponse.redirect(loginUrl));
+        return clearSessionCookies(req, NextResponse.redirect(loginUrl));
     }
 
-    // A failed silent refresh flags the JWT (see refreshAccessToken in
-    // lib/auth.ts). Bounce straight to login server-side — before any page
-    // renders with a dead access token and fails into 401s/404s — and drop
-    // the stale session cookie so the user isn't re-flagged on the next hit.
+    // A DEFINITIVELY failed refresh flags the JWT (see refreshAccessToken in
+    // lib/auth.ts — transient backend blips no longer set this flag). Bounce
+    // straight to login server-side — before any page renders with a dead
+    // access token and fails into 401s/404s — and drop the stale session
+    // cookie so the user isn't re-flagged on the next hit.
     if ((token as { error?: string }).error === "RefreshAccessTokenError") {
         const loginUrl = new URL("/login", req.url);
         loginUrl.searchParams.set("reason", "expired");
-        const res = NextResponse.redirect(loginUrl);
-        req.cookies.getAll().forEach((c) => {
-            if (c.name.includes("session-token")) {
-                res.cookies.set(c.name, "", { maxAge: 0, path: "/" });
-            }
-        });
-        return res;
+        return clearSessionCookies(req, NextResponse.redirect(loginUrl));
     }
 
     // Permission gate — server-side RBAC enforcement
@@ -94,7 +109,7 @@ export async function middleware(req: NextRequest) {
     if (requiredPerm) {
         const userPerms = decompressPermissions((token as any).permissions);
         if (!userPerms.includes(requiredPerm)) {
-            return withCookieCleanup(req, NextResponse.redirect(new URL("/unauthorized", req.url)));
+            return NextResponse.redirect(new URL("/unauthorized", req.url));
         }
     }
 
@@ -106,11 +121,11 @@ export async function middleware(req: NextRequest) {
     if (requiredModule) {
         const modules = (token.modules as Record<string, boolean>) || {};
         if (!modules[requiredModule]) {
-            return withCookieCleanup(req, NextResponse.redirect(new URL("/unauthorized", req.url)));
+            return NextResponse.redirect(new URL("/unauthorized", req.url));
         }
     }
 
-    return withCookieCleanup(req, NextResponse.next());
+    return NextResponse.next();
 }
 
 export const config = {

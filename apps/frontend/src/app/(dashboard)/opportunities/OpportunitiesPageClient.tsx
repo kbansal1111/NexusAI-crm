@@ -296,6 +296,19 @@ export default function OpportunitiesPageClient({
 
     return (
         <div className="crm-page">
+            {/* Page header — same pattern as Leads/Accounts. The BD Panel embeds
+                this client under its own heading, so hide ours there too. */}
+            {!hideModuleIcon && (
+                <div className="crm-surface px-4 py-3">
+                    <div>
+                        <h1>{labels.opportunities}</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Track and manage your deals through every stage of the pipeline.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="crm-surface space-y-4 rounded-b-none border-b-0 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">

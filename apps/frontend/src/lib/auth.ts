@@ -12,6 +12,18 @@ import { fetchWithRetry } from "@/lib/server-fetch";
 // read from the token's exp claim; this is only a decode-failure safety net.
 const ACCESS_TOKEN_FALLBACK_MS = 60 * 60 * 1000; // 1 hour
 
+// Refresh the access token once it has less than this long to live. Must be
+// comfortably larger than the SessionProvider refetchInterval (4 min, see
+// providers.tsx) so the client-side session poll — the only place a refreshed
+// token can be PERSISTED back into the cookie (RSC renders can't Set-Cookie) —
+// always lands inside the refresh window before the token actually expires.
+const REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
+
+// After a transient refresh failure (backend blip / rate limit), don't retry
+// on every jwt callback — getServerSession runs in the layout AND page of every
+// SSR render, so an unthrottled retry loop hammers a struggling backend.
+const REFRESH_FAILURE_COOLDOWN_MS = 20 * 1000;
+
 /** Decode a JWT's `exp` claim (seconds) into epoch ms, without verifying it. */
 function decodeJwtExpiryMs(jwt?: string): number | null {
     if (!jwt) return null;
@@ -26,37 +38,113 @@ function decodeJwtExpiryMs(jwt?: string): number | null {
     }
 }
 
-/**
- * Exchange the 30-day refresh token for a fresh access token via the backend.
- * On failure (e.g. the refresh token itself expired at the 30-day cap), flags
- * the JWT so the client signs the user out cleanly.
- */
-async function refreshAccessToken(token: JWT): Promise<JWT> {
+// ── Silent access-token refresh ─────────────────────────────────────────────
+//
+// Failure taxonomy (this distinction is what keeps users logged in):
+//   DEFINITIVE — the backend judged the refresh token itself invalid/expired
+//     (400/401/403/422). The session is truly dead: flag
+//     `RefreshAccessTokenError` so ApiTokenSync/middleware bounce the user to
+//     login.
+//   TRANSIENT — anything else: network error, 5xx after retries, 429 rate
+//     limit. The refresh token is still perfectly valid; return the token
+//     UNCHANGED (no error flag) so the next jwt callback simply tries again.
+//     Flagging these used to hard-logout users on every backend blip or rate
+//     limit — the "asks me to login again and again" bug.
+const DEFINITIVE_REFRESH_STATUS = new Set([400, 401, 403, 422]);
+
+type RefreshResult =
+    | { ok: true; accessToken: string; refreshToken?: string }
+    | { ok: false; definitive: boolean; reason: string };
+
+// getServerSession runs in the root layout AND the page of every SSR render,
+// and the client session endpoint can fire concurrently with it — without
+// dedup a single navigation at expiry stampedes the backend /auth/refresh
+// endpoint. One in-flight backend call is shared per refresh token.
+const inflightRefreshes = new Map<string, Promise<RefreshResult>>();
+// refreshToken → epoch ms of the last transient failure (cooldown gate).
+const refreshFailureAt = new Map<string, number>();
+
+async function requestNewAccessToken(refreshToken: string): Promise<RefreshResult> {
     try {
         const baseUrl = getApiBaseUrlNoSlash().replace(/\/api\/v1$/, "");
-        // Retry transient 5xx/connection blips so a momentary backend hiccup
-        // doesn't flag a valid session for sign-out. A real expired/invalid
-        // refresh token returns 401 (not retried) and falls through to error.
+        // fetchWithRetry absorbs 5xx/connection blips; 4xx is returned as-is.
         const res = await fetchWithRetry(`${baseUrl}/auth/refresh`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: token.refreshToken }),
+            body: JSON.stringify({ refresh_token: refreshToken }),
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.access_token) {
-            throw new Error(data?.detail || `Refresh failed (${res.status})`);
+        const data = await res.json().catch(() => ({} as Record<string, unknown>));
+        if (res.ok && typeof data.access_token === "string") {
+            return {
+                ok: true,
+                accessToken: data.access_token,
+                // Backend doesn't rotate refresh tokens today, but honor a
+                // rotated one if it ever starts to — otherwise rotation would
+                // silently break every session at the first refresh.
+                refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : undefined,
+            };
         }
         return {
-            ...token,
-            accessToken: data.access_token,
-            accessTokenExpires: decodeJwtExpiryMs(data.access_token) ?? Date.now() + ACCESS_TOKEN_FALLBACK_MS,
-            error: undefined,
+            ok: false,
+            definitive: DEFINITIVE_REFRESH_STATUS.has(res.status),
+            reason: `Refresh failed (${res.status}): ${(data as { detail?: string })?.detail ?? ""}`,
         };
     } catch (error) {
-        logger.error("Token refresh failed:", error);
-        // Keep the (stale) token but flag the error so the client can re-login.
+        // Connection/network failure after retries — backend unreachable.
+        return { ok: false, definitive: false, reason: String(error) };
+    }
+}
+
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+    const refreshToken = token.refreshToken as string | undefined;
+    if (!refreshToken) {
         return { ...token, error: "RefreshAccessTokenError" };
     }
+
+    // 30-day hard cap reached — fail hard locally, no doomed round-trip.
+    const refreshExpires = decodeJwtExpiryMs(refreshToken);
+    if (refreshExpires !== null && Date.now() >= refreshExpires) {
+        return { ...token, error: "RefreshAccessTokenError" };
+    }
+
+    // Cooldown after a transient failure: keep serving the stale token instead
+    // of re-hitting a struggling backend from every concurrent SSR render.
+    const failedAt = refreshFailureAt.get(refreshToken);
+    if (failedAt && Date.now() - failedAt < REFRESH_FAILURE_COOLDOWN_MS) {
+        return token;
+    }
+
+    let inflight = inflightRefreshes.get(refreshToken);
+    if (!inflight) {
+        inflight = requestNewAccessToken(refreshToken).finally(() => {
+            inflightRefreshes.delete(refreshToken);
+        });
+        inflightRefreshes.set(refreshToken, inflight);
+    }
+    const result = await inflight;
+
+    if (result.ok) {
+        refreshFailureAt.delete(refreshToken);
+        return {
+            ...token,
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken ?? refreshToken,
+            accessTokenExpires: decodeJwtExpiryMs(result.accessToken) ?? Date.now() + ACCESS_TOKEN_FALLBACK_MS,
+            error: undefined,
+        };
+    }
+
+    if (result.definitive) {
+        logger.error("Token refresh rejected — session is dead:", result.reason);
+        return { ...token, error: "RefreshAccessTokenError" };
+    }
+
+    // Transient — keep the session alive; the next callback retries after the
+    // cooldown. API calls may 401 against the stale token in the meantime, but
+    // recover as soon as the backend does (see the 401 interceptor).
+    logger.error("Token refresh transiently failed (keeping session):", result.reason);
+    refreshFailureAt.set(refreshToken, Date.now());
+    return token;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -155,16 +243,17 @@ export const authOptions: NextAuthOptions = {
                 }
             }
 
-            // 3) Access token still valid (60s safety buffer) → use as-is.
-            if (token.accessTokenExpires && Date.now() < token.accessTokenExpires - 60_000) {
+            // 3) Access token still comfortably valid → use as-is. The buffer
+            // is generous (5 min) so the client session poll refreshes and
+            // PERSISTS a new token before the old one actually expires.
+            if (token.accessTokenExpires && Date.now() < token.accessTokenExpires - REFRESH_BUFFER_MS) {
                 return token;
             }
 
-            // 4) Expired/near-expiry → silent refresh with the 30-day refresh token.
-            if (token.refreshToken) {
-                return await refreshAccessToken(token);
-            }
-            return token;
+            // 4) Expired/near-expiry → silent refresh with the 30-day refresh
+            // token. Handles the no-refresh-token case itself (definitive
+            // error → clean bounce to login instead of a zombie session).
+            return await refreshAccessToken(token);
         },
         async session({ session, token }) {
             if (token && session.user) {

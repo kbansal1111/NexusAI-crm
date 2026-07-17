@@ -133,7 +133,13 @@ async def login_for_access_token(request: Request, response: Response, form_data
 
 
 @router.post("/refresh")
-@limiter.limit("10/minute")
+# Refresh calls originate from the frontend SERVER (Next.js on Cloudflare
+# Workers), so every user's silent refresh arrives from a small shared pool of
+# Worker egress IPs — a low per-IP cap here rate-limited legitimate sessions
+# and forcibly logged users out mid-session. Possession of a validly-signed
+# refresh token is already the credential (it can't be brute-forced within the
+# limit anyway); the cap only needs to stop abusive floods.
+@limiter.limit("120/minute")
 async def refresh_token(request: Request, response: Response, token_data: RefreshToken):
     """Refresh access token"""
     service = AuthService()

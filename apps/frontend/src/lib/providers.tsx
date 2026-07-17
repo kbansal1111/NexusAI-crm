@@ -17,8 +17,14 @@ export function Providers({ children, session }: { children: React.ReactNode, se
         },
     }));
 
+    // Session poll every 4 minutes (< the 5-min refresh buffer in lib/auth.ts).
+    // The /api/auth/session route is the ONLY place a silently-refreshed access
+    // token can be persisted into the session cookie (RSC renders can't
+    // Set-Cookie), so the poll keeps the cookie fresh and SSR renders never
+    // see an expired token. refetchOnWindowFocus revalidates immediately after
+    // laptop sleep / long-backgrounded tabs, where timers were throttled.
     return (
-        <SessionProvider session={session} refetchOnWindowFocus={false} refetchInterval={0}>
+        <SessionProvider session={session} refetchOnWindowFocus refetchInterval={4 * 60} refetchWhenOffline={false}>
             <ApiTokenSync />
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
                 <QueryClientProvider client={queryClient}>
