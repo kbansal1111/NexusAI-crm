@@ -485,7 +485,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                         onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
                     />
                 </div>
-                <div className={cn("flex justify-end gap-4 pt-4 border-t", isDrawer && "sticky bottom-0 z-10 -mx-5 -mb-5 bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85")}>
+                <div className={cn("flex justify-end gap-4 pt-4 border-t", isDrawer && "sticky bottom-0 z-10 -mx-5 -mb-5 bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]")}>
                     <Button type="button" variant="outline" onClick={() => onCancel ? onCancel() : router.back()}>
                         {isDrawer ? "Close" : "Cancel"}
                     </Button>

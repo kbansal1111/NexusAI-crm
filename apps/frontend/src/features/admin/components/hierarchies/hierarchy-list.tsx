@@ -141,23 +141,23 @@ function HierarchyRow({
             style={style}
             className="crm-surface flex items-stretch transition-all hover:shadow-md mb-2"
         >
-            {/* Depth indicator bars */}
+            {/* Depth indicator bars — narrower on phones so deep trees still fit */}
             {depth > 0 && (
                 <div className="flex shrink-0">
                     {Array.from({ length: depth }).map((_, i) => (
                         <div
                             key={i}
-                            className="w-6 border-r border-border/50 shrink-0"
+                            className="w-3 sm:w-6 border-r border-border/50 shrink-0"
                         />
                     ))}
-                    <div className="w-4 flex items-center justify-center shrink-0">
+                    <div className="w-2 sm:w-4 flex items-center justify-center shrink-0">
                         <div className="w-3 h-px bg-border" />
                     </div>
                 </div>
             )}
 
-            {/* Main row content */}
-            <div className="flex-1 flex items-center gap-4 px-4 py-3 min-w-0">
+            {/* Main row content — wraps into stacked lines on small screens */}
+            <div className="flex-1 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 sm:px-4 py-3 min-w-0">
                 {/* Drag handle */}
                 <button
                     type="button"
@@ -169,14 +169,14 @@ function HierarchyRow({
                 </button>
 
                 {/* Name */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-32 basis-32">
                     <span className="text-sm font-semibold text-foreground truncate block">
                         {hierarchy.name}
                     </span>
                 </div>
 
                 {/* Related Roles + User Count */}
-                <div className="flex flex-col items-start gap-0.5 w-40 shrink-0">
+                <div className="flex flex-col items-start gap-0.5 shrink-0 sm:w-40">
                     <span className="text-sm font-medium text-primary">
                         Related Role {relatedRolesCount}
                     </span>
@@ -191,7 +191,7 @@ function HierarchyRow({
                 </div>
 
                 {/* Reports To */}
-                <div className="w-44 shrink-0">
+                <div className="shrink-0 sm:w-44">
                     {parentName ? (
                         <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground">Reports To:</span>
@@ -203,7 +203,7 @@ function HierarchyRow({
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                     {canCreate && (
                         <Button
                             size="sm"
@@ -381,7 +381,7 @@ export function HierarchyList() {
                             Add New Role
                         </Button>
                     ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
                             <Input
                                 placeholder="Role name"
                                 value={newRootName}
@@ -389,7 +389,7 @@ export function HierarchyList() {
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter") void createRootHierarchy();
                                 }}
-                                className="w-64"
+                                className="w-full sm:w-64"
                             />
                             <Button onClick={createRootHierarchy} disabled={createHierarchy.isPending}>
                                 Save

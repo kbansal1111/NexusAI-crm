@@ -22,6 +22,9 @@ export interface AdditionalField {
   default_value?: string | null;
   is_mandatory: boolean;
   is_active: boolean;
+  /** Schema-bound Additional Information field (seeded per tenant) — always on
+   * the form; cannot be deleted, renamed, deactivated, or made mandatory. */
+  is_system?: boolean;
   sorting: number;
   options: string[];
   created_at: string;

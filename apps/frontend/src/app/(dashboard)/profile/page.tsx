@@ -6,7 +6,8 @@ import { usersExtraService, type ProfileSummary } from "@/lib/api/services/users
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, KeyRound } from "lucide-react";
+import { Loader2, KeyRound, UserCircle2 } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import {
   Dialog,
   DialogContent,
@@ -67,10 +68,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">My Profile</h1>
-        <p className="text-sm text-muted-foreground">Personal info, avatar, password.</p>
+    <div className="p-4 sm:p-6 max-w-2xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={UserCircle2}
+          title="My Profile"
+          description="Personal info, avatar, password."
+        />
       </div>
 
       <div className="rounded-lg border p-4 space-y-3">

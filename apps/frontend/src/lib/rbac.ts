@@ -7,10 +7,14 @@ import type { NavItem } from "@/components/layout/nav-items";
 const ROUTE_RULES: { prefix: string; permission: string }[] = [
     { prefix: "/admin/role-management", permission: "view_role" },
     { prefix: "/admin/users", permission: "view_user" },
-    { prefix: "/admin/departments", permission: "manage_system" },
-    { prefix: "/admin/hierarchies", permission: "manage_system" },
+    // Must mirror what the backend endpoints actually enforce (hierarchies.py
+    // allows view_hierarchy OR view_department; person accounts are Account
+    // records served under view_account) — a stricter rule here bounces users
+    // to /unauthorized on pages whose APIs they are allowed to call.
+    { prefix: "/admin/departments", permission: "view_department" },
+    { prefix: "/admin/hierarchies", permission: "view_hierarchy" },
     { prefix: "/admin", permission: "view_user" },
-    { prefix: "/person-accounts", permission: "view_person_account" },
+    { prefix: "/person-accounts", permission: "view_account" },
     { prefix: "/accessflow/opportunities", permission: "view_opportunity" },
     { prefix: "/accounts", permission: "view_account" },
     { prefix: "/contacts", permission: "view_contact" },

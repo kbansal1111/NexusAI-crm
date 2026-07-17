@@ -42,6 +42,20 @@ class AdditionalFieldUpdate(BaseModel):
     options: Optional[List[str]] = None
 
 
+def _coerce_options(v: object) -> List[str]:
+    """Options may be plain strings (Settings API) or legacy {label,value}
+    dicts (Laravel-era docs) — normalize both to display strings."""
+    if v is None:
+        return []
+    out: List[str] = []
+    for item in v:  # type: ignore[union-attr]
+        if isinstance(item, dict):
+            out.append(str(item.get("label") or item.get("name") or item.get("value") or item))
+        else:
+            out.append(str(item))
+    return out
+
+
 class AdditionalFieldResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     id: PydanticObjectId = Field(validation_alias="_id", serialization_alias="id")
@@ -53,8 +67,11 @@ class AdditionalFieldResponse(BaseModel):
     default_value: Optional[str] = None
     is_mandatory: bool = False  # default for legacy docs missing this field
     is_active: bool = True
+    # Schema-bound Additional Information fields (seeded per tenant) — the UI
+    # shows these with a "System" badge and the API blocks destructive edits.
+    is_system: bool = False
     sorting: int = 0
-    options: Annotated[List[str], BeforeValidator(lambda v: v if v is not None else [])] = Field(default_factory=list)
+    options: Annotated[List[str], BeforeValidator(_coerce_options)] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

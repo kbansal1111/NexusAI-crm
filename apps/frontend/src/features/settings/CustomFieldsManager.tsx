@@ -28,7 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, GripVertical, Loader2 } from "lucide-react";
+import { Plus, Trash2, GripVertical, Loader2, Lock } from "lucide-react";
 
 const FIELD_TYPES = [
   { value: "text", label: "Text" },
@@ -113,8 +113,8 @@ export function CustomFieldsManager({ entity }: { entity: EntityType }) {
       setItems((prev) =>
         prev.map((p) => (p.id === item.id ? { ...p, is_active: !item.is_active } : p)),
       );
-    } catch (e) {
-      toast.error("Toggle failed");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Toggle failed");
     }
   }
 
@@ -124,8 +124,8 @@ export function CustomFieldsManager({ entity }: { entity: EntityType }) {
       setItems((prev) =>
         prev.map((p) => (p.id === item.id ? { ...p, is_mandatory: !item.is_mandatory } : p)),
       );
-    } catch (e) {
-      toast.error("Toggle failed");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Toggle failed");
     }
   }
 
@@ -135,8 +135,8 @@ export function CustomFieldsManager({ entity }: { entity: EntityType }) {
       await customFieldsService.delete(entity, id);
       setItems((prev) => prev.filter((p) => p.id !== id));
       toast.success("Deleted");
-    } catch (e) {
-      toast.error("Delete failed");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Delete failed");
     }
   }
 
@@ -298,31 +298,45 @@ export function CustomFieldsManager({ entity }: { entity: EntityType }) {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="font-medium">{item.label || item.name}</div>
+                    <div className="flex items-center gap-2 font-medium">
+                      {item.label || item.name}
+                      {item.is_system && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
+                          title="Built-in Additional Information field — always shown on the form; it cannot be deleted, deactivated, or made mandatory."
+                        >
+                          <Lock className="h-2.5 w-2.5" /> System
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{item.name}</div>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">{item.field_type}</td>
                   <td className="px-3 py-2">
                     <Switch
                       checked={item.is_active}
+                      disabled={item.is_system}
                       onCheckedChange={() => toggleActive(item)}
                     />
                   </td>
                   <td className="px-3 py-2">
                     <Switch
                       checked={item.is_mandatory}
+                      disabled={item.is_system}
                       onCheckedChange={() => toggleMandatory(item)}
                     />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteField(item.id)}
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {!item.is_system && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteField(item.id)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

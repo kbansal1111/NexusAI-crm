@@ -18,7 +18,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Folder, Lock, Globe2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Folder, FolderOpen, Lock, Globe2, Loader2 } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 export default function ReportFoldersPage() {
   const [items, setItems] = useState<ReportFolder[]>([]);
@@ -54,14 +55,13 @@ export default function ReportFoldersPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Report Folders</h1>
-          <p className="text-sm text-muted-foreground">
-            Organize reports into folders. Share with users or whole tenant.
-          </p>
-        </div>
+    <div className="p-4 sm:p-6 max-w-4xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={FolderOpen}
+          title="Report Folders"
+          description="Organize reports into folders. Share with users or whole tenant."
+        />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>

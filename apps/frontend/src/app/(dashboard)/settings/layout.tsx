@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
   Building2,
   Award,
   ListTree,
@@ -19,21 +18,10 @@ import {
 } from "lucide-react";
 import { ReactNode } from "react";
 
-const ENTITY_TYPES = [
-  "account",
-  "contact",
-  "lead",
-  "opportunity",
-  "supplier",
-  "personal_account",
-  "task",
-] as const;
-
 const SECTIONS: { title: string; items: { href: string; label: string; icon: ReactNode }[] }[] = [
   {
     title: "Company",
     items: [
-      { href: "/settings", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
       { href: "/settings/company", label: "Company Profile", icon: <Building2 className="h-4 w-4" /> },
       { href: "/settings/leaderboard", label: "Leaderboard", icon: <Award className="h-4 w-4" /> },
       { href: "/settings/email-footer", label: "Email Footer", icon: <Mail className="h-4 w-4" /> },
@@ -63,14 +51,24 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Rea
   },
 ];
 
+function isActivePath(pathname: string, href: string) {
+  // "/settings" itself redirects to /settings/company; exact-match it so no
+  // item stays highlighted on every subpage if such a link is ever added back.
+  if (href === "/settings") return pathname === "/settings";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   return (
-    <div className="flex h-[calc(100vh-4rem)] w-full">
-      <aside className="w-64 shrink-0 border-r bg-muted/30 p-4 overflow-y-auto">
-        <div className="mb-4 flex items-center gap-2 px-2 text-sm font-semibold">
-          <SettingsIcon className="h-4 w-4" />
-          Settings
+    <div className="flex w-full flex-col lg:h-[calc(100vh-4rem)] lg:flex-row">
+      {/* Desktop: fixed sidebar */}
+      <aside className="hidden w-64 shrink-0 overflow-y-auto border-r bg-muted/30 p-4 lg:block">
+        <div className="mb-4 flex items-center gap-3 px-2">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-chart-5 text-white shadow-sm">
+            <SettingsIcon className="h-5 w-5" />
+          </div>
+          <span className="text-base font-bold tracking-tight">Settings</span>
         </div>
         <nav className="space-y-6">
           {SECTIONS.map((section) => (
@@ -80,7 +78,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
               </div>
               <ul className="space-y-1">
                 {section.items.map((item) => {
-                  const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                  const active = isActivePath(pathname, item.href);
                   return (
                     <li key={item.href}>
                       <Link
@@ -103,7 +101,38 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
           ))}
         </nav>
       </aside>
-      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+
+      {/* Mobile / tablet: stacked header + horizontally scrollable nav chips */}
+      <div className="border-b bg-muted/30 px-3 py-2 lg:hidden">
+        <div className="mb-2 flex items-center gap-2 px-1">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-chart-5 text-white shadow-sm">
+            <SettingsIcon className="h-4 w-4" />
+          </div>
+          <span className="text-sm font-bold tracking-tight">Settings</span>
+        </div>
+        <nav className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {SECTIONS.flatMap((section) => section.items).map((item) => {
+            const active = isActivePath(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground hover:bg-muted",
+                )}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
     </div>
   );
 }

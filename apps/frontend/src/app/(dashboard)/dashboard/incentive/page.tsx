@@ -10,7 +10,8 @@ import {
 } from "@/lib/api/services/dashboards-extra.service";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Loader2, IndianRupee } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, IndianRupee, Gift } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 function IncentiveTable({ records }: { records: UserIncentiveEntry["records"] }) {
   return (
@@ -130,7 +131,13 @@ export default function IncentivePage() {
 
   return (
     <div className="crm-page">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Incentive Records</h1>
+      <div className="crm-surface mb-6 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={Gift}
+          title="Incentive Records"
+          description="User and department incentive payouts."
+        />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Users Incentive Records — 2/3 width */}

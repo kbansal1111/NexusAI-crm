@@ -8,7 +8,8 @@ import {
 } from "@/lib/api/services/users-extra.service";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, BookUser } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 export default function DirectoryPage() {
   const [rows, setRows] = useState<DirectoryEntry[]>([]);
@@ -38,10 +39,13 @@ export default function DirectoryPage() {
   );
 
   return (
-    <div className="p-6 max-w-5xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">User Directory</h1>
-        <p className="text-sm text-muted-foreground">Active users in your tenant.</p>
+    <div className="p-4 sm:p-6 max-w-5xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={BookUser}
+          title="User Directory"
+          description="Active users in your tenant."
+        />
       </div>
       <Input
         placeholder="Search by name or email…"

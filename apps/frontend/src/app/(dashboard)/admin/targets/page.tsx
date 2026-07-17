@@ -8,7 +8,8 @@ import {
 } from "@/lib/api/services/users-extra.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, Crosshair } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import { formatNumber } from "@/lib/format";
 
 export default function TargetsPage() {
@@ -54,12 +55,13 @@ export default function TargetsPage() {
     );
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Sales Targets</h1>
-          <p className="text-sm text-muted-foreground">Set monthly target per user.</p>
-        </div>
+    <div className="p-4 sm:p-6 max-w-4xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={Crosshair}
+          title="Sales Targets"
+          description="Set monthly target per user."
+        />
         <Button onClick={saveAll} disabled={Object.keys(edits).length === 0}>
           Save changes
         </Button>

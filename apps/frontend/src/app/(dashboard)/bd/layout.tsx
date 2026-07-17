@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, CheckSquare, Plane } from "lucide-react";
+import { LayoutDashboard, Target, CheckSquare, Plane, Briefcase } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 const TABS = [
     { label: "Dashboard", href: "/bd", icon: LayoutDashboard, exact: true },
@@ -23,10 +24,11 @@ export default function BDPanelLayout({ children }: { children: React.ReactNode 
             {/* Panel header + tabs */}
             <div className="crm-surface px-4 pt-4">
                 <div className="mb-3">
-                    <h1 className="text-xl font-bold text-foreground">BD Panel</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Territory-scoped pipeline, tasks, and departures.
-                    </p>
+                    <ModuleTitle
+                        icon={Briefcase}
+                        title="BD Panel"
+                        description="Territory-scoped pipeline, tasks, and departures."
+                    />
                 </div>
                 <nav className="flex flex-wrap gap-1 border-b border-border">
                     {TABS.map((tab) => {

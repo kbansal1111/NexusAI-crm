@@ -106,6 +106,146 @@ def _resolve_value_config(entity_type: str) -> Dict[str, Any]:
     return CUSTOM_FIELD_VALUE_MAP[entity_type]
 
 
+# --------- System (schema-bound) additional fields ---------
+#
+# The Lead / Opportunity forms render an "Additional Information" section whose
+# values live in the record's `custom_fields` dict (see app/models/lead.py),
+# and the saved-view filters expose them as `custom_fields.<name>`. They ARE
+# custom fields — so they must appear in Settings → Custom Fields — but their
+# machine names / types are referenced by the hardcoded forms and filter
+# catalogs, so deleting/renaming/deactivating them would silently desync the
+# UI. They are lazy-seeded per tenant with is_system=True and the CRUD below
+# blocks destructive edits on them.
+
+from app.core.segment_constants import Segment
+
+SYSTEM_ADDITIONAL_FIELDS: Dict[str, List[Dict[str, Any]]] = {
+    "lead": [
+        {"name": "segment", "label": "Segment", "field_type": "dropdown",
+         "options": [Segment.B2C, Segment.B2B, Segment.CORPORATE],
+         "description": "Lead form — Additional Information. Stored in custom_fields.segment."},
+        {"name": "campaign_name", "label": "Campaign Name", "field_type": "text",
+         "description": "Lead form — Additional Information. Stored in custom_fields.campaign_name."},
+        {"name": "experience_id", "label": "Experience", "field_type": "dropdown",
+         "type_value": "experience",
+         "description": "Lead form — Additional Information. Options come from the Experience picklist. Stored in custom_fields.experience_id."},
+        {"name": "ip_address", "label": "IP Address", "field_type": "text",
+         "description": "Lead form — Additional Information. Auto-captured for website leads. Stored in custom_fields.ip_address."},
+    ],
+    "opportunity": [
+        {"name": "starting_city", "label": "Starting City", "field_type": "text",
+         "description": "Opportunity form — Additional Information. Stored in custom_fields.starting_city."},
+        # Stored TOP-LEVEL on the opportunity (drives the close-lost workflow),
+        # not in the custom_fields dict — listed here because Settings → Custom
+        # Fields is the management surface for the form's additional fields.
+        # Options are industry-specific, injected per tenant at seed time.
+        {"name": "close_lost_reason", "label": "Close Lost Reason", "field_type": "dropdown",
+         "description": "Opportunity form — appears when a deal is marked Closed Lost. "
+                        "Stored top-level on the opportunity (close-lost workflow)."},
+    ],
+}
+
+# Keep in sync with: apps/frontend/src/features/opportunities/utils/stageConfig.ts
+CLOSE_LOST_REASONS_BY_INDUSTRY: Dict[str, List[str]] = {
+    "travel": [
+        "Too late to respond", "Client changed the destination",
+        "Offered rates did not match client's expectations", "Client not responding",
+        "Travel Plan Cancelled", "Travel Plan Postponed",
+        "Booked with other Travel Agent", "Did not inquire",
+        "Duplicate Query", "Information Required",
+    ],
+    "healthcare": [
+        "Patient chose another provider", "Insurance not accepted", "Cost too high",
+        "Patient not responding", "Treatment no longer needed", "Referred elsewhere",
+        "Duplicate record", "Patient moved / relocated",
+    ],
+    "education": [
+        "Chose another institution", "Financial constraints",
+        "Did not meet admission criteria", "Student not responding",
+        "Application withdrawn", "Visa denied", "Duplicate application",
+        "Program no longer available",
+    ],
+    "manufacturing": [
+        "Lost to competitor", "Budget constraints", "Requirements changed",
+        "Client not responding", "Specifications not met",
+        "Delivery timeline mismatch", "Duplicate RFQ", "Project cancelled",
+    ],
+}
+
+
+async def ensure_system_additional_fields(
+    entity_type: str,
+    tenant_id: PydanticObjectId,
+) -> None:
+    """Idempotently seed the schema-bound Additional Information fields for a
+    tenant. Also adopts pre-existing same-name fields (marks them is_system)
+    so manually created duplicates gain the same protections."""
+    specs = SYSTEM_ADDITIONAL_FIELDS.get(entity_type)
+    if not specs:
+        return
+    Doc = _resolve_additional_doc(entity_type)
+    names = [s["name"] for s in specs]
+    existing = await Doc.find({
+        "tenant_id": tenant_id,
+        "entity_type": entity_type,
+        "name": {"$in": names},
+        "is_custom": {"$ne": False},
+    }).to_list()
+    by_name: Dict[str, Document] = {}
+    for d in existing:
+        by_name.setdefault(d.name, d)
+    now = datetime.utcnow()
+    for sorting, spec in enumerate(specs, start=1):
+        doc = by_name.get(spec["name"])
+        if doc is None:
+            spec = dict(spec)
+            # Close-lost reasons are industry-specific — resolve the tenant's
+            # industry and seed the matching option list (multi-industry rule).
+            if spec["name"] == "close_lost_reason":
+                from app.services.industry_service import get_tenant_industry
+                try:
+                    industry = await get_tenant_industry(tenant_id)
+                except Exception:
+                    industry = "travel"
+                spec["options"] = (
+                    CLOSE_LOST_REASONS_BY_INDUSTRY.get(industry)
+                    or CLOSE_LOST_REASONS_BY_INDUSTRY["travel"]
+                )
+            await Doc(
+                tenant_id=tenant_id,
+                is_system=True,
+                is_custom=True,
+                is_active=True,
+                sorting=sorting,
+                created_at=now,
+                updated_at=now,
+                **spec,
+            ).insert()
+        elif not getattr(doc, "is_system", False):
+            doc.is_system = True
+            doc.updated_at = now
+            await doc.save()
+
+    # These fields are managed on the Custom Fields page — purge any copies the
+    # (older) standard-fields seed created, so they never show on both pages.
+    await StandardField.find({
+        "tenant_id": tenant_id,
+        "entity_type": entity_type,
+        "is_custom": False,
+        "field_key": {"$in": names + [f"custom_fields.{n}" for n in names]},
+    }).delete()
+
+
+def _forbid_system_field_mutation(obj: Document, action: str) -> None:
+    if getattr(obj, "is_system", False):
+        raise HTTPException(
+            400,
+            f"'{getattr(obj, 'label', None) or obj.name}' is a built-in Additional "
+            f"Information field: the {obj.entity_type} form and its list-view "
+            f"filters depend on it, so it cannot be {action}.",
+        )
+
+
 # --------- AdditionalField CRUD ---------
 
 async def list_additional_fields(
@@ -151,6 +291,15 @@ async def create_additional_field(
     created_by: Optional[PydanticObjectId] = None,
 ) -> Document:
     Doc = _resolve_additional_doc(entity_type)
+    # A new field must not shadow a schema-bound system field's machine name —
+    # values for both would collide in the same custom_fields.<name> key.
+    reserved = {s["name"] for s in SYSTEM_ADDITIONAL_FIELDS.get(entity_type, [])}
+    if payload.name in reserved:
+        raise HTTPException(
+            400,
+            f"'{payload.name}' is reserved by the built-in {entity_type} "
+            f"Additional Information fields.",
+        )
     # If sorting not provided (== 0), append to end
     if payload.sorting == 0:
         max_sort_doc = await Doc.find({"tenant_id": tenant_id, "entity_type": entity_type}).sort("-sorting").first_or_none()
@@ -176,6 +325,12 @@ async def update_additional_field(
 ) -> Document:
     obj = await get_additional_field(entity_type, field_id, tenant_id)
     data = payload.model_dump(exclude_none=True)
+    # System fields: the form/filters bind to name + field_type + options and
+    # always render the field — only cosmetic ordering/description may change.
+    if getattr(obj, "is_system", False):
+        blocked = set(data) - {"sorting", "description"}
+        if blocked:
+            _forbid_system_field_mutation(obj, f"edited ({', '.join(sorted(blocked))})")
     for k, v in data.items():
         setattr(obj, k, v)
     if hasattr(obj, "last_modified_by_id") and modified_by:
@@ -191,6 +346,7 @@ async def delete_additional_field(
     tenant_id: PydanticObjectId,
 ) -> None:
     obj = await get_additional_field(entity_type, field_id, tenant_id)
+    _forbid_system_field_mutation(obj, "deleted")
     # Cascade-delete the associated custom-field values — MUST be tenant-scoped
     # so a shared field_id cannot ever delete value rows belonging to another
     # tenant.
@@ -234,6 +390,8 @@ async def toggle_additional_field_status(
     tenant_id: PydanticObjectId,
 ) -> Document:
     obj = await get_additional_field(entity_type, field_id, tenant_id)
+    if not is_active:
+        _forbid_system_field_mutation(obj, "deactivated")
     obj.is_active = is_active
     obj.updated_at = datetime.utcnow()
     await obj.save()
@@ -247,6 +405,7 @@ async def toggle_additional_field_mandatory(
     tenant_id: PydanticObjectId,
 ) -> Document:
     obj = await get_additional_field(entity_type, field_id, tenant_id)
+    _forbid_system_field_mutation(obj, "made mandatory/optional")
     obj.is_mandatory = is_mandatory
     obj.updated_at = datetime.utcnow()
     await obj.save()
@@ -314,10 +473,11 @@ DEFAULT_STANDARD_FIELDS: Dict[str, list] = {
         ("state",             "State",               "text",     True,  False),
         ("zip",               "Zip / Postal Code",   "text",     False, False),
         ("country",           "Country",             "text",     True,  False),
-        ("custom_fields.campaign_name", "Campaign Name", "text",   False, False),
-        ("custom_fields.segment",       "Segment",       "select", False, False),
-        ("custom_fields.experience_id", "Experience",    "lookup", False, False),
-        ("custom_fields.ip_address",    "IP Address",    "text",   False, False),
+        # NOTE: the Additional Information fields (segment / campaign_name /
+        # experience_id / ip_address) are NOT standard fields — they live in
+        # the custom_fields dict and are seeded into Settings → Custom Fields
+        # via SYSTEM_ADDITIONAL_FIELDS. Never re-add them here: they'd show up
+        # duplicated on both Settings pages.
         ("creation_type",     "Creation Type",       "select",   False, False),
     ],
 
@@ -334,7 +494,10 @@ DEFAULT_STANDARD_FIELDS: Dict[str, list] = {
         ("description",       "Description",         "textarea", False, False),
         ("account_id",        "Account",             "lookup",   False, False),
         ("contact_id",        "Contact",             "lookup",   False, False),
-        ("close_lost_reason", "Close Lost Reason",   "select",   False, False),
+        # NOTE: close_lost_reason is managed on Settings → Custom Fields (a
+        # SYSTEM row in SYSTEM_ADDITIONAL_FIELDS) per the product decision that
+        # all form "Additional Information" fields are managed there. Never
+        # re-add it here — it would show duplicated on both Settings pages.
     ],
 
     # ----- SUPPLIER -----
@@ -468,6 +631,22 @@ async def list_standard_fields(
 ) -> List[StandardField]:
     # Lazy-seed defaults on first access for this tenant + entity
     await _seed_defaults_if_empty(entity_type, tenant_id)
+
+    # Self-heal: earlier seed lists wrongly included the Additional Information
+    # fields (custom_fields.* dict keys, and opportunity's close_lost_reason)
+    # as standard fields — they are managed on Settings → Custom Fields now
+    # (SYSTEM_ADDITIONAL_FIELDS). Remove any previously seeded copies so they
+    # don't appear on both Settings pages.
+    relocated = [s["name"] for s in SYSTEM_ADDITIONAL_FIELDS.get(entity_type, [])]
+    await StandardField.find({
+        "tenant_id": tenant_id,
+        "entity_type": entity_type,
+        "is_custom": False,
+        "$or": [
+            {"field_key": {"$regex": r"^custom_fields\."}},
+            {"field_key": {"$in": relocated}},
+        ],
+    }).delete()
 
     std_filter: dict = {"tenant_id": tenant_id, "entity_type": entity_type, "is_custom": False}
     if active_only:

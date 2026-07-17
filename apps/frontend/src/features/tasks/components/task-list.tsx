@@ -181,7 +181,12 @@ function EditableTaskCell({
     );
 }
 
-export function TaskList() {
+export function TaskList({
+    hideModuleIcon = false,
+}: {
+    /** BD Panel embeds this list under its own module badge — hide ours there. */
+    hideModuleIcon?: boolean;
+} = {}) {
     const { data: session } = useSession();
     const [page, setPage] = React.useState(1);
     const [statusFilter, setStatusFilter] = React.useState<string>("__all__");
@@ -276,7 +281,7 @@ export function TaskList() {
             {/* Toolbar */}
             <div className="crm-toolbar mb-4 justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <ListCountHeader label="Tasks" count={tasks.length} icon={CheckSquare}>
+                    <ListCountHeader label="Tasks" count={tasks.length} icon={hideModuleIcon ? undefined : CheckSquare}>
                         <ListViewSelector entity={entity} presetLabel="All records" />
                     </ListCountHeader>
                     <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>

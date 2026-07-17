@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export default function BDTasksPage() {
     return (
         <div className="pt-4">
-            <TaskList />
+            <TaskList hideModuleIcon />
         </div>
     );
 }

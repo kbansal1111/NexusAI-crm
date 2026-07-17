@@ -3,7 +3,8 @@
 import { useGetEvents } from "@/features/events/api/use-events";
 import { EventList } from "@/features/events/components/event-list";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, CalendarDays } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import Link from "next/link";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -17,12 +18,11 @@ export default function EventsPage() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Events</h1>
-                    <p className="text-muted-foreground">
-                        Manage your calendar, meetings, and calls.
-                    </p>
-                </div>
+                <ModuleTitle
+                    icon={CalendarDays}
+                    title="Events"
+                    description="Manage your calendar, meetings, and calls."
+                />
                 <PermissionGate permission="create_event">
                     <Button asChild>
                         <Link href="/events/new">

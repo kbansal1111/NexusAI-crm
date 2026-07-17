@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { subscriptionService } from "@/lib/api/services/subscription.service";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, RefreshCw, CreditCard } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import { formatNumber } from "@/lib/format";
 
 export default function BillingPage() {
@@ -44,10 +45,13 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Billing & Plans</h1>
-        <p className="text-sm text-muted-foreground">Subscription status and invoices.</p>
+    <div className="p-4 sm:p-6 max-w-4xl space-y-6">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={CreditCard}
+          title="Billing & Plans"
+          description="Subscription status and invoices."
+        />
       </div>
 
       <div className="rounded-lg border p-4">

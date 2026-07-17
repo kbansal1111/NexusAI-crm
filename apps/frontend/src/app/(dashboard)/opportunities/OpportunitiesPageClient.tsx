@@ -77,7 +77,12 @@ import { toast } from "sonner";
 
 type ViewMode = "list" | "kanban";
 
-export default function OpportunitiesPageClient() {
+export default function OpportunitiesPageClient({
+    hideModuleIcon = false,
+}: {
+    /** BD Panel embeds this page under its own module badge — hide ours there. */
+    hideModuleIcon?: boolean;
+} = {}) {
     const [viewMode, setViewMode] = useState<ViewMode>("list");
     const [groupByOwner, setGroupByOwner] = useState(true);
     const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
@@ -294,7 +299,7 @@ export default function OpportunitiesPageClient() {
             <div className="crm-surface space-y-4 rounded-b-none border-b-0 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
-                        <ListCountHeader label={labels.opportunity} count={totalCount ?? opportunities.length} icon={Target}>
+                        <ListCountHeader label={labels.opportunity} count={totalCount ?? opportunities.length} icon={hideModuleIcon ? undefined : Target}>
                             <ListViewSelector entity="opportunity" presetLabel={`All ${labels.opportunities}`} />
                         </ListCountHeader>
                     </div>

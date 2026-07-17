@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, SearchCheck } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 const ALL_MODULES = [
   "lead",
@@ -78,14 +79,13 @@ export default function SearchModulesPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Search modules</h1>
-          <p className="text-sm text-muted-foreground">
-            Toggle which modules global search covers and tune relevance weights.
-          </p>
-        </div>
+    <div className="p-4 sm:p-6 max-w-3xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={SearchCheck}
+          title="Search modules"
+          description="Toggle which modules global search covers and tune relevance weights."
+        />
         <Button onClick={save} disabled={saving}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           <Save className="mr-1 h-4 w-4" />

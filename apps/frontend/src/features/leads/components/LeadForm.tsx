@@ -1142,7 +1142,7 @@ export function LeadForm({
                     </div>
 
                     {/* Sticky footer */}
-                    <div className="sticky bottom-0 z-10 flex justify-end gap-3 border-t bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+                    <div className="sticky bottom-0 z-10 flex justify-end gap-3 border-t bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]">
                         <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={isLoading}>
                             Close
                         </Button>

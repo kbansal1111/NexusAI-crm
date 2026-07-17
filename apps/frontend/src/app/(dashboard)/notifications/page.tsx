@@ -18,6 +18,7 @@ import {
     Filter,
     MoreHorizontal,
 } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,15 +113,15 @@ export default function NotificationsPage() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-                    <p className="text-muted-foreground">
-                        {unreadCount > 0
-                            ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
+                <ModuleTitle
+                    icon={Bell}
+                    title="Notifications"
+                    description={
+                        unreadCount > 0
+                            ? `You have ${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
                             : "You're all caught up!"
-                        }
-                    </p>
-                </div>
+                    }
+                />
                 <div className="flex flex-wrap items-center gap-2">
                     {unreadCount > 0 && (
                         <Button

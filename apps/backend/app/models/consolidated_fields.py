@@ -39,9 +39,17 @@ class BaseField(Document):
     is_default: bool = False
     is_hidden: bool = False
     is_custom: bool = True
-    
-    # For select/multiselect fields
-    options: Optional[List[Dict[str, Any]]] = None
+    # Schema-bound fields (e.g. the Lead form's Additional Information section:
+    # segment / campaign_name / experience_id / ip_address). These are rendered
+    # by the hardcoded form + saved-view filters against custom_fields.<name>,
+    # so their name/type/active state must never drift — the service layer
+    # blocks delete/rename/deactivate for them.
+    is_system: bool = False
+
+    # For select/multiselect fields.
+    # NOTE: the Settings API (AdditionalFieldCreate) sends plain strings while
+    # legacy Laravel-era docs stored {label, value} dicts — accept both.
+    options: Optional[List[Any]] = None
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

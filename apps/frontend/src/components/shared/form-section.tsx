@@ -51,8 +51,13 @@ export const FORM_SHELL_CLASS = [
     "[&_[data-slot=select-trigger]]:text-foreground",
 ].join(" ");
 
-/** Body wrapper for drawer forms: same padding/rhythm as the Lead form. */
-export const FORM_BODY_CLASS = "px-5 py-4 space-y-5";
+/** Body wrapper for drawer forms: same padding/rhythm as the Lead form.
+ * pb-6 keeps the last field clear of the sticky Save/Close footer. */
+export const FORM_BODY_CLASS = "px-5 pt-4 pb-6 space-y-5";
+
+/** Top shadow for sticky drawer footers — makes the boundary visible when
+ * form content scrolls beneath the translucent action bar. */
+export const FORM_FOOTER_SHADOW = "shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]";
 
 /** Two-column field grid with the shared density. */
 export const FORM_GRID_CLASS = "grid gap-3 grid-cols-1 sm:grid-cols-2";

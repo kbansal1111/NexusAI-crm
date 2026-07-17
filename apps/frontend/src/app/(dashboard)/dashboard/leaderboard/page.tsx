@@ -11,6 +11,7 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Loader2, Trophy, Medal } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 const RANK_COLORS: Record<number, string> = {
   1: "bg-yellow-400 text-yellow-900",
@@ -116,13 +117,12 @@ export default function LeaderboardPage() {
   return (
     <div className="crm-page space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Leader Board</h1>
-          {data?.period_label && (
-            <p className="text-sm text-muted-foreground">{data.period_label}</p>
-          )}
-        </div>
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={Trophy}
+          title="Leader Board"
+          description={data?.period_label || "Team performance rankings."}
+        />
         <div className="flex rounded-lg border border-border overflow-hidden text-sm font-medium">
           <button
             className={cn(

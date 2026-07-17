@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export default function BDDeparturePage() {
     return (
         <div className="pt-4">
-            <DeparturePage />
+            <DeparturePage embedded />
         </div>
     );
 }

@@ -17,8 +17,9 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Users as UsersIcon } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 export function UserList() {
     const { data, isLoading, isError } = useGetUsers();
@@ -55,10 +56,14 @@ export function UserList() {
 
     return (
         <>
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold">Users</h2>
-                    <Badge variant="secondary" className="tabular-nums">
+            <div className="crm-surface mb-4 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                    <ModuleTitle
+                        icon={UsersIcon}
+                        title="Users"
+                        description="Manage your team's accounts and access."
+                    />
+                    <Badge variant="secondary" className="shrink-0 tabular-nums">
                         {users.length} {users.length === 1 ? "user" : "users"}
                     </Badge>
                 </div>
@@ -69,7 +74,7 @@ export function UserList() {
                 )}
             </div>
 
-            <div className="rounded-md border">
+            <div className="crm-surface overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>

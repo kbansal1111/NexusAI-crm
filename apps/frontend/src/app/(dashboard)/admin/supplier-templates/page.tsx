@@ -18,7 +18,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, MailPlus } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 export default function SupplierTemplatesPage() {
   const [items, setItems] = useState<SupplierTemplate[]>([]);
@@ -53,12 +54,13 @@ export default function SupplierTemplatesPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Supplier email templates</h1>
-          <p className="text-sm text-muted-foreground">RFQ + supplier outreach templates.</p>
-        </div>
+    <div className="p-4 sm:p-6 max-w-4xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={MailPlus}
+          title="Supplier email templates"
+          description="RFQ + supplier outreach templates."
+        />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>

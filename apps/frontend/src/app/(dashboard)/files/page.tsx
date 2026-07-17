@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Trash, FileIcon, Loader2 } from "lucide-react";
+import { Download, Trash, FileIcon, Loader2, HardDrive } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import { formatDate } from "@/lib/format";
 import { apiClient } from "@/lib/api/client";
 import { blobErrorDetail } from "@/lib/api/blobError";
@@ -47,11 +48,15 @@ export default function FilesPage() {
 
     return (
         <div className="flex-1 space-y-4 p-4 sm:p-8 pt-4 sm:pt-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-3xl font-bold tracking-tight">Files</h2>
+            <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <ModuleTitle
+                    icon={HardDrive}
+                    title="Drive"
+                    description="Your uploaded files, in one place."
+                />
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
+                <Card className="lg:col-span-4">
                     <CardHeader>
                         <CardTitle>My Files{data ? ` (${data.total})` : ""}</CardTitle>
                         <CardDescription>
@@ -59,7 +64,7 @@ export default function FilesPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="rounded-md border">
+                        <div className="rounded-md border overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -112,7 +117,7 @@ export default function FilesPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="col-span-3">
+                <Card className="lg:col-span-3">
                     <CardHeader>
                         <CardTitle>Quick Upload</CardTitle>
                         <CardDescription>Upload a file to your Drive (stored in S3).</CardDescription>

@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Upload, Download, FileSpreadsheet } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 const ENTITIES: { key: EntityType; label: string }[] = [
   { key: "lead", label: "Leads" },
@@ -70,12 +71,13 @@ export default function ImportsPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Imports & Exports</h1>
-        <p className="text-sm text-muted-foreground">
-          Bulk-load or download records for any entity.
-        </p>
+    <div className="p-4 sm:p-6 max-w-3xl space-y-6">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={FileSpreadsheet}
+          title="Imports & Exports"
+          description="Bulk-load or download records for any entity."
+        />
       </div>
 
       <div className="rounded-lg border p-4 space-y-3">

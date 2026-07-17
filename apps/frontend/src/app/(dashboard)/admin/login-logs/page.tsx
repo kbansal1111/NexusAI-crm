@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { usersExtraService, type LoginLog } from "@/lib/api/services/users-extra.service";
-import { Loader2 } from "lucide-react";
+import { Loader2, History } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import { formatDateTime } from "@/lib/format";
 
 export default function LoginLogsPage() {
@@ -26,10 +27,13 @@ export default function LoginLogsPage() {
     );
 
   return (
-    <div className="p-6 max-w-5xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Login logs</h1>
-        <p className="text-sm text-muted-foreground">Last 200 login events for this tenant.</p>
+    <div className="p-4 sm:p-6 max-w-5xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={History}
+          title="Login logs"
+          description="Last 200 login events for this tenant."
+        />
       </div>
       {rows.length === 0 ? (
         <div className="rounded-md border border-dashed p-8 text-center text-muted-foreground">

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { formatDate } from "@/lib/format";
-import { Upload, Search, MoreHorizontal, FileText, Download, Trash2 } from "lucide-react";
+import { Upload, Search, MoreHorizontal, FileText, Download, Trash2, Map } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,16 +74,19 @@ export default function ItinerariesClient() {
 
     return (
         <div className="flex-1 min-w-0 w-full space-y-6 max-w-[1400px] mx-auto p-4 sm:p-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Itineraries</h1>
+            <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <ModuleTitle
+                    icon={Map}
+                    title="Itineraries"
+                    description="Upload and share itinerary PDFs by destination."
+                />
+            </div>
 
             <Card className="border-border shadow-sm min-w-0 w-full">
                 <CardHeader className="bg-muted/60 border-b border-border py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-                    <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-primary rounded flex items-center justify-center shrink-0">
-                            <FileText className="h-4 w-4 text-white" />
-                        </div>
-                        <CardTitle className="text-base font-semibold text-foreground">Itineraries</CardTitle>
-                    </div>
+                    <CardTitle className="text-base font-semibold text-foreground">
+                        All Itineraries{rows.length ? ` (${rows.length})` : ""}
+                    </CardTitle>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-initial">

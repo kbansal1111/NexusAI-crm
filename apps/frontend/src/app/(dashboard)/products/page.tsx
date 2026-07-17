@@ -13,6 +13,7 @@ import {
     Star,
     StarOff,
 } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,12 +168,11 @@ export default function ProductsPage() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-                    <p className="text-muted-foreground">
-                        Manage your product catalog.
-                    </p>
-                </div>
+                <ModuleTitle
+                    icon={Package}
+                    title="Products"
+                    description="Manage your product catalog."
+                />
                 <Dialog open={isCreateOpen || !!editingProduct} onOpenChange={(open) => {
                     if (!open) {
                         setIsCreateOpen(false);

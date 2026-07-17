@@ -69,8 +69,8 @@ export default function EmailInboxPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
-      <div className="w-96 shrink-0 border-r flex flex-col">
+    <div className="flex flex-col lg:h-[calc(100vh-4rem)] lg:flex-row">
+      <div className="flex w-full shrink-0 flex-col border-b lg:w-96 lg:border-b-0 lg:border-r">
         <div className="border-b p-3 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Inbox</h2>
@@ -92,7 +92,7 @@ export default function EmailInboxPage() {
             </Button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="max-h-[45vh] flex-1 overflow-y-auto lg:max-h-none">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin" />
@@ -127,7 +127,7 @@ export default function EmailInboxPage() {
           )}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="min-h-64 flex-1 overflow-y-auto p-4 sm:p-6">
         {!active ? (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
             <Mail className="mb-2 h-10 w-10" />

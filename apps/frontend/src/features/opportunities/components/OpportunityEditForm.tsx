@@ -1014,7 +1014,7 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                         </div>
                     )}
 
-                    <div className="sticky bottom-0 z-10 flex gap-4 border-t bg-card py-3">
+                    <div className="sticky bottom-0 z-10 flex gap-4 border-t bg-card py-3 shadow-[0_-8px_16px_-8px_rgb(0_0_0/0.18)]">
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? "Saving..." : isDrawer ? "Update" : "Save Changes"}
                         </Button>

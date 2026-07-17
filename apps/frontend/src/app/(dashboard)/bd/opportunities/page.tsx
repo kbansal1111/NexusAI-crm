@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export default function BDOpportunitiesPage() {
     return (
         <div className="pt-4">
-            <OpportunitiesPageClient />
+            <OpportunitiesPageClient hideModuleIcon />
         </div>
     );
 }

@@ -8,15 +8,19 @@ import {
   type FileFolder,
 } from "@/lib/api/services/files-extra.service";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, FolderOpen, FileText } from "lucide-react";
+import { Loader2, FolderOpen, FileText, Share2 } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { ModuleTitle } from "@/components/shared/module-title";
 
 export default function SharedFilesPage() {
   return (
-    <div className="p-6 max-w-5xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Shared with me</h1>
-        <p className="text-sm text-muted-foreground">Files and folders other users have shared with you.</p>
+    <div className="p-4 sm:p-6 max-w-5xl space-y-4">
+      <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <ModuleTitle
+          icon={Share2}
+          title="Shared with me"
+          description="Files and folders other users have shared with you."
+        />
       </div>
       <Tabs defaultValue="files">
         <TabsList>

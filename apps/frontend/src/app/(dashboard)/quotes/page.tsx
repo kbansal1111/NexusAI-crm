@@ -14,6 +14,7 @@ import {
     Calendar,
     Download
 } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,12 +120,11 @@ export default function QuotesPage() {
     return (
         <div className="crm-page">
             <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1>Quotes</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Manage your sales quotes and estimates.
-                    </p>
-                </div>
+                <ModuleTitle
+                    icon={FileText}
+                    title="Quotes"
+                    description="Manage your sales quotes and estimates."
+                />
                 {can("create_quote") && (
                     <Link href="/quotes/create">
                         <Button>

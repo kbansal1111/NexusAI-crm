@@ -43,6 +43,9 @@ async def list_fields(
     current_user: User = Depends(get_current_user),
 ):
     _check_entity(entity_type)
+    # Lazy-seed the schema-bound Additional Information fields (Lead/Opportunity)
+    # so Settings always reflects what the forms actually store in custom_fields.
+    await svc.ensure_system_additional_fields(entity_type, current_user.tenant_id)
     fields = await svc.list_additional_fields(
         entity_type, current_user.tenant_id, active_only=active_only,
     )
@@ -56,6 +59,7 @@ async def list_active_fields(
 ):
     """Mirror old `/rest_addfield_{entity}_active` and `/admin_addfield_{entity}_active`."""
     _check_entity(entity_type)
+    await svc.ensure_system_additional_fields(entity_type, current_user.tenant_id)
     fields = await svc.list_additional_fields(
         entity_type, current_user.tenant_id, active_only=True,
     )

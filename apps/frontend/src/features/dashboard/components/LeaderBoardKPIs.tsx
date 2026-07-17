@@ -14,7 +14,9 @@ import {
     Briefcase,
     Trophy,
     Gift,
+    LayoutDashboard,
 } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import type { LeaderBoardKPIs as LeaderBoardKPIsType } from "@/features/dashboard/services/dashboardService";
 import { formatCurrency } from "@/lib/format";
 import Link from "next/link";
@@ -119,20 +121,18 @@ export function LeaderBoardKPIs({ kpis }: { kpis: LeaderBoardKPIsType }) {
     return (
         <div className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                    Dashboard
-                </h2>
+                <ModuleTitle icon={LayoutDashboard} title="Dashboard" />
                 <div className="flex items-center gap-2">
                     <Link
                         href="/dashboard/leaderboard"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary shadow-sm transition-all hover:border-primary/40 hover:bg-primary/15 hover:shadow"
                     >
                         <Trophy className="h-3.5 w-3.5" />
                         Leader Board
                     </Link>
                     <Link
                         href="/dashboard/incentive"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent hover:text-primary"
+                        className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary shadow-sm transition-all hover:border-primary/40 hover:bg-primary/15 hover:shadow"
                     >
                         <Gift className="h-3.5 w-3.5" />
                         Incentives

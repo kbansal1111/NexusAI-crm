@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plane, Filter, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { ModuleTitle } from "@/components/shared/module-title";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useDepartures, useDepartureStats, useDeleteDeparture } from "@/features/departures/api/useDepartures";
@@ -30,7 +31,12 @@ function fmtPrice(v: number | null) {
     return `₹${Number(v).toLocaleString("en-IN")}`;
 }
 
-export default function DeparturePage() {
+export default function DeparturePage({
+    embedded = false,
+}: {
+    /** BD Panel embeds this page under its own module badge — hide ours there. */
+    embedded?: boolean;
+} = {}) {
     const [filters, setFilters] = useState<DepartureFilters>({});
     const [search, setSearch] = useState("");
     const [showFilter, setShowFilter] = useState(false);
@@ -60,8 +66,12 @@ export default function DeparturePage() {
     return (
         <div className="crm-page space-y-4">
             {/* Page header */}
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-foreground">Departure Report</h1>
+            <div className="crm-surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <ModuleTitle
+                    icon={embedded ? undefined : Plane}
+                    title="Departure Report"
+                    description={`Total # of Departures (${stats?.total_departures ?? 0}) | Total Seats (${stats?.total_seats ?? 0}) | Available Seats (${stats?.available_seats ?? 0})`}
+                />
                 <Button
                     onClick={() => setShowCreate(true)}
                     className="bg-primary hover:bg-primary/90 text-white gap-2"
@@ -69,23 +79,6 @@ export default function DeparturePage() {
                     <Plus className="h-4 w-4" />
                     New Departure
                 </Button>
-            </div>
-
-            {/* Stats card */}
-            <div className="crm-surface p-4">
-                <div className="flex items-center gap-3 mb-1">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
-                        <Plane className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-foreground">Departure - Report</p>
-                        <p className="text-xs text-muted-foreground">
-                            Total # of Departures ({stats?.total_departures ?? 0})
-                            {" | "}Total Seats ({stats?.total_seats ?? 0})
-                            {" | "}Available Seats ({stats?.available_seats ?? 0})
-                        </p>
-                    </div>
-                </div>
             </div>
 
             {/* Search + Filter bar */}
