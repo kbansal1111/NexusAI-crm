@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { FormDrawer } from "@/components/shared/FormDrawer";
-import { ContactForm } from "./ContactForm";
+import { ContactForm, type SavedContact } from "./ContactForm";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,15 @@ interface ContactFormDrawerProps {
     contactId?: string;
     /** Initial Account string for display logic */
     initialAccountName?: string;
+    /** Pins the new contact to one account and locks the picker. */
+    lockedAccount?: { id: string; name: string };
+    /**
+     * Fires after a successful save with the saved contact, so a parent form
+     * (e.g. Create Opportunity) can select it without a round-trip.
+     */
+    onSaved?: (saved?: SavedContact) => void;
+    /** Pass 1 when opened from inside another drawer so it stacks on top. */
+    level?: number;
 }
 
 export function ContactFormDrawer({
@@ -23,7 +32,10 @@ export function ContactFormDrawer({
     onOpenChange,
     initialData,
     contactId,
-    initialAccountName
+    initialAccountName,
+    lockedAccount,
+    onSaved,
+    level = 0,
 }: ContactFormDrawerProps) {
     const queryClient = useQueryClient();
     const router = useRouter();
@@ -49,11 +61,15 @@ export function ContactFormDrawer({
         return () => { cancelled = true; };
     }, [open, contactId, editData]);
 
-    const handleSuccess = () => {
+    const handleSuccess = (saved?: SavedContact) => {
         queryClient.invalidateQueries({ queryKey: ["contacts"] });
         // Might also affect account details if they show related contacts
         queryClient.invalidateQueries({ queryKey: ["accounts"] });
-        router.refresh();
+        onSaved?.(saved);
+        // Skip the server re-render when nested inside another form: the parent
+        // is still mid-edit, and whichever drawer owns the flow refreshes once
+        // its own save completes.
+        if (!onSaved) router.refresh();
         onOpenChange(false);
         setEditData(undefined);
     };
@@ -71,7 +87,14 @@ export function ContactFormDrawer({
             open={open}
             onOpenChange={handleClose}
             title={title}
-            subtitle={contactId ? "Update the details of this contact" : "Enter details for a new contact"}
+            subtitle={
+                contactId
+                    ? "Update the details of this contact"
+                    : lockedAccount
+                        ? `New contact under ${lockedAccount.name}`
+                        : "Enter details for a new contact"
+            }
+            level={level}
         >
             {loading ? (
                 <div className="flex items-center justify-center h-64">
@@ -85,6 +108,7 @@ export function ContactFormDrawer({
                         initialData={editData || initialData}
                         id={contactId}
                         initialAccountName={initialAccountName}
+                        lockedAccount={lockedAccount}
                         onSuccess={handleSuccess}
                         onCancel={handleClose}
                         isDrawer

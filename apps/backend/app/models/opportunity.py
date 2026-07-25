@@ -74,7 +74,11 @@ class Opportunity(BaseDocument):
     # Whether the deal has been verified by the linked account (parity with
     # reference CRM's "Verified by Account" flag shown on the opportunity).
     verified_by_account: bool = False
-    segment: Optional[str] = "B2C"  # B2B or B2C
+    # B2C / B2B / CORPORATE. Deliberately NOT defaulted to "B2C": the API's
+    # read path derives the segment from the linked account whenever this is
+    # empty, and a truthy default would pre-empt that fallback forever — which
+    # is how company accounts ended up labelled B2C.
+    segment: Optional[str] = None
     # How the opportunity was created. User-settable ("Manual"/"Auto"); for
     # lead-converted opportunities the response always reports "Auto" (lead_id set).
     creation_type: Optional[str] = "Manual"

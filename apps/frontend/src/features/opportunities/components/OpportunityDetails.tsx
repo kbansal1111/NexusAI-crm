@@ -105,6 +105,7 @@ const OpportunityFormDrawer = dynamic(
 import { accountService } from "@/features/accounts/services/accountService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { isNotFound } from "@/lib/http-error";
 import { opportunitiesService } from "@/lib/api/services/opportunities.service";
 import { suppliersService } from "@/lib/api/services/suppliers.service";
 import { templatesService, Template } from "@/lib/api/services/templates.service";
@@ -336,8 +337,32 @@ export function OpportunityDetails({
         try {
             await opportunitiesService.deleteOpportunity(record.id);
             toast.success("Opportunity deleted successfully");
-            router.push("/opportunities");
+
+            // Drop every cached copy of this record and any list that contains
+            // it, otherwise the list we land on re-renders from cache with the
+            // deleted row still in it.
+            queryClient.removeQueries({ queryKey: ["opportunities", record.id] });
+            queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+            if (record.account_id) {
+                queryClient.invalidateQueries({ queryKey: ["accounts", record.account_id] });
+            }
+
+            // replace, not push: this page now shows a deleted record, so it
+            // must not stay in history for the Back button to return to.
+            router.replace("/opportunities");
+            // Lists are server-rendered; without this the RSC payload is served
+            // from the client router cache and still lists the deleted row.
+            router.refresh();
         } catch (error: any) {
+            // Already gone (deleted in another tab, or the user navigated back
+            // into a dead page and hit Delete again) — that's the outcome they
+            // asked for, so complete the flow instead of showing a failure.
+            if (isNotFound(error)) {
+                queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+                router.replace("/opportunities");
+                router.refresh();
+                return;
+            }
             toast.error(error?.response?.data?.detail || "Failed to delete opportunity");
             setIsDeleting(false);
             setIsDeleteOpen(false);

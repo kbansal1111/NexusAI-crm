@@ -5,6 +5,7 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { opportunitiesService } from "@/lib/api/services/opportunities.service";
 import { OpportunityDetails } from "@/features/opportunities/components/OpportunityDetails";
+import { describeHttpError, isNotFound } from "@/lib/http-error";
 
 export const dynamic = "force-dynamic";
 
@@ -49,13 +50,28 @@ export default async function OpportunityPage(props: OpportunityPageProps) {
             </div>
         );
     } catch (error: unknown) {
+        // A deleted (or never-existing) opportunity 404s, which axios throws —
+        // so it lands here, not in the `!opportunity` branch above. Without
+        // this it renders a red "Error Loading" with a Retry that can never
+        // succeed, when the honest answer is simply that it's gone.
+        if (isNotFound(error)) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+                    <h2 className="text-2xl font-semibold">Opportunity not found</h2>
+                    <p className="text-muted-foreground">The opportunity you are looking for does not exist or has been deleted.</p>
+                    <Link href="/opportunities" className="text-primary hover:underline text-sm">← Back to Opportunities</Link>
+                </div>
+            );
+        }
+
         const isConnectionError =
             error &&
             typeof error === "object" &&
             "code" in error &&
             (error as { code: string }).code === "ECONNREFUSED";
 
-        console.error("Error fetching opportunity data:", error);
+        // Summary only — the raw axios error carries the bearer token.
+        console.error("Error fetching opportunity data:", describeHttpError(error));
 
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">

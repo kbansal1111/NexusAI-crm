@@ -16,6 +16,7 @@ from app.models.lead_picklists import LeadStatus, Source
 from app.models.picklists import Industry
 from app.models.lead_custom_fields import UserLeadView
 from app.core.cache import invalidate_tenant_cache
+from app.core.segment_constants import Segment
 from app.repositories.lead_repository import LeadRepository
 from app.services.webhook_service import webhook_service
 from app.services import field_registry_service
@@ -636,7 +637,12 @@ class LeadService(ActivityMixin):
                     industry_id=lead.industry_id,
                     account_source_id=lead.source_id,
                     is_person_account=is_person_account,
-                    segment=(lead.custom_fields or {}).get("segment", "B2C"),
+                    # Never inherit a segment that contradicts the account type
+                    # chosen above: a lead tagged B2C from a public email domain
+                    # converted into a *company* account is a B2B account.
+                    segment=Segment.reconcile_with_account_type(
+                        (lead.custom_fields or {}).get("segment"), is_person_account
+                    ),
                     salutation=p_salutation,
                     first_name=p_first_name,
                     last_name=p_last_name,
@@ -932,7 +938,11 @@ class LeadService(ActivityMixin):
                 opportunitable_type="Account" if not is_person_account else "PersonalAccount",
                 opportunitable_id=account_id,
                 lead_id=lead.id,
-                segment=(lead.custom_fields or {}).get("segment", "B2C"),
+                # Same reconciliation as the account above — the opportunity's
+                # segment must match the account it hangs off.
+                segment=Segment.reconcile_with_account_type(
+                    (lead.custom_fields or {}).get("segment"), is_person_account
+                ),
                 source_id=lead.source_id,
                 industry_data=opp_industry_data,
                 # Web-to-lead (auto-created) leads convert into "Auto"

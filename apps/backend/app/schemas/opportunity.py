@@ -33,8 +33,10 @@ class OpportunityBase(BaseModel):
     source_id: Annotated[Optional[str], BeforeValidator(lambda v: str(v) if v else None)] = None
     source_url: Optional[str] = Field(None, max_length=500)
     
-    # Universal CRM fields
-    segment: Optional[str] = "B2C"
+    # Universal CRM fields.
+    # Left unset by the create form on purpose — the service derives it from
+    # the linked account, so a "B2C" default here would override the truth.
+    segment: Optional[str] = None
     key_deal: bool = False
     verified_by_account: bool = False
     close_lost_reason: Optional[str] = Field(None, max_length=2000)

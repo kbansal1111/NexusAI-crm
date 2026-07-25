@@ -42,6 +42,7 @@ import { ContactFormDrawer } from "@/features/contacts/components/ContactFormDra
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { accountService } from "../services/accountService";
 import { toast } from "sonner";
+import { isNotFound } from "@/lib/http-error";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatDateTime } from "@/lib/format";
@@ -81,8 +82,31 @@ export function AccountDetailView({ account }: AccountDetailViewProps) {
         try {
             await accountService.deleteAccount(account.id);
             toast.success("Account deleted successfully");
-            router.push(isB2C ? "/person-accounts" : "/accounts");
+
+            // Deleting an account ripples: its contacts and opportunities are
+            // shown elsewhere, so drop those caches too rather than leaving
+            // rows that point at a record that no longer exists.
+            queryClient.removeQueries({ queryKey: ["accounts", account.id] });
+            queryClient.invalidateQueries({ queryKey: ["accounts"] });
+            queryClient.invalidateQueries({ queryKey: ["person-accounts"] });
+            queryClient.invalidateQueries({ queryKey: ["contacts"] });
+            queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+
+            // replace, not push: this page now shows a deleted record, so it
+            // must not stay in history for the Back button to return to.
+            router.replace(isB2C ? "/person-accounts" : "/accounts");
+            // Lists are server-rendered; without this the RSC payload is served
+            // from the client router cache and still lists the deleted row.
+            router.refresh();
         } catch (error: any) {
+            // Already gone — complete the flow rather than reporting a failure.
+            if (isNotFound(error)) {
+                queryClient.invalidateQueries({ queryKey: ["accounts"] });
+                queryClient.invalidateQueries({ queryKey: ["person-accounts"] });
+                router.replace(isB2C ? "/person-accounts" : "/accounts");
+                router.refresh();
+                return;
+            }
             toast.error(error?.response?.data?.detail || "Failed to delete account");
             setIsDeleting(false);
             setIsDeleteOpen(false);

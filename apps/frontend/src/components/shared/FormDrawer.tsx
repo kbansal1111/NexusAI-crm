@@ -56,6 +56,16 @@ class DrawerErrorBoundary extends React.Component<
     }
 }
 
+/**
+ * Ids of every currently-open drawer, outermost first. Drawers can stack (the
+ * Create Opportunity drawer opens a nested "＋ New Account" drawer), and each
+ * one attaches its own `document` keydown listener — so without this shared
+ * stack a single Escape would collapse the whole pile instead of just the top.
+ * It also ref-counts the body-scroll lock: a nested drawer closing must not
+ * unlock scrolling while its parent is still open.
+ */
+const drawerStack: string[] = [];
+
 interface FormDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -65,6 +75,11 @@ interface FormDrawerProps {
     subtitle?: string;
     /** Width class override, defaults to ~480px */
     widthClass?: string;
+    /**
+     * Stacking depth. 0 is a normal drawer; pass 1 for a drawer opened from
+     * inside another one so it renders above its parent instead of behind it.
+     */
+    level?: number;
 }
 
 export function FormDrawer({
@@ -74,31 +89,42 @@ export function FormDrawer({
     children,
     subtitle,
     widthClass = "w-[560px]",
+    level = 0,
 }: FormDrawerProps) {
-    // Close on Escape key
+    // Written as literals (not `z-[${n}]`) so Tailwind's scanner emits them.
+    const layerClass = level > 0 ? "z-[60]" : "z-50";
+
+    const idRef = React.useRef<string>("");
+    if (!idRef.current) idRef.current = Math.random().toString(36).slice(2);
+
+    // Join the stack while open; leave it on close/unmount.
+    React.useEffect(() => {
+        if (!open) return;
+
+        const id = idRef.current;
+        drawerStack.push(id);
+        document.body.style.overflow = "hidden";
+
+        return () => {
+            const i = drawerStack.indexOf(id);
+            if (i !== -1) drawerStack.splice(i, 1);
+            // Only the last drawer standing restores page scrolling.
+            if (drawerStack.length === 0) document.body.style.overflow = "";
+        };
+    }, [open]);
+
+    // Close on Escape — top-most drawer only.
     React.useEffect(() => {
         if (!open) return;
 
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                onOpenChange(false);
-            }
+            if (e.key !== "Escape") return;
+            if (drawerStack[drawerStack.length - 1] !== idRef.current) return;
+            onOpenChange(false);
         };
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
     }, [open, onOpenChange]);
-
-    // Prevent body scroll when drawer is open
-    React.useEffect(() => {
-        if (open) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "";
-        }
-        return () => {
-            document.body.style.overflow = "";
-        };
-    }, [open]);
 
     if (!open) return null;
 
@@ -107,7 +133,8 @@ export function FormDrawer({
             {/* Backdrop overlay */}
             <div
                 className={cn(
-                    "fixed inset-0 z-50 bg-black/20",
+                    "fixed inset-0 bg-black/20",
+                    layerClass,
                     "animate-in fade-in-0 duration-300"
                 )}
                 onClick={() => onOpenChange(false)}
@@ -121,7 +148,8 @@ export function FormDrawer({
                     // DOM (e.g. inside a `text-right` table actions cell), and
                     // text-align inherits even through `position: fixed` — without
                     // this reset, section headings/labels inherit right-alignment.
-                    "fixed inset-y-0 right-0 z-50 flex flex-col text-left",
+                    "fixed inset-y-0 right-0 flex flex-col text-left",
+                    layerClass,
                     "bg-card shadow-2xl border-l border-border",
                     "animate-in slide-in-from-right duration-300 ease-out",
                     widthClass,

@@ -39,6 +39,7 @@ import { contactsService } from "@/lib/api/services/contacts.service";
 import { ContactFormDrawer } from "./ContactFormDrawer";
 import { OpportunityFormDrawer } from "@/features/opportunities/components/OpportunityFormDrawer";
 import { toast } from "sonner";
+import { isNotFound } from "@/lib/http-error";
 import { formatDateTime } from "@/lib/format";
 import { FileUploader } from "@/features/files/components/file-uploader";
 import { FileList } from "@/features/files/components/file-list";
@@ -76,8 +77,28 @@ export function ContactDetails({ contact }: ContactDetailsProps) {
         try {
             await contactsService.deleteContact(contact.id);
             toast.success("Contact deleted successfully");
-            router.push("/contacts");
+
+            // The parent account's Related Contacts tab caches this row too.
+            queryClient.removeQueries({ queryKey: ["contacts", contact.id] });
+            queryClient.invalidateQueries({ queryKey: ["contacts"] });
+            if (contact.account_id) {
+                queryClient.invalidateQueries({ queryKey: ["accounts", contact.account_id] });
+            }
+
+            // replace, not push: this page now shows a deleted record, so it
+            // must not stay in history for the Back button to return to.
+            router.replace("/contacts");
+            // Lists are server-rendered; without this the RSC payload is served
+            // from the client router cache and still lists the deleted row.
+            router.refresh();
         } catch (error: any) {
+            // Already gone — complete the flow rather than reporting a failure.
+            if (isNotFound(error)) {
+                queryClient.invalidateQueries({ queryKey: ["contacts"] });
+                router.replace("/contacts");
+                router.refresh();
+                return;
+            }
             toast.error(error?.response?.data?.detail || "Failed to delete contact");
             setIsDeleting(false);
             setIsDeleteOpen(false);

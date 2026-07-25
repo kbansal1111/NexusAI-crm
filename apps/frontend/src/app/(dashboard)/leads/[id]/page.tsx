@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { leadsService } from "@/lib/api/services/leads.service";
 import { LeadDetails } from "@/features/leads/components/LeadDetails";
+import { describeHttpError, isNotFound } from "@/lib/http-error";
 
 export const dynamic = "force-dynamic";
 
@@ -58,12 +59,13 @@ export default async function LeadPage(props: LeadPageProps) {
             </div>
         );
     } catch (error: any) {
-        console.error("Error fetching lead data:", error);
-        // If lead is not found (converted/deleted), redirect to leads list
-        const status = error?.response?.status ?? error?.status;
-        if (status === 404 || status === 410) {
+        // If lead is not found (converted/deleted), redirect to leads list.
+        // Checked before logging so a routine deletion isn't logged as a fault.
+        if (isNotFound(error)) {
             redirect("/leads");
         }
+        // Summary only — the raw error carries the bearer token.
+        console.error("Error fetching lead data:", describeHttpError(error));
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 text-red-600">
                 <h2 className="text-2xl font-semibold">Error Loading Lead</h2>

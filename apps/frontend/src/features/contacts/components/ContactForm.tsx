@@ -82,17 +82,32 @@ const defaultValues: Partial<ContactFormValues> = {
     mailing_country: "",
 };
 
+/** The contact as it was just saved — lets a caller select it straight away. */
+export interface SavedContact {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+}
+
 interface ContactFormProps {
     initialData?: ContactFormValues & { owner_name?: string; owner?: { name?: string } };
     id?: string;
     /** Name of the current account (for the info banner) */
     initialAccountName?: string;
-    onSuccess?: () => void;
+    /**
+     * Pins the contact to one account and renders the picker read-only. Used
+     * when the account is already decided by the calling flow — creating a
+     * contact from inside the Create Opportunity form, where picking a
+     * different account here would silently break the opportunity's link.
+     */
+    lockedAccount?: { id: string; name: string };
+    onSuccess?: (saved?: SavedContact) => void;
     onCancel?: () => void;
     isDrawer?: boolean;
 }
 
-export function ContactForm({ initialData, id, initialAccountName, onSuccess, onCancel, isDrawer = false }: ContactFormProps) {
+export function ContactForm({ initialData, id, initialAccountName, lockedAccount, onSuccess, onCancel, isDrawer = false }: ContactFormProps) {
     const router = useRouter();
     const { data: session } = useSession();
     const [isLoading, setIsLoading] = useState(false);
@@ -110,7 +125,11 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
 
     const form = useForm<ContactFormValues>({
         resolver: zodResolver(contactFormSchema),
-        defaultValues: { ...defaultValues, ...sanitizedInitial },
+        defaultValues: {
+            ...defaultValues,
+            ...sanitizedInitial,
+            ...(lockedAccount ? { account_id: lockedAccount.id } : {}),
+        },
     });
 
     // Watch account_id to show info banner
@@ -193,7 +212,7 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                     }
                     
                     if (onSuccess) {
-                        onSuccess();
+                        onSuccess(savedContact as SavedContact | undefined);
                     } else {
                         router.push("/contacts");
                         router.refresh();
@@ -291,14 +310,23 @@ export function ContactForm({ initialData, id, initialAccountName, onSuccess, on
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Account Name *</FormLabel>
-                                    <FormControl>
-                                        <SearchableSelect
-                                            options={accounts.map(acc => ({ label: acc.name, value: acc.id }))}
-                                            value={field.value || ""}
-                                            onValueChange={field.onChange}
-                                            placeholder="Search Account"
-                                        />
-                                    </FormControl>
+                                    {lockedAccount ? (
+                                        // Read-only: the account is fixed by the calling flow. Also
+                                        // avoids showing a stale picker — a just-created account is
+                                        // not in the `accounts` list fetched on mount.
+                                        <p className="flex h-8 items-center truncate rounded-md border border-border bg-muted/40 px-2 text-xs text-foreground">
+                                            {lockedAccount.name}
+                                        </p>
+                                    ) : (
+                                        <FormControl>
+                                            <SearchableSelect
+                                                options={accounts.map(acc => ({ label: acc.name, value: acc.id }))}
+                                                value={field.value || ""}
+                                                onValueChange={field.onChange}
+                                                placeholder="Search Account"
+                                            />
+                                        </FormControl>
+                                    )}
                                     {accountChanged && (
                                         <FormDescription>
                                             <span className="flex items-start gap-1.5 mt-1.5 text-amber-600 dark:text-amber-400 text-xs leading-snug">

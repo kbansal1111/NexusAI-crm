@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { FormDrawer } from "@/components/shared/FormDrawer";
-import { AccountForm } from "./AccountForm";
+import { AccountForm, type SavedAccount } from "./AccountForm";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,13 @@ interface AccountFormDrawerProps {
     initialData?: any;
     /** Account ID for edit mode */
     accountId?: string;
+    /**
+     * Fires after a successful save with the saved account, so a parent form
+     * (e.g. Create Opportunity) can select it without a round-trip.
+     */
+    onSaved?: (saved?: SavedAccount) => void;
+    /** Pass 1 when opened from inside another drawer so it stacks on top. */
+    level?: number;
 }
 
 export function AccountFormDrawer({
@@ -23,7 +30,9 @@ export function AccountFormDrawer({
     onOpenChange,
     isPersonAccount = false,
     initialData,
-    accountId
+    accountId,
+    onSaved,
+    level = 0,
 }: AccountFormDrawerProps) {
     const queryClient = useQueryClient();
     const router = useRouter();
@@ -57,11 +66,15 @@ export function AccountFormDrawer({
         return () => { cancelled = true; };
     }, [open, accountId, editData]);
 
-    const handleSuccess = () => {
+    const handleSuccess = (saved?: SavedAccount) => {
         queryClient.invalidateQueries({ queryKey: [isPersonAccount ? "person-accounts" : "accounts"] });
         // Since opportunities might also show accounts, invalidate that too if needed
         queryClient.invalidateQueries({ queryKey: ["opportunities"] });
-        router.refresh();
+        onSaved?.(saved);
+        // Skip the server re-render when nested inside another form: the parent
+        // is still mid-edit, and whichever drawer owns the flow refreshes once
+        // its own save completes.
+        if (!onSaved) router.refresh();
         onOpenChange(false);
         setEditData(undefined); // Reset state
     };
@@ -81,6 +94,7 @@ export function AccountFormDrawer({
             onOpenChange={handleClose}
             title={title}
             subtitle={accountId ? `Update the details of this ${typeLabel.toLowerCase()}` : `Enter details for a new ${typeLabel.toLowerCase()}`}
+            level={level}
         >
             {loading ? (
                 <div className="flex items-center justify-center h-64">

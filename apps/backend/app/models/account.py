@@ -1,4 +1,4 @@
-from beanie import Indexed, before_event, Insert
+from beanie import Indexed, before_event, Insert, Replace, SaveChanges
 from pydantic import EmailStr, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -74,6 +74,19 @@ class Account(BaseDocument):
             return None
         return v
     
+    @before_event([Insert, Replace, SaveChanges])
+    def _enforce_segment_invariant(self):
+        """A company account can never be B2C, whatever the caller sent.
+
+        Enforced at the model rather than per-endpoint so every write path is
+        covered at once — REST create/update, CSV import, lead conversion, and
+        any future caller. CORPORATE is preserved; only contradictions change.
+        """
+        from app.core.segment_constants import Segment
+        self.segment = Segment.reconcile_with_account_type(
+            self.segment, self.is_person_account
+        )
+
     @before_event(Insert)
     async def _denormalize_names(self):
         """PERF: populate owner_name on create (catches all create paths)."""

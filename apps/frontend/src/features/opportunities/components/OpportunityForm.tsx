@@ -7,7 +7,7 @@ import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { CalendarIcon, Check, ChevronsUpDown, X, Paperclip, Briefcase, Info } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, X, Paperclip, Briefcase, Info, Plus } from "lucide-react";
 import { FormSectionHeader, FormFooter, FORM_SHELL_CLASS } from "@/components/shared/form-section";
 import { useUploadFile } from "@/features/files/api/use-files";
 import { format } from "date-fns";
@@ -61,6 +61,11 @@ import { ErrorHandler, ErrorType } from "@/lib/error-handler";
 import { IndustryOpportunityFields, DestinationMultiSelect } from "@/components/industry/IndustryOpportunityFields";
 import { StartingCitySelect } from "./StartingCitySelect";
 import { useIndustry } from "@/lib/industry-labels";
+import { AccountFormDrawer } from "@/features/accounts/components/AccountFormDrawer";
+import type { SavedAccount } from "@/features/accounts/components/AccountForm";
+import { ContactFormDrawer } from "@/features/contacts/components/ContactFormDrawer";
+import type { SavedContact } from "@/features/contacts/components/ContactForm";
+import { usePermissions } from "@/hooks/use-permissions";
 
 // Travel inclusion options
 const INCLUSION_OPTIONS = [
@@ -138,7 +143,18 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
     const [loadingAccounts, setLoadingAccounts] = useState(false);
     const [loadingContacts, setLoadingContacts] = useState(false);
     const [selectedAccountId, setSelectedAccountId] = useState(initialAccountId || "");
+    // Held as state, not derived from accountOptions: searching replaces that
+    // list, so the chosen account's label vanishes as soon as the user types
+    // another query. The contact drawer needs this name to stay stable.
+    const [selectedAccountName, setSelectedAccountName] = useState("");
     const [isPersonAccount, setIsPersonAccount] = useState(false);
+
+    // Inline create: an account/contact that doesn't exist yet can be created
+    // from here without abandoning this form. Both open a drawer stacked on top
+    // of this one, so nothing typed so far is lost.
+    const { can } = usePermissions();
+    const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
+    const [contactDrawerOpen, setContactDrawerOpen] = useState(false);
 
     // Destinations are fetched inside DestinationMultiSelect / IndustryOpportunityFields;
     // no separate fetch needed here.
@@ -176,13 +192,18 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
             setAccountContacts([]);
             return;
         }
+        // `cancelled` keeps a slow response for a previous account (or one that
+        // lands after a contact was just created inline) from overwriting the
+        // current list.
+        let cancelled = false;
         setLoadingContacts(true);
         contactsService.getContactsByAccount(selectedAccountId)
             .then(contacts => {
-                setAccountContacts(contacts);
+                if (!cancelled) setAccountContacts(contacts);
             })
             .catch(err => console.error("Failed to fetch contacts", err))
-            .finally(() => setLoadingContacts(false));
+            .finally(() => { if (!cancelled) setLoadingContacts(false); });
+        return () => { cancelled = true; };
     }, [selectedAccountId]);
 
     const form = useForm<OpportunityFormValues>({
@@ -226,6 +247,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
             setOriginalAccount(opt);
             form.setValue("account_id", acc.id);
             setSelectedAccountId(acc.id);
+            setSelectedAccountName(acc.name);
             setIsPersonAccount(acc.is_person_account || false);
             if (initialContactId) {
                 form.setValue("contact_id", initialContactId);
@@ -319,6 +341,27 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
     const paxWatch = form.watch("no_of_pax");
     const travelDateWatch = form.watch("travel_date");
     const watchedAccountId = form.watch("account_id");
+
+    // Select the freshly-created account and clear the contact — the old one
+    // belonged to the previous account.
+    const handleAccountCreated = useCallback((saved?: SavedAccount) => {
+        if (!saved) return;
+        setAccountOptions([{ id: saved.id, name: saved.name }]);
+        setSelectedAccountId(saved.id);
+        setSelectedAccountName(saved.name);
+        form.setValue("account_id", saved.id, { shouldValidate: true });
+        form.setValue("contact_id", "");
+    }, [form]);
+
+    // Inject the new contact into the list rather than refetching: it was just
+    // created under this account, so it belongs there.
+    const handleContactCreated = useCallback((saved?: SavedContact) => {
+        if (!saved) return;
+        setAccountContacts(prev =>
+            prev.some(c => c.id === saved.id) ? prev : [...prev, saved as Contact]
+        );
+        form.setValue("contact_id", saved.id, { shouldValidate: true });
+    }, [form]);
 
 
     const handleBackendErrors = (error: any) => {
@@ -446,6 +489,7 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
             }
         }
     }    return (
+        <>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-5", FORM_SHELL_CLASS)}>
                 {/* ── Section: Opportunity Information ─────────────────── */}
@@ -468,11 +512,13 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                                 form.setValue("account_id", originalAccount.id);
                                                 form.setValue("contact_id", initialContactId || "");
                                                 setSelectedAccountId(originalAccount.id);
+                                                setSelectedAccountName(originalAccount.name);
                                                 setAccountOptions([originalAccount]);
                                             } else {
                                                 form.setValue("account_id", "");
                                                 form.setValue("contact_id", "");
                                                 setSelectedAccountId("");
+                                                setSelectedAccountName("");
                                                 setAccountOptions([]);
                                                 setAccountContacts([]);
                                             }
@@ -493,11 +539,13 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                                 form.setValue("account_id", originalAccount.id);
                                                 form.setValue("contact_id", "");
                                                 setSelectedAccountId(originalAccount.id);
+                                                setSelectedAccountName(originalAccount.name);
                                                 setAccountOptions([originalAccount]);
                                             } else {
                                                 form.setValue("account_id", "");
                                                 form.setValue("contact_id", "");
                                                 setSelectedAccountId("");
+                                                setSelectedAccountName("");
                                                 setAccountOptions([]);
                                                 setAccountContacts([]);
                                             }
@@ -586,20 +634,40 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                 render={({ field }) => (
                                     <FormItem className={isPersonAccount ? "md:col-span-2" : ""}>
                                         <FormLabel>{isPersonAccount ? "Personal Accounts *" : "Account *"}</FormLabel>
-                                        <FormControl>
-                                            <SearchableSelect
-                                                options={accountOptions.map(a => ({ label: a.name, value: a.id }))}
-                                                value={field.value || ""}
-                                                onValueChange={(val) => {
-                                                    field.onChange(val);
-                                                    setSelectedAccountId(val);
-                                                    form.setValue("contact_id", "");
-                                                }}
-                                                onSearch={handleAccountSearch}
-                                                isLoading={loadingAccounts}
-                                                placeholder="Search accounts..."
-                                            />
-                                        </FormControl>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="min-w-0 flex-1">
+                                                <FormControl>
+                                                    <SearchableSelect
+                                                        options={accountOptions.map(a => ({ label: a.name, value: a.id }))}
+                                                        value={field.value || ""}
+                                                        onValueChange={(val) => {
+                                                            field.onChange(val);
+                                                            setSelectedAccountId(val);
+                                                            setSelectedAccountName(
+                                                                accountOptions.find(a => a.id === val)?.name ?? ""
+                                                            );
+                                                            form.setValue("contact_id", "");
+                                                        }}
+                                                        onSearch={handleAccountSearch}
+                                                        isLoading={loadingAccounts}
+                                                        placeholder="Search accounts..."
+                                                    />
+                                                </FormControl>
+                                            </div>
+                                            {can(isPersonAccount ? "create_person_account" : "create_account") && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8 shrink-0"
+                                                    onClick={() => setAccountDrawerOpen(true)}
+                                                    title={isPersonAccount ? "Create a new personal account" : "Create a new account"}
+                                                    aria-label={isPersonAccount ? "Create a new personal account" : "Create a new account"}
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -612,15 +680,37 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Contact Name *</FormLabel>
-                                            <FormControl>
-                                                <SearchableSelect
-                                                    options={accountContacts.map(c => ({ label: c.full_name || `${c.first_name} ${c.last_name}`, value: c.id }))}
-                                                    value={field.value || ""}
-                                                    onValueChange={field.onChange}
-                                                    placeholder={loadingContacts ? "Loading contacts..." : (selectedAccountId ? "Select contact" : "Select an account first")}
-                                                    disabled={!selectedAccountId || loadingContacts}
-                                                />
-                                            </FormControl>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="min-w-0 flex-1">
+                                                    <FormControl>
+                                                        <SearchableSelect
+                                                            options={accountContacts.map(c => ({ label: c.full_name || `${c.first_name} ${c.last_name}`, value: c.id }))}
+                                                            value={field.value || ""}
+                                                            onValueChange={field.onChange}
+                                                            placeholder={loadingContacts ? "Loading contacts..." : (selectedAccountId ? "Select contact" : "Select an account first")}
+                                                            disabled={!selectedAccountId || loadingContacts}
+                                                        />
+                                                    </FormControl>
+                                                </div>
+                                                {can("create_contact") && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="h-8 w-8 shrink-0"
+                                                        // A contact must belong to an account, so there is
+                                                        // nothing to create one under until one is picked.
+                                                        disabled={!selectedAccountId}
+                                                        onClick={() => setContactDrawerOpen(true)}
+                                                        title={selectedAccountId
+                                                            ? `Create a new contact under ${selectedAccountName || "this account"}`
+                                                            : "Select an account first"}
+                                                        aria-label="Create a new contact under the selected account"
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -1053,5 +1143,28 @@ export function OpportunityForm({ initialAccountId, initialContactId, onSuccess,
                 />
             </form>
         </Form>
+
+        {/* Inline create, stacked above this form. Rendered outside the <form>
+            above: each of these hosts its own <form>, and nesting form elements
+            is invalid HTML. This form's state is untouched while they're open,
+            so the user returns to everything they had already filled in. */}
+        <AccountFormDrawer
+            open={accountDrawerOpen}
+            onOpenChange={setAccountDrawerOpen}
+            isPersonAccount={isPersonAccount}
+            onSaved={handleAccountCreated}
+            level={1}
+        />
+
+        {selectedAccountId && (
+            <ContactFormDrawer
+                open={contactDrawerOpen}
+                onOpenChange={setContactDrawerOpen}
+                lockedAccount={{ id: selectedAccountId, name: selectedAccountName }}
+                onSaved={handleContactCreated}
+                level={1}
+            />
+        )}
+        </>
     );
 }

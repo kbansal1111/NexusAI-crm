@@ -60,3 +60,22 @@ class Segment:
     def label(cls, segment: str | None) -> str:
         """Human-readable label for a segment value."""
         return cls.LABELS.get(segment or cls.B2C, segment or cls.B2C)
+
+    @classmethod
+    def reconcile_with_account_type(
+        cls, segment: str | None, is_person_account: bool
+    ) -> str:
+        """Return a segment that cannot contradict the account's structure.
+
+        ``segment`` is often a *guess* (e.g. lead capture infers B2C from a
+        public email domain like @gmail.com), whereas ``is_person_account`` is
+        an explicit structural choice — it decides which module the record
+        lives in and whether it may hold contacts. So the structural choice
+        wins on conflict; a company account must never be labelled B2C.
+
+        Business flavours are preserved: CORPORATE stays CORPORATE rather than
+        being flattened to B2B. Agreeing values pass through untouched.
+        """
+        if is_person_account:
+            return cls.B2C
+        return segment if segment in cls.B2B_VARIANTS else cls.B2B

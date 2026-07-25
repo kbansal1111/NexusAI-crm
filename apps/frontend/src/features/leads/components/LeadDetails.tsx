@@ -48,6 +48,7 @@ import { LeadFormDrawer } from "./LeadFormDrawer";
 import { leadsService } from "@/lib/api/services/leads.service";
 import { useAllDestinations } from "@/hooks/use-destinations";
 import { toast } from "sonner";
+import { isNotFound } from "@/lib/http-error";
 import { formatDateTime } from "@/lib/format";
 import { useIndustry, useIndustryLabels } from "@/lib/industry-labels";
 import { FileUploader } from "@/features/files/components/file-uploader";
@@ -226,8 +227,24 @@ export function LeadDetails({
         try {
             await leadsService.deleteLead(lead.id);
             toast.success("Lead deleted successfully");
-            router.push("/leads");
+
+            queryClient.removeQueries({ queryKey: ["leads", lead.id] });
+            queryClient.invalidateQueries({ queryKey: ["leads"] });
+
+            // replace, not push: this page now shows a deleted record, so it
+            // must not stay in history for the Back button to return to.
+            router.replace("/leads");
+            // Lists are server-rendered; without this the RSC payload is served
+            // from the client router cache and still lists the deleted row.
+            router.refresh();
         } catch (error: any) {
+            // Already gone — complete the flow rather than reporting a failure.
+            if (isNotFound(error)) {
+                queryClient.invalidateQueries({ queryKey: ["leads"] });
+                router.replace("/leads");
+                router.refresh();
+                return;
+            }
             toast.error(error?.response?.data?.detail || "Failed to delete lead");
             setIsDeleting(false);
             setIsDeleteOpen(false);

@@ -85,11 +85,18 @@ const getAccountFormSchema = (isPersonAccount: boolean) => z.object({
 
 type AccountFormValues = z.infer<ReturnType<typeof getAccountFormSchema>>;
 
+/** The account as it was just saved — lets a caller select it straight away. */
+export interface SavedAccount {
+    id: string;
+    name: string;
+    is_person_account: boolean;
+}
+
 interface AccountFormProps {
     isPersonAccount?: boolean;
     initialData?: any;
     id?: string;
-    onSuccess?: () => void;
+    onSuccess?: (saved?: SavedAccount) => void;
     onCancel?: () => void;
     isDrawer?: boolean;
 }
@@ -591,7 +598,11 @@ export function AccountForm({ isPersonAccount = false, initialData, id, onSucces
                     }
                     
                     if (onSuccess) {
-                        onSuccess();
+                        onSuccess(
+                            accountId
+                                ? { id: accountId, name: finalName, is_person_account: isPersonAccount }
+                                : undefined
+                        );
                     } else {
                         router.push(isPersonAccount ? "/person-accounts" : "/accounts");
                         router.refresh();

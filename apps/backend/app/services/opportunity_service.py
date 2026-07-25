@@ -12,6 +12,7 @@ from app.schemas.opportunity import OpportunityCreate, OpportunityUpdate, Opport
 from app.services.notification_service import NotificationService
 from app.mixins.activity_mixin import ActivityMixin
 from app.core.cache import invalidate_tenant_cache
+from app.core.segment_constants import Segment
 from app.repositories.opportunity_repository import OpportunityRepository
 from app.services.webhook_service import webhook_service
 from app.services import field_registry_service
@@ -59,6 +60,35 @@ class OpportunityService(ActivityMixin):
         await opp.save()
         return opp
 
+    async def _segment_for_account(
+        self,
+        account_id,
+        requested_segment: Optional[str],
+        tenant_id: ObjectId,
+    ) -> Optional[str]:
+        """Resolve an opportunity's segment from the account it belongs to.
+
+        The account is the authority: a person account is B2C, a company
+        account is B2B (or CORPORATE, which is preserved). ``requested_segment``
+        only survives as the business flavour when it doesn't contradict.
+
+        Returns None when the account can't be resolved, leaving the field
+        empty so the API's read-path fallback still derives something sane
+        rather than storing a guess.
+        """
+        if not account_id:
+            return requested_segment
+        from app.models.account import Account
+        # Tenant-scoped: a forged account_id must never reach another tenant.
+        account = await Account.find_one(
+            {"_id": account_id, "tenant_id": tenant_id, "deleted_at": None}
+        )
+        if not account:
+            return requested_segment
+        return Segment.reconcile_with_account_type(
+            requested_segment, bool(account.is_person_account)
+        )
+
     async def create_opportunity(
         self,
         opp_data,  # OpportunityCreate (unified for all industries)
@@ -96,13 +126,20 @@ class OpportunityService(ActivityMixin):
                 created_by=user_id
             )
 
+            # Segment follows the linked account, never the request body: a
+            # company account cannot be B2C. Stored (not just derived on read)
+            # because dashboards and list filters query this field directly.
+            opportunity.segment = await self._segment_for_account(
+                opportunity.account_id, opp_dict.get("segment"), tenant_id
+            )
+
             from app.core.entity_required_fields import (
                 validate_opportunity_record,
                 opportunity_requires_contact,
             )
             require_contact = await opportunity_requires_contact(opportunity.account_id, tenant_id)
             validate_opportunity_record(opportunity, require_contact=require_contact)
-            
+
             # Set team_member_ids if present
             if hasattr(opp_data, 'team_member_ids') and opp_data.team_member_ids:
                 opportunity.team_member_ids = [ObjectId(t) for t in opp_data.team_member_ids]
@@ -328,7 +365,19 @@ class OpportunityService(ActivityMixin):
 
             setattr(opp, field, value)
             updated_fields[field] = value
-        
+
+        # Re-derive the segment whenever the account (or an explicit segment)
+        # changes — moving a deal to a company account must not leave a stale
+        # B2C label behind.
+        if "account_id" in update_data or "segment" in update_data:
+            resolved = await self._segment_for_account(
+                opp.account_id, update_data.get("segment", opp.segment), tenant_id
+            )
+            if resolved != opp.segment:
+                old_values["segment"] = opp.segment
+                opp.segment = resolved
+                updated_fields["segment"] = resolved
+
         from app.core.entity_required_fields import (
             validate_opportunity_record,
             opportunity_requires_contact,

@@ -432,49 +432,14 @@ export function OpportunityEditForm({ opportunity, stages, onSuccess, onCancel, 
                         <FormSectionHeader icon={Briefcase} title="Opportunity Information" />
                         <div className="space-y-5">
                             <div className="grid gap-3 md:grid-cols-2">
-                                {/* Row 1: Account Type Toggles (read-only on edit) — first,
-                                    matching the create form's layout. Account type can't be
-                                    changed after creation, but it must stay clearly legible:
-                                    the active option is colour-highlighted and pointer events
-                                    are disabled instead of greying the whole row out. */}
-                                <div className="md:col-span-2 flex items-center gap-4 py-2 border-b border-border/50">
-                                    <div className="flex items-center gap-2 pointer-events-none">
-                                        <input
-                                            type="radio"
-                                            id="account-type-company"
-                                            name="accountType"
-                                            checked={!isPersonAccount}
-                                            readOnly
-                                            className="h-4 w-4 accent-primary cursor-not-allowed"
-                                        />
-                                        <label
-                                            htmlFor="account-type-company"
-                                            className={cn(
-                                                "text-sm font-medium cursor-not-allowed",
-                                                !isPersonAccount ? "text-foreground" : "text-muted-foreground"
-                                            )}
-                                        >
-                                            Account
-                                        </label>
-                                    </div>
-                                    <div className="flex items-center gap-2 pointer-events-none">
-                                        <input
-                                            type="radio"
-                                            id="account-type-person"
-                                            name="accountType"
-                                            checked={isPersonAccount}
-                                            readOnly
-                                            className="h-4 w-4 accent-primary cursor-not-allowed"
-                                        />
-                                        <label
-                                            htmlFor="account-type-person"
-                                            className={cn(
-                                                "text-sm font-medium cursor-not-allowed",
-                                                isPersonAccount ? "text-foreground" : "text-muted-foreground"
-                                            )}
-                                        >
-                                            Personal Account
-                                        </label>
+                                {/* Row 1: Account Type — fixed once the opportunity exists, so
+                                    this states the type it HAS rather than offering a choice.
+                                    Two radios (one inert) read as a live toggle and invite the
+                                    user to click the option that isn't theirs. */}
+                                <div className="md:col-span-2">
+                                    <FormLabel className="text-[10px] font-bold uppercase text-foreground/80 mb-1.5 block">Account Type</FormLabel>
+                                    <div className="h-9 flex items-center text-xs text-foreground px-3 bg-muted/40 rounded-md border border-border truncate">
+                                        {isPersonAccount ? "Personal Account" : "Account"}
                                     </div>
                                 </div>
 
