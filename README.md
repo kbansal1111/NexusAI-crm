@@ -1,4 +1,4 @@
-# BIGFAT AI CRM
+# NEXUS AI CRM
 
 Tutterfly — a multi-tenant, multi-industry CRM.
 Backend: FastAPI + Beanie/MongoDB (`apps/backend`). Frontend: Next.js App Router (`apps/frontend`).
